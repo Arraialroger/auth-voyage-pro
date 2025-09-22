@@ -225,7 +225,7 @@ export default function Agenda() {
                                 </div>)}
                               
                               {/* Empty slot click area */}
-                              <div className="h-8 flex items-center justify-center cursor-pointer opacity-0 hover:opacity-100 transition-opacity" onClick={() => handleEmptySlotClick(professional, day, '09:00')}>
+                              <div onClick={() => handleEmptySlotClick(professional, day, '09:00')} className="h-8 flex items-center justify-center cursor-pointer opacity-0 hover:opacity-100 transition-opacity bg-zinc-800">
                                 <Plus className="h-4 w-4 text-muted-foreground bg-white" />
                               </div>
                             </div>;
