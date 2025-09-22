@@ -11,6 +11,7 @@ import Agenda from "./pages/Agenda";
 import NotFound from "./pages/NotFound";
 import Administration from "./pages/Administration";
 import ManagePatients from "./pages/ManagePatients";
+import ManageProfessionals from "./pages/ManageProfessionals";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,11 @@ const App = () => (
             <Route path="/admin/patients" element={
               <ProtectedRoute>
                 <ManagePatients />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/professionals" element={
+              <ProtectedRoute>
+                <ManageProfessionals />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
