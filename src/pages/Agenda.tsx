@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, LogOut, User, Clock, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { Calendar, LogOut, User, Clock, ChevronLeft, ChevronRight, Plus, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -143,6 +143,10 @@ export default function Agenda() {
           </div>
           
           <div className="flex items-center space-x-4">
+            <Button variant="outline" onClick={() => navigate('/admin')} className="border-border/50 hover:bg-muted">
+              <Settings className="mr-2 h-4 w-4" />
+              Admin
+            </Button>
             <div className="flex items-center space-x-2 text-sm text-muted-foreground">
               <User className="h-4 w-4" />
               <span>{user?.email}</span>

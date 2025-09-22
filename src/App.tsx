@@ -9,6 +9,8 @@ import { Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Agenda from "./pages/Agenda";
 import NotFound from "./pages/NotFound";
+import Administration from "./pages/Administration";
+import ManagePatients from "./pages/ManagePatients";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +27,16 @@ const App = () => (
             <Route path="/agenda" element={
               <ProtectedRoute>
                 <Agenda />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin" element={
+              <ProtectedRoute>
+                <Administration />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/patients" element={
+              <ProtectedRoute>
+                <ManagePatients />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
