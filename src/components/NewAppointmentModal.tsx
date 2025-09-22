@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { format } from 'date-fns';
 import { CalendarIcon, Search } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { createClient } from '@supabase/supabase-js';
 import { toast } from '@/hooks/use-toast';
 
 import {
@@ -68,6 +68,11 @@ interface NewAppointmentModalProps {
   onSuccess?: () => void;
 }
 
+const supabase = createClient(
+  "https://bacwlstdjceottxccrap.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhY3dsc3RkamNlb3R0eGNjcmFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NTA2MDQsImV4cCI6MjA3NDEyNjYwNH0.VMkRLrcwxEnUm1q5jaSbuUJgsh2Ym7pv6Ay2muNYso8"
+);
+
 export function NewAppointmentModal({ trigger, onSuccess }: NewAppointmentModalProps) {
   const [open, setOpen] = useState(false);
   const [patientSearchOpen, setPatientSearchOpen] = useState(false);
@@ -91,7 +96,11 @@ export function NewAppointmentModal({ trigger, onSuccess }: NewAppointmentModalP
         .order('full_name');
       
       if (error) throw error;
-      return data;
+      return data as Array<{
+        id: string;
+        full_name: string;
+        contact_phone: string;
+      }>;
     },
   });
 
@@ -105,7 +114,11 @@ export function NewAppointmentModal({ trigger, onSuccess }: NewAppointmentModalP
         .order('treatment_name');
       
       if (error) throw error;
-      return data;
+      return data as Array<{
+        id: string;
+        treatment_name: string;
+        default_duration_minutes: number;
+      }>;
     },
   });
 
@@ -119,7 +132,11 @@ export function NewAppointmentModal({ trigger, onSuccess }: NewAppointmentModalP
         .order('full_name');
       
       if (error) throw error;
-      return data;
+      return data as Array<{
+        id: string;
+        full_name: string;
+        specialization: string;
+      }>;
     },
   });
 
