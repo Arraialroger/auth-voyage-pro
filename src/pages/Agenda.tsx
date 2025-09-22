@@ -1,13 +1,14 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, LogOut, User, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, LogOut, User, Clock, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useState } from 'react';
 import { startOfWeek, endOfWeek, format, addDays, addWeeks, subWeeks } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { NewAppointmentModal } from '@/components/NewAppointmentModal';
 
 interface Appointment {
   id: string;
@@ -22,6 +23,12 @@ export default function Agenda() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [currentWeek, setCurrentWeek] = useState(new Date());
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalInitialValues, setModalInitialValues] = useState<{
+    professional_id?: string;
+    appointment_date?: Date;
+    start_time?: string;
+  }>({});
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
@@ -69,6 +76,34 @@ export default function Agenda() {
   const previousWeek = () => setCurrentWeek(subWeeks(currentWeek, 1));
   const nextWeek = () => setCurrentWeek(addWeeks(currentWeek, 1));
 
+  // Get all professionals for empty slot handling
+  const { data: allProfessionals = [] } = useQuery({
+    queryKey: ['all-professionals'],
+    queryFn: async () => {
+      try {
+        const { data, error } = await (supabase as any)
+          .from('professionals')
+          .select('id, full_name')
+          .order('full_name');
+        
+        if (error) throw error;
+        return data || [];
+      } catch (error) {
+        console.error('Erro ao buscar profissionais:', error);
+        return [];
+      }
+    }
+  });
+
+  const handleEmptySlotClick = (professional: any, day: Date, timeSlot: string) => {
+    setModalInitialValues({
+      professional_id: professional.id,
+      appointment_date: day,
+      start_time: timeSlot,
+    });
+    setModalOpen(true);
+  };
+
   // Group appointments by professional and day
   const appointmentsByProfessional = appointments.reduce((acc, apt) => {
     const professionalName = apt.professional?.full_name || 'Profissional não identificado';
@@ -85,7 +120,8 @@ export default function Agenda() {
     return acc;
   }, {} as Record<string, Record<string, Appointment[]>>);
 
-  const professionals = Object.keys(appointmentsByProfessional);
+  // Use all professionals instead of just those with appointments
+  const professionals = allProfessionals.length > 0 ? allProfessionals : Object.keys(appointmentsByProfessional).map(name => ({ full_name: name }));
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   return (
@@ -174,17 +210,17 @@ export default function Agenda() {
 
                   {/* Calendar Body */}
                   {professionals.length > 0 ? (
-                    professionals.map((professionalName) => (
-                      <div key={professionalName} className="grid grid-cols-8 gap-2 mb-4 border-b border-border/30 pb-4">
+                    professionals.map((professional) => (
+                      <div key={professional.id || professional.full_name} className="grid grid-cols-8 gap-2 mb-4 border-b border-border/30 pb-4">
                         <div className="font-medium p-2 text-sm">
-                          {professionalName}
+                          {professional.full_name}
                         </div>
                         {weekDays.map((day) => {
                           const dayKey = format(day, 'yyyy-MM-dd');
-                          const dayAppointments = appointmentsByProfessional[professionalName]?.[dayKey] || [];
+                          const dayAppointments = appointmentsByProfessional[professional.full_name]?.[dayKey] || [];
                           
                           return (
-                            <div key={dayKey} className="min-h-[100px] p-1">
+                            <div key={dayKey} className="min-h-[120px] p-1 border border-border/20 rounded-md bg-muted/20 hover:bg-muted/40 transition-colors">
                               {dayAppointments.map((appointment) => (
                                 <div
                                   key={appointment.id}
@@ -201,6 +237,14 @@ export default function Agenda() {
                                   </div>
                                 </div>
                               ))}
+                              
+                              {/* Empty slot click area */}
+                              <div 
+                                className="h-8 flex items-center justify-center cursor-pointer opacity-0 hover:opacity-100 transition-opacity"
+                                onClick={() => handleEmptySlotClick(professional, day, '09:00')}
+                              >
+                                <Plus className="h-4 w-4 text-muted-foreground" />
+                              </div>
                             </div>
                           );
                         })}
@@ -209,9 +253,9 @@ export default function Agenda() {
                   ) : (
                     <div className="text-center py-12">
                       <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">Nenhum agendamento esta semana</h3>
+                      <h3 className="text-lg font-semibold mb-2">Nenhum profissional cadastrado</h3>
                       <p className="text-muted-foreground">
-                        Não há agendamentos para a semana selecionada.
+                        Não há profissionais cadastrados no sistema.
                       </p>
                     </div>
                   )}
@@ -221,6 +265,18 @@ export default function Agenda() {
           </Card>
         </div>
       </main>
+
+      {/* New Appointment Modal */}
+      <NewAppointmentModal
+        trigger={<div />}
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        initialValues={modalInitialValues}
+        onSuccess={() => {
+          setModalOpen(false);
+          setModalInitialValues({});
+        }}
+      />
     </div>
   );
 }

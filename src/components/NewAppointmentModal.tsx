@@ -66,6 +66,13 @@ type AppointmentFormData = z.infer<typeof appointmentSchema>;
 interface NewAppointmentModalProps {
   trigger: React.ReactNode;
   onSuccess?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  initialValues?: {
+    professional_id?: string;
+    appointment_date?: Date;
+    start_time?: string;
+  };
 }
 
 const supabase = createClient(
@@ -73,16 +80,25 @@ const supabase = createClient(
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhY3dsc3RkamNlb3R0eGNjcmFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NTA2MDQsImV4cCI6MjA3NDEyNjYwNH0.VMkRLrcwxEnUm1q5jaSbuUJgsh2Ym7pv6Ay2muNYso8"
 );
 
-export function NewAppointmentModal({ trigger, onSuccess }: NewAppointmentModalProps) {
-  const [open, setOpen] = useState(false);
+export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, onOpenChange: externalOnOpenChange, initialValues }: NewAppointmentModalProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [patientSearchOpen, setPatientSearchOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const queryClient = useQueryClient();
+
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = externalOnOpenChange || setInternalOpen;
 
   const form = useForm<AppointmentFormData>({
     resolver: zodResolver(appointmentSchema),
     defaultValues: {
       notes: '',
+      patient_id: '',
+      treatment_id: '',
+      professional_id: initialValues?.professional_id || '',
+      appointment_date: initialValues?.appointment_date,
+      start_time: initialValues?.start_time || '',
+      end_time: '',
     },
   });
 
