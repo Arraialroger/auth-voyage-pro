@@ -203,6 +203,25 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
       const [endHour, endMinute] = data.end_time.split(':');
       endDateTime.setHours(parseInt(endHour), parseInt(endMinute), 0, 0);
 
+      // Check for conflicting appointments
+      const { data: conflictingAppointments, error: conflictError } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('professional_id', data.professional_id)
+        .lt('appointment_start_time', endDateTime.toISOString())
+        .gt('appointment_end_time', startDateTime.toISOString());
+
+      if (conflictError) throw conflictError;
+
+      if (conflictingAppointments && conflictingAppointments.length > 0) {
+        toast({
+          title: 'Conflito de horário',
+          description: 'Este horário já está ocupado.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('appointments')
         .insert([
