@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound";
 import Administration from "./pages/Administration";
 import ManagePatients from "./pages/ManagePatients";
 import ManageProfessionals from "./pages/ManageProfessionals";
+import ManageTreatments from "./pages/ManageTreatments";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,11 @@ const App = () => (
             <Route path="/admin/professionals" element={
               <ProtectedRoute>
                 <ManageProfessionals />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/treatments" element={
+              <ProtectedRoute>
+                <ManageTreatments />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
