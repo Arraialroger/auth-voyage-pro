@@ -95,12 +95,27 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
       notes: '',
       patient_id: '',
       treatment_id: '',
-      professional_id: initialValues?.professional_id || '',
-      appointment_date: initialValues?.appointment_date,
-      start_time: initialValues?.start_time || '',
+      professional_id: '',
+      appointment_date: undefined,
+      start_time: '',
       end_time: '',
     },
   });
+
+  // Update form values when initialValues change
+  React.useEffect(() => {
+    if (initialValues) {
+      if (initialValues.professional_id) {
+        form.setValue('professional_id', initialValues.professional_id);
+      }
+      if (initialValues.appointment_date) {
+        form.setValue('appointment_date', initialValues.appointment_date);
+      }
+      if (initialValues.start_time) {
+        form.setValue('start_time', initialValues.start_time);
+      }
+    }
+  }, [initialValues, form]);
 
   // Watch for changes in treatment and start time to auto-calculate end time
   const watchTreatmentId = form.watch('treatment_id');
