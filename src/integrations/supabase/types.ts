@@ -14,7 +14,231 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      appointments: {
+        Row: {
+          appointment_end_time: string
+          appointment_start_time: string
+          created_at: string
+          id: string
+          notes: string | null
+          patient_id: string | null
+          professional_id: string | null
+          status: Database["public"]["Enums"]["appointment_status_enum"]
+          treatment_id: string | null
+        }
+        Insert: {
+          appointment_end_time: string
+          appointment_start_time: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string | null
+          professional_id?: string | null
+          status?: Database["public"]["Enums"]["appointment_status_enum"]
+          treatment_id?: string | null
+        }
+        Update: {
+          appointment_end_time?: string
+          appointment_start_time?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string | null
+          professional_id?: string | null
+          status?: Database["public"]["Enums"]["appointment_status_enum"]
+          treatment_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      communication_logs: {
+        Row: {
+          appointment_id: string | null
+          communication_content: string
+          created_at: string
+          direction: string
+          id: string
+          patient_id: string | null
+        }
+        Insert: {
+          appointment_id?: string | null
+          communication_content: string
+          created_at?: string
+          direction: string
+          id?: string
+          patient_id?: string | null
+        }
+        Update: {
+          appointment_id?: string | null
+          communication_content?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          patient_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_logs_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_logs_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patients: {
+        Row: {
+          birth_date: string | null
+          contact_phone: string
+          created_at: string
+          full_name: string
+          id: string
+          medical_history_notes: string | null
+        }
+        Insert: {
+          birth_date?: string | null
+          contact_phone: string
+          created_at?: string
+          full_name: string
+          id?: string
+          medical_history_notes?: string | null
+        }
+        Update: {
+          birth_date?: string | null
+          contact_phone?: string
+          created_at?: string
+          full_name?: string
+          id?: string
+          medical_history_notes?: string | null
+        }
+        Relationships: []
+      }
+      professional_schedules: {
+        Row: {
+          day_of_week: number
+          end_time: string
+          id: number
+          professional_id: string | null
+          start_time: string
+        }
+        Insert: {
+          day_of_week: number
+          end_time: string
+          id?: number
+          professional_id?: string | null
+          start_time: string
+        }
+        Update: {
+          day_of_week?: number
+          end_time?: string
+          id?: number
+          professional_id?: string | null
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_schedules_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professionals: {
+        Row: {
+          created_at: string
+          full_name: string
+          id: string
+          specialization: Database["public"]["Enums"]["specialization_enum"]
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          full_name: string
+          id?: string
+          specialization: Database["public"]["Enums"]["specialization_enum"]
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          specialization?: Database["public"]["Enums"]["specialization_enum"]
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      staff_profiles: {
+        Row: {
+          id: string
+          role: string
+          user_id: string | null
+        }
+        Insert: {
+          id?: string
+          role: string
+          user_id?: string | null
+        }
+        Update: {
+          id?: string
+          role?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      treatments: {
+        Row: {
+          cost: number | null
+          default_duration_minutes: number
+          description: string | null
+          id: string
+          treatment_name: string
+        }
+        Insert: {
+          cost?: number | null
+          default_duration_minutes: number
+          description?: string | null
+          id?: string
+          treatment_name: string
+        }
+        Update: {
+          cost?: number | null
+          default_duration_minutes?: number
+          description?: string | null
+          id?: string
+          treatment_name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +247,13 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      appointment_status_enum:
+        | "Scheduled"
+        | "Confirmed"
+        | "Completed"
+        | "Cancelled"
+        | "No-Show"
+      specialization_enum: "Cirurgião-Dentista" | "Ortodontista"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +380,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      appointment_status_enum: [
+        "Scheduled",
+        "Confirmed",
+        "Completed",
+        "Cancelled",
+        "No-Show",
+      ],
+      specialization_enum: ["Cirurgião-Dentista", "Ortodontista"],
+    },
   },
 } as const
