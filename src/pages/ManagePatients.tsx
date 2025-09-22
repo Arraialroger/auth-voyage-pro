@@ -311,7 +311,14 @@ export default function ManagePatients() {
                     {patient.birth_date && (
                       <div className="text-sm">
                         <span className="font-medium">Nascimento: </span>
-                        {format(new Date(patient.birth_date), 'dd/MM/yyyy', { locale: ptBR })}
+                        {(() => {
+                          try {
+                            const date = new Date(patient.birth_date);
+                            return !isNaN(date.getTime()) ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'Data inválida';
+                          } catch {
+                            return 'Data inválida';
+                          }
+                        })()}
                       </div>
                     )}
                     {patient.medical_history_notes && (
@@ -323,7 +330,14 @@ export default function ManagePatients() {
                       </div>
                     )}
                     <div className="text-xs text-muted-foreground">
-                      Cadastrado em {format(new Date(patient.created_at), 'dd/MM/yyyy', { locale: ptBR })}
+                      Cadastrado em {(() => {
+                        try {
+                          const date = new Date(patient.created_at);
+                          return !isNaN(date.getTime()) ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'Data inválida';
+                        } catch {
+                          return 'Data inválida';
+                        }
+                      })()}
                     </div>
                     
                     <div className="flex justify-end space-x-2 pt-4">
