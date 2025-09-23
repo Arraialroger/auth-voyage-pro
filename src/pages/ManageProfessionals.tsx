@@ -44,7 +44,7 @@ export default function ManageProfessionals() {
     resolver: zodResolver(professionalFormSchema),
     defaultValues: {
       full_name: '',
-      specialization: 'Psicólogo',
+      specialization: 'Cirurgião-Dentista',
       email: '',
       password: '',
     },
@@ -456,9 +456,11 @@ export default function ManageProfessionals() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-  <SelectItem value="Cirurgião-Dentista">Cirurgião-Dentista</SelectItem>
-  <SelectItem value="Ortodontista">Ortodontista</SelectItem>
-</SelectContent>
+                          <SelectItem value="Psicólogo">Psicólogo</SelectItem>
+                          <SelectItem value="Fisioterapeuta">Fisioterapeuta</SelectItem>
+                          <SelectItem value="Nutricionista">Nutricionista</SelectItem>
+                          <SelectItem value="Médico">Médico</SelectItem>
+                        </SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>
