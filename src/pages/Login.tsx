@@ -7,48 +7,42 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Mail, Lock, ArrowRight, Home } from 'lucide-react';
-
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signUp, user } = useAuth();
+  const {
+    signIn,
+    signUp,
+    user
+  } = useAuth();
   const navigate = useNavigate();
-
   useEffect(() => {
     if (user) {
       navigate('/agenda');
     }
   }, [user, navigate]);
-
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    const { error } = await signIn(email, password);
-    
+    const {
+      error
+    } = await signIn(email, password);
     if (!error) {
       navigate('/agenda');
     }
-    
     setIsLoading(false);
   };
-
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
     await signUp(email, password);
     setIsLoading(false);
   };
-
-  return (
-    <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-4">
+  return <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            Sistema de Agenda
-          </h1>
+          <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">Arraial Odonto</h1>
           <p className="text-muted-foreground">
             Faça login ou crie sua conta para continuar
           </p>
@@ -79,15 +73,7 @@ export default function Login() {
                     <Label htmlFor="email">Email</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="seu@email.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10 bg-background/50 border-border/50 focus:border-primary"
-                        required
-                      />
+                      <Input id="email" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} className="pl-10 bg-background/50 border-border/50 focus:border-primary" required />
                     </div>
                   </div>
                   
@@ -95,33 +81,17 @@ export default function Login() {
                     <Label htmlFor="password">Senha</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="pl-10 bg-background/50 border-border/50 focus:border-primary"
-                        required
-                      />
+                      <Input id="password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="pl-10 bg-background/50 border-border/50 focus:border-primary" required />
                     </div>
                   </div>
                 </CardContent>
                 
                 <CardFooter className="flex flex-col space-y-4">
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-gradient-primary hover:opacity-90 transition-opacity group"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-background"></div>
-                    ) : (
-                      <>
+                  <Button type="submit" className="w-full bg-gradient-primary hover:opacity-90 transition-opacity group" disabled={isLoading}>
+                    {isLoading ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-background"></div> : <>
                         Entrar
                         <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                      </>
-                    )}
+                      </>}
                   </Button>
                 </CardFooter>
               </form>
@@ -139,15 +109,7 @@ export default function Login() {
                     <Label htmlFor="signup-email">Email</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                      <Input
-                        id="signup-email"
-                        type="email"
-                        placeholder="seu@email.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10 bg-background/50 border-border/50 focus:border-primary"
-                        required
-                      />
+                      <Input id="signup-email" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} className="pl-10 bg-background/50 border-border/50 focus:border-primary" required />
                     </div>
                   </div>
                   
@@ -155,16 +117,7 @@ export default function Login() {
                     <Label htmlFor="signup-password">Senha</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                      <Input
-                        id="signup-password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="pl-10 bg-background/50 border-border/50 focus:border-primary"
-                        required
-                        minLength={6}
-                      />
+                      <Input id="signup-password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="pl-10 bg-background/50 border-border/50 focus:border-primary" required minLength={6} />
                     </div>
                     <p className="text-xs text-muted-foreground">
                       A senha deve ter pelo menos 6 caracteres
@@ -173,19 +126,11 @@ export default function Login() {
                 </CardContent>
                 
                 <CardFooter className="flex flex-col space-y-4">
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-gradient-primary hover:opacity-90 transition-opacity group"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-background"></div>
-                    ) : (
-                      <>
+                  <Button type="submit" className="w-full bg-gradient-primary hover:opacity-90 transition-opacity group" disabled={isLoading}>
+                    {isLoading ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-background"></div> : <>
                         Criar Conta
                         <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                      </>
-                    )}
+                      </>}
                   </Button>
                 </CardFooter>
               </form>
@@ -194,15 +139,11 @@ export default function Login() {
         </Card>
 
         <div className="text-center">
-          <Link 
-            to="/" 
-            className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors group"
-          >
+          <Link to="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors group">
             <Home className="mr-2 h-4 w-4 group-hover:-translate-x-1 transition-transform" />
             Voltar ao início
           </Link>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }
