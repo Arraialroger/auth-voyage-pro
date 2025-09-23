@@ -24,7 +24,8 @@ type ProfessionalInsert = Database['public']['Tables']['professionals']['Insert'
 const professionalFormSchema = z.object({
   full_name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   specialization: z.enum(['Psicólogo', 'Fisioterapeuta', 'Nutricionista', 'Médico']),
-  user_id: z.string().uuid().optional(),
+  email: z.string().email('Email deve ser válido'),
+  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
 });
 
 type ProfessionalFormData = z.infer<typeof professionalFormSchema>;
@@ -44,7 +45,8 @@ export default function ManageProfessionals() {
     defaultValues: {
       full_name: '',
       specialization: 'Psicólogo',
-      user_id: '',
+      email: '',
+      password: '',
     },
   });
 
@@ -75,10 +77,26 @@ export default function ManageProfessionals() {
 
   const handleCreate = async (data: ProfessionalFormData) => {
     try {
+      // Primeiro, criar o usuário no Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      });
+
+      if (authError) throw authError;
+
+      if (!authData.user) {
+        throw new Error('Usuário não foi criado');
+      }
+
+      // Depois, criar o registro na tabela professionals com o user_id
       const insertData: ProfessionalInsert = {
         full_name: data.full_name,
         specialization: data.specialization as any,
-        user_id: data.user_id || null,
+        user_id: authData.user.id,
       };
 
       const { error } = await supabase
@@ -99,7 +117,7 @@ export default function ManageProfessionals() {
       console.error('Erro ao criar profissional:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível criar o profissional.',
+        description: error instanceof Error ? error.message : 'Não foi possível criar o profissional.',
         variant: 'destructive',
       });
     }
@@ -114,7 +132,6 @@ export default function ManageProfessionals() {
         .update({
           full_name: data.full_name,
           specialization: data.specialization as any,
-          user_id: data.user_id || null,
         })
         .eq('id', selectedProfessional.id);
 
@@ -169,7 +186,8 @@ export default function ManageProfessionals() {
     form.reset({
       full_name: professional.full_name,
       specialization: professional.specialization as any,
-      user_id: professional.user_id || '',
+      email: '',
+      password: '',
     });
     setIsEditDialogOpen(true);
   };
@@ -282,12 +300,25 @@ export default function ManageProfessionals() {
                       />
                       <FormField
                         control={form.control}
-                        name="user_id"
+                        name="email"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>ID do Usuário (Opcional)</FormLabel>
+                            <FormLabel>Email</FormLabel>
                             <FormControl>
-                              <Input placeholder="UUID do usuário (opcional)" {...field} />
+                              <Input type="email" placeholder="Digite o email" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Senha</FormLabel>
+                            <FormControl>
+                              <Input type="password" placeholder="Digite a senha" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -431,19 +462,6 @@ export default function ManageProfessionals() {
                           <SelectItem value="Médico">Médico</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="user_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>ID do Usuário (Opcional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="UUID do usuário (opcional)" {...field} />
-                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
