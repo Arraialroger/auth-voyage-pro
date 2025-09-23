@@ -5,7 +5,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -21,11 +20,12 @@ import type { Database } from '@/integrations/supabase/types';
 type Professional = Database['public']['Tables']['professionals']['Row'];
 type ProfessionalInsert = Database['public']['Tables']['professionals']['Insert'];
 
+// CORREÇÃO 1: Schema de validação com as especializações corretas.
 const professionalFormSchema = z.object({
-  full_name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
-  specialization: z.enum(['Psicólogo', 'Fisioterapeuta', 'Nutricionista', 'Médico']),
-  email: z.string().email('Email deve ser válido'),
-  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+  full_name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres.'),
+  specialization: z.enum(['Cirurgião-Dentista', 'Ortodontista']),
+  email: z.string().min(1, 'Email é obrigatório.'),
+  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres.'),
 });
 
 type ProfessionalFormData = z.infer<typeof professionalFormSchema>;
@@ -42,15 +42,17 @@ export default function ManageProfessionals() {
 
   const form = useForm<ProfessionalFormData>({
     resolver: zodResolver(professionalFormSchema),
+    // CORREÇÃO 2: Valor padrão corrigido para uma opção válida.
     defaultValues: {
       full_name: '',
-      specialization: 'Psicólogo',
+      specialization: 'Cirurgião-Dentista',
       email: '',
       password: '',
     },
   });
 
   const fetchProfessionals = async () => {
+    setLoading(true);
     try {
       const { data, error } = await supabase
         .from('professionals')
@@ -60,7 +62,6 @@ export default function ManageProfessionals() {
       if (error) throw error;
       setProfessionals(data || []);
     } catch (error) {
-      console.error('Erro ao carregar profissionais:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar os profissionais.',
@@ -77,25 +78,17 @@ export default function ManageProfessionals() {
 
   const handleCreate = async (data: ProfessionalFormData) => {
     try {
-      // Primeiro, criar o usuário no Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-        },
       });
 
       if (authError) throw authError;
+      if (!authData.user) throw new Error('Usuário não foi criado');
 
-      if (!authData.user) {
-        throw new Error('Usuário não foi criado');
-      }
-
-      // Depois, criar o registro na tabela professionals com o user_id
       const insertData: ProfessionalInsert = {
         full_name: data.full_name,
-        specialization: data.specialization as any,
+        specialization: data.specialization,
         user_id: authData.user.id,
       };
 
@@ -114,7 +107,6 @@ export default function ManageProfessionals() {
       form.reset();
       fetchProfessionals();
     } catch (error) {
-      console.error('Erro ao criar profissional:', error);
       toast({
         title: 'Erro',
         description: error instanceof Error ? error.message : 'Não foi possível criar o profissional.',
@@ -123,7 +115,7 @@ export default function ManageProfessionals() {
     }
   };
 
-  const handleEdit = async (data: ProfessionalFormData) => {
+  const handleEdit = async (data: Pick<ProfessionalFormData, 'full_name' | 'specialization'>) => {
     if (!selectedProfessional) return;
 
     try {
@@ -131,7 +123,7 @@ export default function ManageProfessionals() {
         .from('professionals')
         .update({
           full_name: data.full_name,
-          specialization: data.specialization as any,
+          specialization: data.specialization,
         })
         .eq('id', selectedProfessional.id);
 
@@ -147,8 +139,7 @@ export default function ManageProfessionals() {
       form.reset();
       fetchProfessionals();
     } catch (error) {
-      console.error('Erro ao atualizar profissional:', error);
-      toast({
+       toast({
         title: 'Erro',
         description: 'Não foi possível atualizar o profissional.',
         variant: 'destructive',
@@ -158,6 +149,9 @@ export default function ManageProfessionals() {
 
   const handleDelete = async (professional: Professional) => {
     try {
+      // Importante: a lógica para deletar o usuário do Auth correspondente
+      // precisaria ser implementada com uma Edge Function por segurança.
+      // Por enquanto, deletaremos apenas o perfil.
       const { error } = await supabase
         .from('professionals')
         .delete()
@@ -172,7 +166,6 @@ export default function ManageProfessionals() {
 
       fetchProfessionals();
     } catch (error) {
-      console.error('Erro ao excluir profissional:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível excluir o profissional.',
@@ -185,145 +178,86 @@ export default function ManageProfessionals() {
     setSelectedProfessional(professional);
     form.reset({
       full_name: professional.full_name,
-      specialization: professional.specialization as any,
-      email: '',
-      password: '',
+      specialization: professional.specialization,
     });
     setIsEditDialogOpen(true);
   };
 
-  const filteredProfessionals = professionals.filter(professional =>
-    professional.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    professional.specialization.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredProfessionals = professionals.filter(p =>
+    p.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.specialization.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // CORREÇÃO 3: Cores das etiquetas alinhadas com as especializações corretas.
   const getSpecializationBadgeColor = (specialization: string) => {
     const colors = {
-      'Psicólogo': 'bg-blue-100 text-blue-800',
-      'Fisioterapeuta': 'bg-green-100 text-green-800',
-      'Nutricionista': 'bg-orange-100 text-orange-800',
-      'Médico': 'bg-purple-100 text-purple-800',
+      'Cirurgião-Dentista': 'bg-blue-100 text-blue-800',
+      'Ortodontista': 'bg-green-100 text-green-800',
     };
     return colors[specialization as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Carregando profissionais...</p>
-        </div>
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-subtle">
-      {/* Header */}
-      <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm">
+    <div className="min-h-screen bg-slate-50">
+      <header className="bg-white border-b sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center space-x-3">
             <Button variant="ghost" onClick={() => navigate('/admin')} className="mr-2">
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <UserCheck className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+            <h1 className="text-2xl font-bold text-gray-800">
               Gerenciar Profissionais
             </h1>
           </div>
         </div>
       </header>
-
-      {/* Main Content */}
+      
       <main className="container mx-auto px-4 py-8">
-        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+        <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
                 <CardTitle>Profissionais Cadastrados</CardTitle>
-                <CardDescription>
-                  Gerencie todos os profissionais do sistema
-                </CardDescription>
+                <CardDescription>Gerencie todos os profissionais do sistema</CardDescription>
               </div>
               <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Novo Profissional
-                  </Button>
+                  <Button className="gap-2"><Plus className="h-4 w-4" /> Novo Profissional</Button>
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Criar Novo Profissional</DialogTitle>
-                    <DialogDescription>
-                      Preencha os dados do novo profissional
-                    </DialogDescription>
+                    <DialogDescription>Preencha os dados do novo profissional</DialogDescription>
                   </DialogHeader>
                   <Form {...form}>
                     <form onSubmit={form.handleSubmit(handleCreate)} className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="full_name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Nome Completo</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Digite o nome completo" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="specialization"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Especialização</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione uma especialização" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="Psicólogo">Psicólogo</SelectItem>
-                                <SelectItem value="Fisioterapeuta">Fisioterapeuta</SelectItem>
-                                <SelectItem value="Nutricionista">Nutricionista</SelectItem>
-                                <SelectItem value="Médico">Médico</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Email</FormLabel>
-                            <FormControl>
-                              <Input type="email" placeholder="Digite o email" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="password"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Senha</FormLabel>
-                            <FormControl>
-                              <Input type="password" placeholder="Digite a senha" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      {/* Campos do formulário de CRIAR */}
+                      <FormField control={form.control} name="full_name" render={({ field }) => (<FormItem><FormLabel>Nome Completo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="specialization" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Especialização</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                            {/* CORREÇÃO 4: Opções corretas no seletor de CRIAR */}
+                            <SelectContent>
+                              <SelectItem value="Cirurgião-Dentista">Cirurgião-Dentista</SelectItem>
+                              <SelectItem value="Ortodontista">Ortodontista</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="password" render={({ field }) => (<FormItem><FormLabel>Senha</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>)} />
                       <DialogFooter>
                         <Button type="submit">Criar Profissional</Button>
                       </DialogFooter>
@@ -332,148 +266,69 @@ export default function ManageProfessionals() {
                 </DialogContent>
               </Dialog>
             </div>
-
-            {/* Search */}
             <div className="flex items-center space-x-2 mt-4">
               <Search className="h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome ou especialização..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-sm"
-              />
+              <Input placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm" />
             </div>
           </CardHeader>
-
           <CardContent>
-            <div className="rounded-md border border-border/50">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Especialização</TableHead>
-                    <TableHead>Data de Cadastro</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+            <Table>
+              <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Especialização</TableHead><TableHead>Data de Cadastro</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {filteredProfessionals.length > 0 ? filteredProfessionals.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">{p.full_name}</TableCell>
+                    <TableCell><Badge className={getSpecializationBadgeColor(p.specialization)}>{p.specialization}</Badge></TableCell>
+                    <TableCell>{new Date(p.created_at).toLocaleDateString('pt-BR')}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(p)}><Edit className="h-4 w-4" /></Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild><Button variant="ghost" size="sm" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader><AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle><AlertDialogDescription>Tem certeza que deseja excluir "{p.full_name}"? Esta ação não pode ser desfeita.</AlertDialogDescription></AlertDialogHeader>
+                          <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(p)}>Excluir</AlertDialogAction></AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredProfessionals.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                        {searchTerm ? 'Nenhum profissional encontrado.' : 'Nenhum profissional cadastrado.'}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredProfessionals.map((professional) => (
-                      <TableRow key={professional.id}>
-                        <TableCell className="font-medium">
-                          {professional.full_name}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getSpecializationBadgeColor(professional.specialization)}>
-                            {professional.specialization}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(professional.created_at).toLocaleDateString('pt-BR')}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openEditDialog(professional)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Tem certeza que deseja excluir o profissional "{professional.full_name}"? 
-                                    Esta ação não pode ser desfeita.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDelete(professional)}>
-                                    Excluir
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                )) : (<TableRow><TableCell colSpan={4} className="text-center">Nenhum profissional encontrado.</TableCell></TableRow>)}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
-
-        {/* Edit Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Editar Profissional</DialogTitle>
-              <DialogDescription>
-                Atualize os dados do profissional
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleEdit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="full_name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome Completo</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Digite o nome completo" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="specialization"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Especialização</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione uma especialização" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Psicólogo">Psicólogo</SelectItem>
-                          <SelectItem value="Fisioterapeuta">Fisioterapeuta</SelectItem>
-                          <SelectItem value="Nutricionista">Nutricionista</SelectItem>
-                          <SelectItem value="Médico">Médico</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <DialogFooter>
-                  <Button type="submit">Atualizar Profissional</Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
       </main>
+
+      {/* Formulário de Edição */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Profissional</DialogTitle>
+            <DialogDescription>Atualize os dados do profissional</DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleEdit)} className="space-y-4">
+              <FormField control={form.control} name="full_name" render={({ field }) => (<FormItem><FormLabel>Nome Completo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="specialization" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Especialização</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                    {/* CORREÇÃO 5: Opções corretas no seletor de EDITAR */}
+                    <SelectContent>
+                      <SelectItem value="Cirurgião-Dentista">Cirurgião-Dentista</SelectItem>
+                      <SelectItem value="Ortodontista">Ortodontista</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <DialogFooter>
+                <Button type="submit">Atualizar Profissional</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
