@@ -16,7 +16,6 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
-
 type Professional = Database['public']['Tables']['professionals']['Row'];
 type ProfessionalInsert = Database['public']['Tables']['professionals']['Insert'];
 
@@ -25,21 +24,20 @@ const professionalFormSchema = z.object({
   full_name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres.'),
   specialization: z.enum(['Cirurgião-Dentista', 'Ortodontista']),
   email: z.string().min(1, 'Email é obrigatório.'),
-  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres.'),
+  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres.')
 });
-
 type ProfessionalFormData = z.infer<typeof professionalFormSchema>;
-
 export default function ManageProfessionals() {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedProfessional, setSelectedProfessional] = useState<Professional | null>(null);
-
   const form = useForm<ProfessionalFormData>({
     resolver: zodResolver(professionalFormSchema),
     // CORREÇÃO 2: Valor padrão corrigido para uma opção válida.
@@ -47,62 +45,55 @@ export default function ManageProfessionals() {
       full_name: '',
       specialization: 'Cirurgião-Dentista',
       email: '',
-      password: '',
-    },
+      password: ''
+    }
   });
-
   const fetchProfessionals = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('professionals')
-        .select('*')
-        .order('full_name');
-
+      const {
+        data,
+        error
+      } = await supabase.from('professionals').select('*').order('full_name');
       if (error) throw error;
       setProfessionals(data || []);
     } catch (error) {
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar os profissionais.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     fetchProfessionals();
   }, []);
-
   const handleCreate = async (data: ProfessionalFormData) => {
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      const {
+        data: authData,
+        error: authError
+      } = await supabase.auth.signUp({
         email: data.email,
-        password: data.password,
+        password: data.password
       });
-
       if (authError) throw authError;
       if (!authData.user) throw new Error('Usuário não foi criado');
-
       const insertData: ProfessionalInsert = {
         full_name: data.full_name,
         specialization: data.specialization,
-        user_id: authData.user.id,
+        user_id: authData.user.id
       };
-
-      const { error } = await supabase
-        .from('professionals')
-        .insert([insertData]);
-
+      const {
+        error
+      } = await supabase.from('professionals').insert([insertData]);
       if (error) throw error;
-
       toast({
         title: 'Sucesso',
-        description: 'Profissional criado com sucesso!',
+        description: 'Profissional criado com sucesso!'
       });
-
       setIsCreateDialogOpen(false);
       form.reset();
       fetchProfessionals();
@@ -110,111 +101,90 @@ export default function ManageProfessionals() {
       toast({
         title: 'Erro',
         description: error instanceof Error ? error.message : 'Não foi possível criar o profissional.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     }
   };
-
   const handleEdit = async (data: Pick<ProfessionalFormData, 'full_name' | 'specialization'>) => {
     if (!selectedProfessional) return;
-
     try {
-      const { error } = await supabase
-        .from('professionals')
-        .update({
-          full_name: data.full_name,
-          specialization: data.specialization,
-        })
-        .eq('id', selectedProfessional.id);
-
+      const {
+        error
+      } = await supabase.from('professionals').update({
+        full_name: data.full_name,
+        specialization: data.specialization
+      }).eq('id', selectedProfessional.id);
       if (error) throw error;
-
       toast({
         title: 'Sucesso',
-        description: 'Profissional atualizado com sucesso!',
+        description: 'Profissional atualizado com sucesso!'
       });
-
       setIsEditDialogOpen(false);
       setSelectedProfessional(null);
       form.reset();
       fetchProfessionals();
     } catch (error) {
-       toast({
+      toast({
         title: 'Erro',
         description: 'Não foi possível atualizar o profissional.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     }
   };
-
   const handleDelete = async (professional: Professional) => {
     try {
       // Importante: a lógica para deletar o usuário do Auth correspondente
       // precisaria ser implementada com uma Edge Function por segurança.
       // Por enquanto, deletaremos apenas o perfil.
-      const { error } = await supabase
-        .from('professionals')
-        .delete()
-        .eq('id', professional.id);
-
+      const {
+        error
+      } = await supabase.from('professionals').delete().eq('id', professional.id);
       if (error) throw error;
-
       toast({
         title: 'Sucesso',
-        description: 'Profissional excluído com sucesso!',
+        description: 'Profissional excluído com sucesso!'
       });
-
       fetchProfessionals();
     } catch (error) {
       toast({
         title: 'Erro',
         description: 'Não foi possível excluir o profissional.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     }
   };
-
   const openEditDialog = (professional: Professional) => {
     setSelectedProfessional(professional);
     form.reset({
       full_name: professional.full_name,
-      specialization: professional.specialization,
+      specialization: professional.specialization
     });
     setIsEditDialogOpen(true);
   };
-
-  const filteredProfessionals = professionals.filter(p =>
-    p.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.specialization.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProfessionals = professionals.filter(p => p.full_name.toLowerCase().includes(searchTerm.toLowerCase()) || p.specialization.toLowerCase().includes(searchTerm.toLowerCase()));
 
   // CORREÇÃO 3: Cores das etiquetas alinhadas com as especializações corretas.
   const getSpecializationBadgeColor = (specialization: string) => {
     const colors = {
       'Cirurgião-Dentista': 'bg-blue-100 text-blue-800',
-      'Ortodontista': 'bg-green-100 text-green-800',
+      'Ortodontista': 'bg-green-100 text-green-800'
     };
     return colors[specialization as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
-
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
+    return <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-screen bg-slate-50">
+  return <div className="min-h-screen bg-zinc-950">
       <header className="bg-white border-b sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center bg-zinc-950">
           <div className="flex items-center space-x-3">
             <Button variant="ghost" onClick={() => navigate('/admin')} className="mr-2">
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <UserCheck className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold text-gray-800">
+            <h1 className="text-2xl font-bold text-slate-50">
               Gerenciar Profissionais
             </h1>
           </div>
@@ -241,9 +211,12 @@ export default function ManageProfessionals() {
                   <Form {...form}>
                     <form onSubmit={form.handleSubmit(handleCreate)} className="space-y-4">
                       {/* Campos do formulário de CRIAR */}
-                      <FormField control={form.control} name="full_name" render={({ field }) => (<FormItem><FormLabel>Nome Completo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                      <FormField control={form.control} name="specialization" render={({ field }) => (
-                        <FormItem>
+                      <FormField control={form.control} name="full_name" render={({
+                      field
+                    }) => <FormItem><FormLabel>Nome Completo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
+                      <FormField control={form.control} name="specialization" render={({
+                      field
+                    }) => <FormItem>
                           <FormLabel>Especialização</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
@@ -254,10 +227,13 @@ export default function ManageProfessionals() {
                             </SelectContent>
                           </Select>
                           <FormMessage />
-                        </FormItem>
-                      )} />
-                      <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                      <FormField control={form.control} name="password" render={({ field }) => (<FormItem><FormLabel>Senha</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        </FormItem>} />
+                      <FormField control={form.control} name="email" render={({
+                      field
+                    }) => <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>} />
+                      <FormField control={form.control} name="password" render={({
+                      field
+                    }) => <FormItem><FormLabel>Senha</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>} />
                       <DialogFooter>
                         <Button type="submit">Criar Profissional</Button>
                       </DialogFooter>
@@ -268,15 +244,14 @@ export default function ManageProfessionals() {
             </div>
             <div className="flex items-center space-x-2 mt-4">
               <Search className="h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm" />
+              <Input placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="max-w-sm" />
             </div>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Especialização</TableHead><TableHead>Data de Cadastro</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
               <TableBody>
-                {filteredProfessionals.length > 0 ? filteredProfessionals.map((p) => (
-                  <TableRow key={p.id}>
+                {filteredProfessionals.length > 0 ? filteredProfessionals.map(p => <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.full_name}</TableCell>
                     <TableCell><Badge className={getSpecializationBadgeColor(p.specialization)}>{p.specialization}</Badge></TableCell>
                     <TableCell>{new Date(p.created_at).toLocaleDateString('pt-BR')}</TableCell>
@@ -290,8 +265,7 @@ export default function ManageProfessionals() {
                         </AlertDialogContent>
                       </AlertDialog>
                     </TableCell>
-                  </TableRow>
-                )) : (<TableRow><TableCell colSpan={4} className="text-center">Nenhum profissional encontrado.</TableCell></TableRow>)}
+                  </TableRow>) : <TableRow><TableCell colSpan={4} className="text-center">Nenhum profissional encontrado.</TableCell></TableRow>}
               </TableBody>
             </Table>
           </CardContent>
@@ -307,9 +281,12 @@ export default function ManageProfessionals() {
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleEdit)} className="space-y-4">
-              <FormField control={form.control} name="full_name" render={({ field }) => (<FormItem><FormLabel>Nome Completo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-              <FormField control={form.control} name="specialization" render={({ field }) => (
-                <FormItem>
+              <FormField control={form.control} name="full_name" render={({
+              field
+            }) => <FormItem><FormLabel>Nome Completo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
+              <FormField control={form.control} name="specialization" render={({
+              field
+            }) => <FormItem>
                   <FormLabel>Especialização</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
@@ -320,8 +297,7 @@ export default function ManageProfessionals() {
                     </SelectContent>
                   </Select>
                   <FormMessage />
-                </FormItem>
-              )} />
+                </FormItem>} />
               <DialogFooter>
                 <Button type="submit">Atualizar Profissional</Button>
               </DialogFooter>
@@ -329,6 +305,5 @@ export default function ManageProfessionals() {
           </Form>
         </DialogContent>
       </Dialog>
-    </div>
-  );
+    </div>;
 }
