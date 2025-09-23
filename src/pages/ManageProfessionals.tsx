@@ -22,10 +22,10 @@ type Professional = Database['public']['Tables']['professionals']['Row'];
 type ProfessionalInsert = Database['public']['Tables']['professionals']['Insert'];
 
 const professionalFormSchema = z.object({
-  full_name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
-  specialization: z.enum(['Psicólogo', 'Fisioterapeuta', 'Nutricionista', 'Médico']),
-  email: z.string().email('Email deve ser válido'),
-  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+  full_name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres.'),
+  specialization: z.enum(['Cirurgião-Dentista', 'Ortodontista']),
+  email: z.string().min(1, 'Email é obrigatório.'),
+  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres.'),
 });
 
 type ProfessionalFormData = z.infer<typeof professionalFormSchema>;
