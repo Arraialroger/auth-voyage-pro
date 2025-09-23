@@ -288,9 +288,9 @@ export default function ManageProfessionals() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="Cirurgião-Dentista">Cirurgião-Dentista</SelectItem>
-                                <SelectItem value="Ortodontista">Ortodontista</SelectItem>                             
-                               </SelectContent>
+                                <SelectItem value="Cirurgião-dentista">Cirurgião-dentista</SelectItem>
+                                <SelectItem value="Ortodontista">Ortodontista</SelectItem>
+                              </SelectContent>
                             </Select>
                             <FormMessage />
                           </FormItem>
