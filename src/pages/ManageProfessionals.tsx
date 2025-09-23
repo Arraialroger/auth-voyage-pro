@@ -288,10 +288,9 @@ export default function ManageProfessionals() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-<SelectContent>
-  <SelectItem value="Cirurgião-Dentista">Cirurgião-Dentista</SelectItem>
-  <SelectItem value="Ortodontista">Ortodontista</SelectItem>
-</SelectContent>
+                                <SelectItem value="Cirurgião-Dentista">Cirurgião-Dentista</SelectItem>
+                                <SelectItem value="Ortodontista">Ortodontista</SelectItem>
+                              </SelectContent>
                             </Select>
                             <FormMessage />
                           </FormItem>
@@ -454,10 +453,10 @@ export default function ManageProfessionals() {
                             <SelectValue placeholder="Selecione uma especialização" />
                           </SelectTrigger>
                         </FormControl>
-<SelectContent>
-  <SelectItem value="Cirurgião-Dentista">Cirurgião-Dentista</SelectItem>
-  <SelectItem value="Ortodontista">Ortodontista</SelectItem>
-</SelectContent>
+                        <SelectContent>
+                          <SelectItem value="Cirurgião-Dentista">Cirurgião-Dentista</SelectItem>
+                          <SelectItem value="Ortodontista">Ortodontista</SelectItem>
+                        </SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>
