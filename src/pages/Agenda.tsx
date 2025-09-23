@@ -137,9 +137,7 @@ export default function Agenda() {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center space-x-3">
             <Calendar className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Minha Agenda
-            </h1>
+            <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">Agenda</h1>
           </div>
           
           <div className="flex items-center space-x-4">
