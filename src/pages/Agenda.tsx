@@ -214,7 +214,7 @@ export default function Agenda() {
                   const dayKey = format(day, 'yyyy-MM-dd');
                   const dayAppointments = appointmentsByProfessional[professional.full_name]?.[dayKey] || [];
                   return <div key={dayKey} className="min-h-[120px] p-1 border border-border/20 rounded-md bg-muted/20 hover:bg-muted/40 transition-colors">
-                              {dayAppointments.map(appointment => <div key={appointment.id} className="bg-gradient-primary text-primary-foreground p-2 rounded-md mb-1 text-xs shadow-sm">
+                              {dayAppointments.map(appointment => <div key={appointment.id} className="bg-gradient-primary text-primary-foreground p-2 rounded-md mb-1 text-xs shadow-sm bg-purple-600">
                                   <div className="font-medium">
                                     {format(new Date(appointment.appointment_start_time), 'HH:mm')}
                                   </div>
