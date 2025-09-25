@@ -166,7 +166,7 @@ export default function Agenda() {
                 className="h-9 w-9 lg:h-12 lg:w-12 object-contain"
               />
               <h1 className="text-lg lg:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                {isMobile ? 'Arraial' : 'Arraial Odonto'}
+                Agenda
               </h1>
             </div>
             
