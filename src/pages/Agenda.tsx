@@ -12,6 +12,7 @@ import { ptBR } from 'date-fns/locale';
 import { NewAppointmentModal } from '@/components/NewAppointmentModal';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ThemeToggle } from '@/components/ThemeToggle';
 interface Appointment {
   id: string;
   appointment_start_time: string;
@@ -179,6 +180,7 @@ export default function Agenda() {
               
               {isMobile ? (
                 <div className="flex items-center space-x-2">
+                  <ThemeToggle />
                   <Button variant="outline" size="sm" onClick={() => navigate('/admin')} className="p-2">
                     <Settings className="h-4 w-4" />
                   </Button>
@@ -197,6 +199,7 @@ export default function Agenda() {
                       </span>
                     )}
                   </div>
+                  <ThemeToggle />
                   <Button variant="outline" onClick={handleLogout} className="group border-border/50 hover:border-destructive hover:text-destructive">
                     <LogOut className="mr-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                     Sair
