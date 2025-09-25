@@ -17,8 +17,8 @@ All colors MUST be HSL.
     --popover: 240 10% 3.9%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 142.1 76.2% 36.3%;
-    --primary-foreground: 355.7 100% 97.3%;
+    --primary: 282 100% 35%;
+    --primary-foreground: 0 0% 98%;
 
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
@@ -34,13 +34,13 @@ All colors MUST be HSL.
 
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
-    --ring: 142.1 76.2% 36.3%;
+    --ring: 282 100% 35%;
 
     /* Custom design tokens */
-    --gradient-primary: linear-gradient(135deg, hsl(142.1 76.2% 36.3%), hsl(158 64% 52%));
+    --gradient-primary: linear-gradient(135deg, hsl(282 100% 35%), hsl(282 80% 45%));
     --gradient-secondary: linear-gradient(135deg, hsl(240 3.7% 15.9%), hsl(240 5.9% 10%));
     --gradient-subtle: linear-gradient(180deg, hsl(240 10% 3.9%), hsl(240 5.9% 10%));
-    --shadow-glow: 0 0 40px hsl(142.1 76.2% 36.3% / 0.3);
+    --shadow-glow: 0 0 40px hsl(282 100% 35% / 0.3);
     --shadow-elegant: 0 10px 30px -10px hsl(0 0% 0% / 0.5);
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
