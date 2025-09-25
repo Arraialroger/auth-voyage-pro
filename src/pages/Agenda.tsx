@@ -265,13 +265,26 @@ export default function Agenda() {
                     Semana Anterior
                   </Button>
                   
-                  <h2 className="text-xl font-semibold">
-                    {format(weekStart, "dd 'de' MMMM", {
-                    locale: ptBR
-                  })} - {format(weekEnd, "dd 'de' MMMM 'de' yyyy", {
-                    locale: ptBR
-                  })}
-                  </h2>
+                  <div className="flex items-center space-x-4">
+                    <h2 className="text-xl font-semibold">
+                      {format(weekStart, "dd 'de' MMMM", {
+                      locale: ptBR
+                    })} - {format(weekEnd, "dd 'de' MMMM 'de' yyyy", {
+                      locale: ptBR
+                    })}
+                    </h2>
+                    
+                    <Button 
+                      onClick={() => {
+                        setModalInitialValues({});
+                        setModalOpen(true);
+                      }}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Novo Agendamento
+                    </Button>
+                  </div>
                   
                   <Button variant="outline" onClick={nextWeek} className="border-border/50 hover:bg-muted">
                     Próxima Semana
@@ -404,7 +417,7 @@ export default function Agenda() {
                                 {/* Empty slot click area */}
                                 <div 
                                   onClick={() => handleEmptySlotClick(professional, day, '09:00')} 
-                                  className="h-8 flex items-center justify-center cursor-pointer opacity-0 hover:opacity-100 transition-opacity bg-muted/40 rounded"
+                                  className="h-8 flex items-center justify-center cursor-pointer opacity-60 hover:opacity-100 transition-opacity bg-muted/40 hover:bg-muted/60 rounded border border-dashed border-muted-foreground/30"
                                 >
                                   <Plus className="h-4 w-4 text-muted-foreground" />
                                 </div>
