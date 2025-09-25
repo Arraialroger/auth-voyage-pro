@@ -161,7 +161,7 @@ export default function Agenda() {
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-2 lg:space-x-3">
               <img 
-                src="/assets/arraial-odonto-logo.png" 
+                src="/assets/new-arraial-odonto-logo.png" 
                 alt="Arraial Odonto" 
                 className="h-6 w-6 lg:h-8 lg:w-8 object-contain"
               />
