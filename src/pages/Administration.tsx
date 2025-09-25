@@ -41,25 +41,26 @@ export default function Administration() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-subtle">
+    <div className="min-h-screen bg-gradient-subtle overflow-x-hidden">
       {/* Header */}
       <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-3">
-            <Settings className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+        <div className="container mx-auto px-2 sm:px-4 py-4 flex justify-between items-center">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <Settings className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+            <h1 className="text-lg sm:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
               Administração
             </h1>
           </div>
           
-          <div className="flex items-center space-x-4">
-            <Button variant="outline" onClick={() => navigate('/agenda')} className="border-border/50">
-              Voltar à Agenda
+          <div className="flex items-center space-x-1 sm:space-x-4">
+            <Button variant="outline" onClick={() => navigate('/agenda')} className="border-border/50 text-xs sm:text-sm px-2 sm:px-4">
+              <span className="sm:hidden">Voltar</span>
+              <span className="hidden sm:inline">Voltar à Agenda</span>
             </Button>
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+            <div className="hidden md:flex items-center space-x-2 text-sm text-muted-foreground">
               <span>{user?.email}</span>
             </div>
-            <Button variant="outline" onClick={handleLogout} className="group border-border/50 hover:border-destructive hover:text-destructive">
+            <Button variant="outline" onClick={handleLogout} className="group border-border/50 hover:border-destructive hover:text-destructive text-xs sm:text-sm px-2 sm:px-4">
               Sair
             </Button>
           </div>
