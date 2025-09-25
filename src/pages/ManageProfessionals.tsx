@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,6 +16,7 @@ import { ArrowLeft, Plus, Edit, Trash2, Search, UserCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { Database } from '@/integrations/supabase/types';
 type Professional = Database['public']['Tables']['professionals']['Row'];
 type ProfessionalInsert = Database['public']['Tables']['professionals']['Insert'];
@@ -29,6 +31,7 @@ const professionalFormSchema = z.object({
 type ProfessionalFormData = z.infer<typeof professionalFormSchema>;
 export default function ManageProfessionals() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const {
     toast
   } = useToast();
@@ -176,27 +179,27 @@ export default function ManageProfessionals() {
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>;
   }
-  return <div className="min-h-screen bg-zinc-950">
-      <header className="bg-white border-b sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center bg-zinc-950">
-          <div className="flex items-center space-x-3">
-            <Button variant="ghost" onClick={() => navigate('/admin')} className="mr-2">
-              <ArrowLeft className="h-4 w-4" />
+  return <div className="min-h-screen bg-gradient-subtle">
+      <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-10">
+        <div className="container mx-auto px-4 py-3 lg:py-4">
+          <div className="flex items-center space-x-2 lg:space-x-3">
+            <Button variant="ghost" onClick={() => navigate('/admin')} className="p-2 lg:mr-2">
+              <ArrowLeft className="h-4 w-4 lg:h-5 lg:w-5" />
             </Button>
-            <UserCheck className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold text-slate-50">
-              Gerenciar Profissionais
+            <UserCheck className="h-6 w-6 lg:h-8 lg:w-8 text-primary" />
+            <h1 className="text-lg lg:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+              {isMobile ? 'Profissionais' : 'Gerenciar Profissionais'}
             </h1>
           </div>
         </div>
       </header>
       
-      <main className="container mx-auto px-4 py-8">
-        <Card>
+      <main className="container mx-auto px-4 py-4 lg:py-8">
+        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
           <CardHeader>
-            <div className="flex justify-between items-center">
+            <div className={`${isMobile ? 'space-y-4' : 'flex justify-between items-center'}`}>
               <div>
-                <CardTitle>Profissionais Cadastrados</CardTitle>
+                <CardTitle className="text-lg lg:text-xl">Profissionais Cadastrados</CardTitle>
                 <CardDescription>Gerencie todos os profissionais do sistema</CardDescription>
               </div>
               <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -244,30 +247,134 @@ export default function ManageProfessionals() {
             </div>
             <div className="flex items-center space-x-2 mt-4">
               <Search className="h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="max-w-sm" />
+              <Input 
+                placeholder="Buscar..." 
+                value={searchTerm} 
+                onChange={e => setSearchTerm(e.target.value)} 
+                className={`bg-background/50 ${isMobile ? 'w-full' : 'max-w-sm'}`} 
+              />
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Especialização</TableHead><TableHead>Data de Cadastro</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
-              <TableBody>
-                {filteredProfessionals.length > 0 ? filteredProfessionals.map(p => <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.full_name}</TableCell>
-                    <TableCell><Badge className={getSpecializationBadgeColor(p.specialization)}>{p.specialization}</Badge></TableCell>
-                    <TableCell>{new Date(p.created_at).toLocaleDateString('pt-BR')}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(p)}><Edit className="h-4 w-4" /></Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild><Button variant="ghost" size="sm" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader><AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle><AlertDialogDescription>Tem certeza que deseja excluir "{p.full_name}"? Esta ação não pode ser desfeita.</AlertDialogDescription></AlertDialogHeader>
-                          <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(p)}>Excluir</AlertDialogAction></AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </TableCell>
-                  </TableRow>) : <TableRow><TableCell colSpan={4} className="text-center">Nenhum profissional encontrado.</TableCell></TableRow>}
-              </TableBody>
-            </Table>
+            {isMobile ? (
+              // Mobile: Cards view
+              <div className="space-y-4">
+                {filteredProfessionals.length > 0 ? (
+                  filteredProfessionals.map(p => (
+                    <Card key={p.id} className="border-border/30">
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="space-y-1">
+                            <h3 className="font-medium text-base">{p.full_name}</h3>
+                            <Badge className={getSpecializationBadgeColor(p.specialization)}>
+                              {p.specialization}
+                            </Badge>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Button variant="outline" size="sm" onClick={() => openEditDialog(p)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Tem certeza que deseja excluir "{p.full_name}"? Esta ação não pode ser desfeita.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(p)}>Excluir</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Cadastrado em: {new Date(p.created_at).toLocaleDateString('pt-BR')}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <div className="text-center py-12">
+                    <UserCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Nenhum profissional encontrado</h3>
+                    <p className="text-muted-foreground">
+                      {searchTerm ? 'Nenhum resultado para sua busca.' : 'Nenhum profissional cadastrado ainda.'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              // Desktop: Table view
+              <ScrollArea className="w-full">
+                <div className="rounded-md border border-border/50">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Especialização</TableHead>
+                        <TableHead>Data de Cadastro</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredProfessionals.length > 0 ? (
+                        filteredProfessionals.map(p => (
+                          <TableRow key={p.id}>
+                            <TableCell className="font-medium">{p.full_name}</TableCell>
+                            <TableCell>
+                              <Badge className={getSpecializationBadgeColor(p.specialization)}>
+                                {p.specialization}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{new Date(p.created_at).toLocaleDateString('pt-BR')}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end space-x-2">
+                                <Button variant="ghost" size="sm" onClick={() => openEditDialog(p)}>
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Tem certeza que deseja excluir "{p.full_name}"? Esta ação não pode ser desfeita.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => handleDelete(p)}>Excluir</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center py-8">
+                            {searchTerm ? 'Nenhum profissional encontrado.' : 'Nenhum profissional cadastrado.'}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </ScrollArea>
+            )}
           </CardContent>
         </Card>
       </main>
