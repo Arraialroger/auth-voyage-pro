@@ -163,7 +163,7 @@ export default function Agenda() {
               <img 
                 src="/assets/new-arraial-odonto-logo.png" 
                 alt="Arraial Odonto" 
-                className="h-12 w-12 lg:h-16 lg:w-16 object-contain"
+                className="h-9 w-9 lg:h-12 lg:w-12 object-contain"
               />
               <h1 className="text-lg lg:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
                 Agenda
