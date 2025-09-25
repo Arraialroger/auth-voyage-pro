@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { startOfWeek, endOfWeek, format, addDays, addWeeks, subWeeks } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { NewAppointmentModal } from '@/components/NewAppointmentModal';
+import { useUserProfile } from '@/hooks/useUserProfile';
 interface Appointment {
   id: string;
   appointment_start_time: string;
@@ -29,6 +30,7 @@ export default function Agenda() {
     signOut
   } = useAuth();
   const navigate = useNavigate();
+  const userProfile = useUserProfile();
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [modalOpen, setModalOpen] = useState(false);
   const [modalInitialValues, setModalInitialValues] = useState<{
@@ -46,20 +48,29 @@ export default function Agenda() {
     data: appointments = [],
     isLoading
   } = useQuery({
-    queryKey: ['appointments', weekStart.toISOString(), weekEnd.toISOString()],
+    queryKey: ['appointments', weekStart.toISOString(), weekEnd.toISOString(), userProfile.type, userProfile.professionalId],
     queryFn: async () => {
       try {
-        const {
-          data,
-          error
-        } = await (supabase as any).from('appointments').select(`
+        let query = supabase
+          .from('appointments')
+          .select(`
             id,
             appointment_start_time,
             appointment_end_time,
             patients:patient_id (full_name),
             treatments:treatment_id (treatment_name),
             professionals:professional_id (full_name)
-          `).gte('appointment_start_time', weekStart.toISOString()).lte('appointment_start_time', weekEnd.toISOString()).order('appointment_start_time');
+          `)
+          .gte('appointment_start_time', weekStart.toISOString())
+          .lte('appointment_start_time', weekEnd.toISOString())
+          .order('appointment_start_time');
+
+        // Se for profissional, filtrar apenas seus agendamentos
+        if (userProfile.type === 'professional' && userProfile.professionalId) {
+          query = query.eq('professional_id', userProfile.professionalId);
+        }
+
+        const { data, error } = await query;
         if (error) throw error;
         return (data || []).map((apt: any) => ({
           id: apt.id,
@@ -82,24 +93,32 @@ export default function Agenda() {
   const previousWeek = () => setCurrentWeek(subWeeks(currentWeek, 1));
   const nextWeek = () => setCurrentWeek(addWeeks(currentWeek, 1));
 
-  // Get all professionals for empty slot handling
+  // Get professionals based on user profile
   const {
     data: allProfessionals = []
   } = useQuery({
-    queryKey: ['all-professionals'],
+    queryKey: ['all-professionals', userProfile.type, userProfile.professionalId],
     queryFn: async () => {
       try {
-        const {
-          data,
-          error
-        } = await (supabase as any).from('professionals').select('id, full_name').order('full_name');
+        let query = supabase
+          .from('professionals')
+          .select('id, full_name')
+          .order('full_name');
+
+        // Se for profissional, mostrar apenas ele mesmo
+        if (userProfile.type === 'professional' && userProfile.professionalId) {
+          query = query.eq('id', userProfile.professionalId);
+        }
+
+        const { data, error } = await query;
         if (error) throw error;
         return data || [];
       } catch (error) {
         console.error('Erro ao buscar profissionais:', error);
         return [];
       }
-    }
+    },
+    enabled: !userProfile.loading
   });
   const handleEmptySlotClick = (professional: any, day: Date, timeSlot: string) => {
     setModalInitialValues({
@@ -125,9 +144,7 @@ export default function Agenda() {
   }, {} as Record<string, Record<string, Appointment[]>>);
 
   // Use all professionals instead of just those with appointments
-  const professionals = allProfessionals.length > 0 ? allProfessionals : Object.keys(appointmentsByProfessional).map(name => ({
-    full_name: name
-  }));
+  const professionals = allProfessionals;
   const weekDays = Array.from({
     length: 7
   }, (_, i) => addDays(weekStart, i));
@@ -148,6 +165,11 @@ export default function Agenda() {
             <div className="flex items-center space-x-2 text-sm text-muted-foreground">
               <User className="h-4 w-4" />
               <span>{user?.email}</span>
+              {userProfile.type && (
+                <span className="px-2 py-1 bg-muted rounded-md text-xs">
+                  {userProfile.type === 'receptionist' ? 'Recepcionista' : 'Profissional'}
+                </span>
+              )}
             </div>
             <Button variant="outline" onClick={handleLogout} className="group border-border/50 hover:border-destructive hover:text-destructive">
               <LogOut className="mr-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -205,8 +227,8 @@ export default function Agenda() {
                       </div>)}
                   </div>
 
-                  {/* Calendar Body */}
-                  {professionals.length > 0 ? professionals.map(professional => <div key={professional.id || professional.full_name} className="grid grid-cols-8 gap-2 mb-4 border-b border-border/30 pb-4">
+                   {/* Calendar Body */}
+                  {professionals.length > 0 ? professionals.map(professional => <div key={professional.id} className="grid grid-cols-8 gap-2 mb-4 border-b border-border/30 pb-4">
                         <div className="font-medium p-2 text-sm">
                           {professional.full_name}
                         </div>
