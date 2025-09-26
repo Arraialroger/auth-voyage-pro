@@ -3,8 +3,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, Search } from 'lucide-react';
+import { CalendarIcon, Search, Clock } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { createClient } from '@supabase/supabase-js';
 import { toast } from '@/hooks/use-toast';
 
@@ -61,7 +62,12 @@ const appointmentSchema = z.object({
   notes: z.string().optional(),
 });
 
+const waitingListSchema = z.object({
+  notes: z.string().optional(),
+});
+
 type AppointmentFormData = z.infer<typeof appointmentSchema>;
+type WaitingListFormData = z.infer<typeof waitingListSchema>;
 
 interface NewAppointmentModalProps {
   trigger: React.ReactNode;
@@ -75,7 +81,8 @@ interface NewAppointmentModalProps {
   };
 }
 
-const supabase = createClient(
+
+const supabaseClient = createClient(
   "https://bacwlstdjceottxccrap.supabase.co",
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhY3dsc3RkamNlb3R0eGNjcmFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NTA2MDQsImV4cCI6MjA3NDEyNjYwNH0.VMkRLrcwxEnUm1q5jaSbuUJgsh2Ym7pv6Ay2muNYso8"
 );
@@ -84,6 +91,7 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
   const [internalOpen, setInternalOpen] = useState(false);
   const [patientSearchOpen, setPatientSearchOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
+  const [showWaitingListForm, setShowWaitingListForm] = useState(false);
   const queryClient = useQueryClient();
 
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
@@ -99,6 +107,13 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
       appointment_date: undefined,
       start_time: '',
       end_time: '',
+    },
+  });
+
+  const waitingListForm = useForm<WaitingListFormData>({
+    resolver: zodResolver(waitingListSchema),
+    defaultValues: {
+      notes: '',
     },
   });
 
@@ -253,6 +268,52 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
       toast({
         title: 'Erro',
         description: 'Erro ao criar agendamento. Tente novamente.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const onAddToWaitingList = async (data: WaitingListFormData) => {
+    try {
+      const patientId = form.getValues('patient_id');
+      const professionalId = form.getValues('professional_id');
+
+      if (!patientId || !professionalId) {
+        toast({
+          title: 'Erro',
+          description: 'Selecione um paciente e um profissional primeiro.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { error } = await supabaseClient
+        .from('waiting_list')
+        .insert([
+          {
+            patient_id: patientId,
+            professional_id: professionalId,
+            notes: data.notes || null,
+          },
+        ]);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Adicionado à lista de espera',
+        description: 'Paciente adicionado à lista de espera com sucesso.',
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['waiting-list'] });
+      waitingListForm.reset();
+      setShowWaitingListForm(false);
+      setOpen(false);
+      onSuccess?.();
+    } catch (error) {
+      console.error('Error adding to waiting list:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao adicionar à lista de espera. Tente novamente.',
         variant: 'destructive',
       });
     }
@@ -484,17 +545,75 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
               )}
             />
 
-            <div className="flex justify-end gap-2 pt-4">
+            {/* Waiting List Section */}
+            {showWaitingListForm && (
+              <div className="border-t pt-4 mt-4">
+                <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Adicionar à Lista de Espera
+                </h4>
+                <Form {...waitingListForm}>
+                  <form onSubmit={waitingListForm.handleSubmit(onAddToWaitingList)} className="space-y-3">
+                    <FormField
+                      control={waitingListForm.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Observações (opcional)</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Motivo ou observações sobre a lista de espera..."
+                              className="resize-none"
+                              rows={2}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowWaitingListForm(false)}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button type="submit" size="sm">
+                        Adicionar à Lista
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </div>
+            )}
+
+            <div className="flex justify-between items-center pt-4">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setOpen(false)}
+                onClick={() => setShowWaitingListForm(!showWaitingListForm)}
+                className="gap-2"
+                disabled={!form.getValues('patient_id') || !form.getValues('professional_id')}
               >
-                Cancelar
+                <Clock className="h-4 w-4" />
+                {showWaitingListForm ? 'Ocultar Lista de Espera' : 'Adicionar à Lista de Espera'}
               </Button>
-              <Button type="submit">
-                Criar Agendamento
-              </Button>
+
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit">
+                  Criar Agendamento
+                </Button>
+              </div>
             </div>
           </form>
         </Form>

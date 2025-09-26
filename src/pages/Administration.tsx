@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, UserCheck, Stethoscope, Settings } from 'lucide-react';
+import { Users, UserCheck, Stethoscope, Settings, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -37,6 +37,14 @@ export default function Administration() {
       route: '/admin/treatments',
       color: 'text-purple-600',
       bgColor: 'bg-purple-50'
+    },
+    {
+      title: 'Lista de Espera',
+      description: 'Gerenciar pacientes em lista de espera',
+      icon: Clock,
+      route: '/admin/waiting-list',
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50'
     }
   ];
 
