@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { startOfWeek, endOfWeek, format, addDays, addWeeks, subWeeks } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { NewAppointmentModal } from '@/components/NewAppointmentModal';
+import { AddToWaitingListModal } from '@/components/AddToWaitingListModal';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -252,13 +253,23 @@ export default function Agenda() {
                   })}
                     </h2>
                     
-                    <Button onClick={() => {
-                  setModalInitialValues({});
-                  setModalOpen(true);
-                }} className="bg-primary text-primary-foreground hover:bg-primary/90">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Novo Agendamento
-                    </Button>
+                    <div className="flex gap-2">
+                      <AddToWaitingListModal
+                        trigger={
+                          <Button variant="outline" className="gap-2">
+                            <Clock className="h-4 w-4" />
+                            Lista de Espera
+                          </Button>
+                        }
+                      />
+                      <Button onClick={() => {
+                    setModalInitialValues({});
+                    setModalOpen(true);
+                  }} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Novo Agendamento
+                      </Button>
+                    </div>
                   </div>
                   
                   <Button variant="outline" onClick={nextWeek} className="border-border/50 hover:bg-muted">

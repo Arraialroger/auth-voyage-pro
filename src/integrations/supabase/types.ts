@@ -239,12 +239,54 @@ export type Database = {
         }
         Relationships: []
       }
+      waiting_list: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          patient_id: string
+          professional_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          professional_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          professional_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waiting_list_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waiting_list_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      run_sql: {
+        Args: { sql_query: string }
+        Returns: Json
+      }
     }
     Enums: {
       appointment_status_enum:
