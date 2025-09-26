@@ -79,7 +79,6 @@ interface NewAppointmentModalProps {
 export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, onOpenChange: externalOnOpenChange, initialValues }: NewAppointmentModalProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [patientSearchOpen, setPatientSearchOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date>();
   const queryClient = useQueryClient();
 
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
