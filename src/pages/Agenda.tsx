@@ -197,7 +197,7 @@ export default function Agenda() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-4 lg:py-8 bg-zinc-950">
+      <main className="container mx-auto px-4 py-4 lg:py-8">
         <div className="max-w-7xl mx-auto space-y-4 lg:space-y-6">
           {/* Navigation */}
           <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-elegant">
@@ -236,6 +236,28 @@ export default function Agenda() {
                         </SelectContent>
                       </Select>
                     </div>}
+                  
+                  {/* Mobile action buttons */}
+                  <div className="flex flex-col gap-2 w-full">
+                    <AddToWaitingListModal
+                      trigger={
+                        <Button variant="outline" className="w-full gap-2">
+                          <Clock className="h-4 w-4" />
+                          Lista de Espera
+                        </Button>
+                      }
+                    />
+                    <Button 
+                      onClick={() => {
+                        setModalInitialValues({});
+                        setModalOpen(true);
+                      }} 
+                      className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Novo Agendamento
+                    </Button>
+                  </div>
                 </div> :
             // Desktop: Week navigation
             <div className="flex items-center justify-between">
