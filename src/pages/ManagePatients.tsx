@@ -370,49 +370,63 @@ export default function ManagePatients() {
                             <Edit className="h-4 w-4" />
                           </Button>
                         </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Editar Paciente</DialogTitle>
-                            <DialogDescription>
-                              Atualize as informações do paciente abaixo.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            <div>
-                              <Label htmlFor="edit_name">Nome Completo *</Label>
-                              <Input
-                                id="edit_name"
-                                value={formData.full_name}
-                                onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
-                                placeholder="Digite o nome completo"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="edit_phone">Telefone *</Label>
-                              <Input
-                                id="edit_phone"
-                                value={formData.contact_phone}
-                                onChange={(e) => setFormData(prev => ({ ...prev, contact_phone: e.target.value }))}
-                                placeholder="(11) 99999-9999"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="edit_birth_date">Data de Nascimento</Label>
-                              <Input
-                                id="edit_birth_date"
-                                type="date"
-                                value={formData.birth_date}
-                                onChange={(e) => setFormData(prev => ({ ...prev, birth_date: e.target.value }))}
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="edit_medical_history">Histórico Médico</Label>
-                              <Textarea
-                                id="edit_medical_history"
-                                value={formData.medical_history_notes}
-                                onChange={(e) => setFormData(prev => ({ ...prev, medical_history_notes: e.target.value }))}
-                                placeholder="Informações relevantes do histórico médico"
-                              />
+                        <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-0 gap-0">
+                          <div className="flex flex-col h-full">
+                            <DialogHeader className="p-6 pb-4 border-b border-border/50">
+                              <DialogTitle className="text-xl">Editar Paciente</DialogTitle>
+                              <DialogDescription>
+                                Atualize as informações do paciente abaixo.
+                              </DialogDescription>
+                            </DialogHeader>
+                            
+                            <div className="flex-1 overflow-y-auto p-6">
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-6xl mx-auto">
+                                <div className="space-y-4">
+                                  <div>
+                                    <Label htmlFor="edit_name">Nome Completo *</Label>
+                                    <Input
+                                      id="edit_name"
+                                      value={formData.full_name}
+                                      onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
+                                      placeholder="Digite o nome completo"
+                                      className="mt-2"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="edit_phone">Telefone *</Label>
+                                    <Input
+                                      id="edit_phone"
+                                      value={formData.contact_phone}
+                                      onChange={(e) => setFormData(prev => ({ ...prev, contact_phone: e.target.value }))}
+                                      placeholder="(11) 99999-9999"
+                                      className="mt-2"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="edit_birth_date">Data de Nascimento</Label>
+                                    <Input
+                                      id="edit_birth_date"
+                                      type="date"
+                                      value={formData.birth_date}
+                                      onChange={(e) => setFormData(prev => ({ ...prev, birth_date: e.target.value }))}
+                                      className="mt-2"
+                                    />
+                                  </div>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                  <div className="h-full">
+                                    <Label htmlFor="edit_medical_history">Histórico Médico</Label>
+                                    <Textarea
+                                      id="edit_medical_history"
+                                      value={formData.medical_history_notes}
+                                      onChange={(e) => setFormData(prev => ({ ...prev, medical_history_notes: e.target.value }))}
+                                      placeholder="Informações relevantes do histórico médico..."
+                                      className="mt-2 min-h-[400px] resize-none"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           </div>
                           <DialogFooter>
