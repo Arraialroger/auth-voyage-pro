@@ -291,20 +291,38 @@ export default function ManagePatients() {
 
           {/* Patients Grid */}
           {isLoading ? (
-            <div className="text-center py-8">
-              <div className="animate-spin inline-block w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
-              <p className="mt-2 text-muted-foreground">Carregando pacientes...</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg p-6 space-y-4 animate-fade-in">
+                  <div className="space-y-2">
+                    <div className="h-6 w-3/4 bg-muted/60 rounded animate-pulse" />
+                    <div className="h-4 w-1/2 bg-muted/60 rounded animate-pulse" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-4 w-full bg-muted/60 rounded animate-pulse" />
+                    <div className="h-4 w-2/3 bg-muted/60 rounded animate-pulse" />
+                  </div>
+                  <div className="flex justify-end space-x-2 pt-4">
+                    <div className="h-8 w-8 bg-muted/60 rounded animate-pulse" />
+                    <div className="h-8 w-8 bg-muted/60 rounded animate-pulse" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {filteredPatients.map((patient) => (
-                <Card key={patient.id} className="bg-card/80 backdrop-blur-sm border-border/50 shadow-elegant">
+              {filteredPatients.map((patient, index) => (
+                <Card 
+                  key={patient.id} 
+                  className="bg-card/80 backdrop-blur-sm border-border/50 hover:border-primary/20 shadow-soft hover:shadow-elegant group animate-scale-in transition-all duration-300"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
                   <CardHeader className="pb-4">
-                    <CardTitle className="text-lg font-semibold">
+                    <CardTitle className="text-lg font-semibold group-hover:text-primary transition-colors">
                       {patient.full_name}
                     </CardTitle>
-                    <CardDescription>
-                      {patient.contact_phone}
+                    <CardDescription className="flex items-center space-x-2">
+                      <span>{patient.contact_phone}</span>
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -347,6 +365,7 @@ export default function ManagePatients() {
                             variant="outline"
                             size="sm"
                             onClick={() => openEditDialog(patient)}
+                            className="hover:border-info hover:text-info hover:bg-info/10 transition-all"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -412,7 +431,11 @@ export default function ManagePatients() {
 
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-destructive hover:text-destructive hover:border-destructive hover:bg-destructive/10 transition-all"
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </AlertDialogTrigger>

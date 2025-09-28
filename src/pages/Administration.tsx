@@ -91,16 +91,16 @@ export default function Administration() {
             {adminCards.map((card) => {
               const IconComponent = card.icon;
               return (
-                <Card 
+                  <Card 
                   key={card.title}
-                  className="hover:shadow-elegant transition-all duration-200 cursor-pointer group bg-card/80 backdrop-blur-sm border-border/50"
+                  className="hover:shadow-elegant transition-all duration-300 cursor-pointer group bg-card/80 backdrop-blur-sm border-border/50 hover:border-primary/20 animate-scale-in"
                   onClick={() => navigate(card.route)}
                 >
                   <CardHeader className="text-center pb-4">
-                    <div className={`w-16 h-16 mx-auto rounded-full ${card.bgColor} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200`}>
-                      <IconComponent className={`h-8 w-8 ${card.color}`} />
+                    <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:shadow-glow transition-all duration-300">
+                      <IconComponent className="h-8 w-8 text-primary group-hover:text-primary/90" />
                     </div>
-                    <CardTitle className="text-xl font-semibold">
+                    <CardTitle className="text-xl font-semibold group-hover:text-primary transition-colors">
                       {card.title}
                     </CardTitle>
                     <CardDescription className="text-muted-foreground">
@@ -108,7 +108,7 @@ export default function Administration() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <Button className="w-full group-hover:bg-primary/90 transition-colors">
+                    <Button className="w-full group-hover:scale-105 transition-all" variant="gradient">
                       Acessar
                     </Button>
                   </CardContent>

@@ -36,13 +36,32 @@ All colors MUST be HSL.
     --input: 240 3.7% 15.9%;
     --ring: 282 100% 35%;
 
-    /* Custom design tokens */
+    /* Extended color palette */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 98%;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 98%;
+
+    /* Enhanced gradients */
     --gradient-primary: linear-gradient(135deg, hsl(282 100% 35%), hsl(282 80% 45%));
     --gradient-secondary: linear-gradient(135deg, hsl(240 3.7% 15.9%), hsl(240 5.9% 10%));
     --gradient-subtle: linear-gradient(180deg, hsl(240 10% 3.9%), hsl(240 5.9% 10%));
+    --gradient-success: linear-gradient(135deg, hsl(142 76% 36%), hsl(142 60% 45%));
+    --gradient-warning: linear-gradient(135deg, hsl(38 92% 50%), hsl(38 75% 55%));
+    --gradient-info: linear-gradient(135deg, hsl(199 89% 48%), hsl(199 70% 55%));
+    
+    /* Enhanced shadows */
     --shadow-glow: 0 0 40px hsl(282 100% 35% / 0.3);
     --shadow-elegant: 0 10px 30px -10px hsl(0 0% 0% / 0.5);
+    --shadow-soft: 0 2px 10px -2px hsl(0 0% 0% / 0.1);
+    --shadow-medium: 0 4px 20px -4px hsl(0 0% 0% / 0.15);
+    
+    /* Enhanced transitions */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-fast: all 0.15s ease-out;
+    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
     --radius: 0.5rem;
 
