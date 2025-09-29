@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Users, Plus, Edit, Trash2, ArrowLeft, Search, Upload, Download, FileText, X } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, ArrowLeft, Search, Upload, Download, Paperclip } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -24,16 +24,6 @@ interface Patient {
   created_at: string;
 }
 
-interface PatientDocument {
-  id: string;
-  patient_id: string;
-  file_name: string;
-  file_path: string;
-  file_size?: number;
-  mime_type?: string;
-  created_at: string;
-}
-
 export default function ManagePatients() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -44,8 +34,6 @@ export default function ManagePatients() {
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [formData, setFormData] = useState({
     full_name: '',
     contact_phone: '',
@@ -66,22 +54,6 @@ export default function ManagePatients() {
     }
   });
 
-  const { data: patientDocuments = [] } = useQuery({
-    queryKey: ['patient-documents', editingPatient?.id],
-    queryFn: async () => {
-      if (!editingPatient?.id) return [];
-      const { data, error } = await supabase
-        .from('patient_documents')
-        .select('*')
-        .eq('patient_id', editingPatient.id)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as PatientDocument[];
-    },
-    enabled: !!editingPatient?.id,
-  });
-
   const filteredPatients = patients.filter(patient =>
     patient.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     patient.contact_phone.includes(searchTerm)
@@ -99,87 +71,89 @@ export default function ManagePatients() {
       birth_date: '',
       medical_history_notes: ''
     });
-    setSelectedFiles(null);
   };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    setSelectedFiles(files);
-  };
+  const handleAttachDocument = async () => {
+    const input = globalThis.document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    input.accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.txt';
+    
+    input.onchange = async (e) => {
+      const files = (e.target as HTMLInputElement).files;
+      if (!files || !editingPatient) return;
 
-  const handleUploadDocuments = async () => {
-    if (!selectedFiles || !editingPatient) {
-      toast({
-        title: 'Erro',
-        description: 'Selecione arquivos para fazer upload',
-        variant: 'destructive',
-      });
-      return;
-    }
+      try {
+        let references = '';
+        for (const file of Array.from(files)) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${editingPatient.id}/${Date.now()}.${fileExt}`;
 
-    setIsUploading(true);
-    try {
-      for (const file of Array.from(selectedFiles)) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${editingPatient.id}/${Date.now()}.${fileExt}`;
+          // Upload to storage
+          const { error: uploadError } = await supabase.storage
+            .from('medical-documents')
+            .upload(fileName, file);
 
-        // Upload file to storage
-        const { error: uploadError } = await supabase.storage
-          .from('medical-documents')
-          .upload(fileName, file);
+          if (uploadError) throw uploadError;
 
-        if (uploadError) throw uploadError;
+          // Add reference to history text
+          const timestamp = format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR });
+          references += `\n[ANEXO ${timestamp}] ${file.name}`;
+        }
 
-        // Save document info to database
-        const { error: dbError } = await supabase
-          .from('patient_documents')
-          .insert({
-            patient_id: editingPatient.id,
-            file_name: file.name,
-            file_path: fileName,
-            file_size: file.size,
-            mime_type: file.type,
-            uploaded_by: (await supabase.auth.getUser()).data.user?.id
-          });
+        // Update medical history with new references
+        const currentHistory = formData.medical_history_notes || '';
+        const newHistory = currentHistory + references;
+        
+        setFormData(prev => ({ 
+          ...prev, 
+          medical_history_notes: newHistory 
+        }));
 
-        if (dbError) throw dbError;
+        toast({
+          title: 'Sucesso',
+          description: `${files.length} documento(s) anexado(s) ao histórico!`,
+        });
+      } catch (error) {
+        console.error('Erro ao anexar documento:', error);
+        toast({
+          title: 'Erro',
+          description: 'Erro ao anexar documentos',
+          variant: 'destructive',
+        });
       }
+    };
 
-      queryClient.invalidateQueries({ queryKey: ['patient-documents', editingPatient.id] });
-      toast({
-        title: 'Sucesso',
-        description: `${selectedFiles.length} documento(s) enviado(s) com sucesso!`,
-      });
-      setSelectedFiles(null);
-      
-      // Clear the file input
-      const fileInput = document.getElementById('document-upload') as HTMLInputElement;
-      if (fileInput) fileInput.value = '';
-    } catch (error) {
-      console.error('Erro ao fazer upload:', error);
-      toast({
-        title: 'Erro',
-        description: 'Erro ao fazer upload dos documentos',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsUploading(false);
-    }
+    input.click();
   };
 
-  const handleDownloadDocument = async (doc: PatientDocument) => {
+  const handleDownloadFullHistory = async () => {
+    if (!editingPatient) return;
+
     try {
-      const { data, error } = await supabase.storage
-        .from('medical-documents')
-        .download(doc.file_path);
+      const patient = editingPatient;
+      const historyContent = `
+HISTÓRICO MÉDICO COMPLETO
+=========================
 
-      if (error) throw error;
+PACIENTE: ${patient.full_name}
+TELEFONE: ${patient.contact_phone}
+DATA NASCIMENTO: ${patient.birth_date ? format(new Date(patient.birth_date), 'dd/MM/yyyy', { locale: ptBR }) : 'Não informado'}
+DATA CADASTRO: ${format(new Date(patient.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
 
-      // Create download link
-      const url = URL.createObjectURL(data);
+HISTÓRICO MÉDICO:
+${patient.medical_history_notes || 'Nenhum histórico registrado.'}
+
+=========================
+Relatório gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+      `;
+
+      // Create and download as text file
+      const blob = new Blob([historyContent], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
       const a = globalThis.document.createElement('a');
       a.href = url;
-      a.download = doc.file_name;
+      a.download = `historico_${patient.full_name.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.txt`;
       globalThis.document.body.appendChild(a);
       a.click();
       globalThis.document.body.removeChild(a);
@@ -187,45 +161,13 @@ export default function ManagePatients() {
 
       toast({
         title: 'Sucesso',
-        description: 'Download realizado com sucesso!',
+        description: 'Histórico completo baixado com sucesso!',
       });
     } catch (error) {
-      console.error('Erro ao fazer download:', error);
+      console.error('Erro ao gerar histórico:', error);
       toast({
         title: 'Erro',
-        description: 'Erro ao fazer download do documento',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleDeleteDocument = async (doc: PatientDocument) => {
-    try {
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from('medical-documents')
-        .remove([doc.file_path]);
-
-      if (storageError) throw storageError;
-
-      // Delete from database
-      const { error: dbError } = await supabase
-        .from('patient_documents')
-        .delete()
-        .eq('id', doc.id);
-
-      if (dbError) throw dbError;
-
-      queryClient.invalidateQueries({ queryKey: ['patient-documents', editingPatient?.id] });
-      toast({
-        title: 'Sucesso',
-        description: 'Documento excluído com sucesso!',
-      });
-    } catch (error) {
-      console.error('Erro ao excluir documento:', error);
-      toast({
-        title: 'Erro',
-        description: 'Erro ao excluir documento',
+        description: 'Erro ao gerar histórico completo',
         variant: 'destructive',
       });
     }
@@ -574,99 +516,38 @@ export default function ManagePatients() {
                                 
                                 <div className="space-y-4">
                                   <div className="h-full">
-                                    <Label htmlFor="edit_medical_history">Histórico Médico</Label>
-                                    <Textarea
-                                      id="edit_medical_history"
-                                      value={formData.medical_history_notes}
-                                      onChange={(e) => setFormData(prev => ({ ...prev, medical_history_notes: e.target.value }))}
-                                      placeholder="Informações relevantes do histórico médico..."
-                                      className="mt-2 min-h-[300px] resize-none"
-                                    />
-                                  </div>
-
-                                  {/* Documents Section */}
-                                  <div className="space-y-4 border-t pt-4">
-                                    <div className="flex items-center gap-2">
-                                      <FileText className="h-5 w-5 text-muted-foreground" />
-                                      <Label className="text-base font-medium">Documentos Médicos</Label>
-                                    </div>
-
-                                    {/* Upload Section */}
+                                    <Label htmlFor="edit_medical_history" className="text-base font-medium">Histórico Médico</Label>
                                     <div className="space-y-3">
-                                      <div className="flex items-center gap-2">
-                                        <Input
-                                          id="document-upload"
-                                          type="file"
-                                          multiple
-                                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                          onChange={handleFileSelect}
-                                          className="flex-1"
-                                        />
+                                      <Textarea
+                                        id="edit_medical_history"
+                                        value={formData.medical_history_notes}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, medical_history_notes: e.target.value }))}
+                                        placeholder="Informações relevantes do histórico médico..."
+                                        className="mt-2 min-h-[300px] resize-none"
+                                      />
+                                      <div className="flex gap-2">
                                         <Button 
-                                          onClick={handleUploadDocuments}
-                                          disabled={!selectedFiles || isUploading}
+                                          type="button"
+                                          variant="outline" 
                                           size="sm"
-                                          className="shrink-0"
+                                          onClick={handleAttachDocument}
+                                          className="flex items-center gap-2"
                                         >
-                                          {isUploading ? (
-                                            "Enviando..."
-                                          ) : (
-                                            <>
-                                              <Upload className="h-4 w-4 mr-1" />
-                                              Upload
-                                            </>
-                                          )}
+                                          <Paperclip className="h-4 w-4" />
+                                          Anexar Documento
+                                        </Button>
+                                        
+                                        <Button 
+                                          type="button"
+                                          variant="outline" 
+                                          size="sm"
+                                          onClick={handleDownloadFullHistory}
+                                          className="flex items-center gap-2"
+                                        >
+                                          <Download className="h-4 w-4" />
+                                          Download Histórico Completo
                                         </Button>
                                       </div>
-                                      {selectedFiles && (
-                                        <div className="text-sm text-muted-foreground">
-                                          {selectedFiles.length} arquivo(s) selecionado(s)
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {/* Documents List */}
-                                    <div className="max-h-40 overflow-y-auto space-y-2">
-                                      {patientDocuments?.map((doc) => (
-                                        <div
-                                          key={doc.id}
-                                          className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                                        >
-                                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                                            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                                            <div className="min-w-0 flex-1">
-                                              <p className="text-sm font-medium truncate">{doc.file_name}</p>
-                                              <p className="text-xs text-muted-foreground">
-                                                {new Date(doc.created_at).toLocaleDateString('pt-BR')}
-                                                {doc.file_size && ` • ${Math.round(doc.file_size / 1024)} KB`}
-                                              </p>
-                                            </div>
-                                          </div>
-                                          <div className="flex items-center gap-1 shrink-0">
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => handleDownloadDocument(doc)}
-                                              className="h-8 w-8 p-0"
-                                            >
-                                              <Download className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => handleDeleteDocument(doc)}
-                                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                                            >
-                                              <X className="h-4 w-4" />
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      ))}
-                                      {(!patientDocuments || patientDocuments.length === 0) && (
-                                        <div className="text-center py-4 text-sm text-muted-foreground">
-                                          Nenhum documento encontrado
-                                        </div>
-                                      )}
                                     </div>
                                   </div>
                                 </div>
