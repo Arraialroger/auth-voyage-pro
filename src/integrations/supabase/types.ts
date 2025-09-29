@@ -114,39 +114,6 @@ export type Database = {
           },
         ]
       }
-      patient_documents: {
-        Row: {
-          created_at: string
-          file_name: string
-          file_path: string
-          file_size: number | null
-          id: string
-          mime_type: string | null
-          patient_id: string
-          uploaded_by: string | null
-        }
-        Insert: {
-          created_at?: string
-          file_name: string
-          file_path: string
-          file_size?: number | null
-          id?: string
-          mime_type?: string | null
-          patient_id: string
-          uploaded_by?: string | null
-        }
-        Update: {
-          created_at?: string
-          file_name?: string
-          file_path?: string
-          file_size?: number | null
-          id?: string
-          mime_type?: string | null
-          patient_id?: string
-          uploaded_by?: string | null
-        }
-        Relationships: []
-      }
       patients: {
         Row: {
           birth_date: string | null

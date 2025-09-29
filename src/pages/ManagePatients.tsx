@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Users, Plus, Edit, Trash2, ArrowLeft, Search, Upload, Download, Paperclip, FileText, Image, File } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, ArrowLeft, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -71,194 +71,6 @@ export default function ManagePatients() {
       birth_date: '',
       medical_history_notes: ''
     });
-  };
-
-  const handleAttachDocument = async () => {
-    const input = globalThis.document.createElement('input');
-    input.type = 'file';
-    input.multiple = true;
-    input.accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.txt';
-    
-    input.onchange = async (e) => {
-      const files = (e.target as HTMLInputElement).files;
-      if (!files || !editingPatient) return;
-
-      try {
-        let references = '';
-        for (const file of Array.from(files)) {
-          const fileExt = file.name.split('.').pop();
-          const fileId = crypto.randomUUID();
-          const fileName = `${editingPatient.id}/${fileId}.${fileExt}`;
-
-          // Upload to storage
-          const { error: uploadError } = await supabase.storage
-            .from('medical-documents')
-            .upload(fileName, file);
-
-          if (uploadError) throw uploadError;
-
-          // Add reference to history text with unique ID
-          const timestamp = format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR });
-          references += `\n[ANEXO:${fileId} ${timestamp}] ${file.name}`;
-        }
-
-        // Update medical history with new references
-        const currentHistory = formData.medical_history_notes || '';
-        const newHistory = currentHistory + references;
-        
-        setFormData(prev => ({ 
-          ...prev, 
-          medical_history_notes: newHistory 
-        }));
-
-        toast({
-          title: 'Sucesso',
-          description: `${files.length} documento(s) anexado(s) ao histórico!`,
-        });
-      } catch (error) {
-        console.error('Erro ao anexar documento:', error);
-        toast({
-          title: 'Erro',
-          description: 'Erro ao anexar documentos',
-          variant: 'destructive',
-        });
-      }
-    };
-
-    input.click();
-  };
-
-  const handleDownloadAttachment = async (fileId: string, fileName: string) => {
-    if (!editingPatient) return;
-
-    try {
-      const fileExt = fileName.split('.').pop();
-      const storagePath = `${editingPatient.id}/${fileId}.${fileExt}`;
-
-      const { data, error } = await supabase.storage
-        .from('medical-documents')
-        .download(storagePath);
-
-      if (error) throw error;
-
-      const url = URL.createObjectURL(data);
-      const a = globalThis.document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      globalThis.document.body.appendChild(a);
-      a.click();
-      globalThis.document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      toast({
-        title: 'Sucesso',
-        description: 'Documento baixado com sucesso!',
-      });
-    } catch (error) {
-      console.error('Erro ao baixar documento:', error);
-      toast({
-        title: 'Erro',
-        description: 'Erro ao baixar documento',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const getFileIcon = (fileName: string) => {
-    const ext = fileName.split('.').pop()?.toLowerCase();
-    if (['jpg', 'jpeg', 'png'].includes(ext || '')) {
-      return <Image className="h-3 w-3" />;
-    }
-    if (ext === 'pdf') {
-      return <FileText className="h-3 w-3" />;
-    }
-    return <File className="h-3 w-3" />;
-  };
-
-  const renderMedicalHistory = (text: string) => {
-    if (!text) return text;
-
-    const attachmentRegex = /\[ANEXO:([^\s]+)\s+([^\]]+)\]\s+([^\n]+)/g;
-    const parts = [];
-    let lastIndex = 0;
-    let match;
-
-    while ((match = attachmentRegex.exec(text)) !== null) {
-      // Add text before the attachment
-      if (match.index > lastIndex) {
-        parts.push(text.slice(lastIndex, match.index));
-      }
-
-      const [fullMatch, fileId, timestamp, fileName] = match;
-      
-      // Add the clickable attachment badge
-      parts.push(
-        <button
-          key={`attachment-${fileId}`}
-          onClick={() => handleDownloadAttachment(fileId, fileName)}
-          className="inline-flex items-center gap-1 px-2 py-1 mx-1 bg-primary/10 hover:bg-primary/20 text-primary text-xs rounded-md border border-primary/20 transition-colors"
-        >
-          {getFileIcon(fileName)}
-          <span>{fileName}</span>
-          <Download className="h-3 w-3" />
-        </button>
-      );
-
-      lastIndex = match.index + fullMatch.length;
-    }
-
-    // Add remaining text
-    if (lastIndex < text.length) {
-      parts.push(text.slice(lastIndex));
-    }
-
-    return parts.length > 1 ? parts : text;
-  };
-
-  const handleDownloadFullHistory = async () => {
-    if (!editingPatient) return;
-
-    try {
-      const patient = editingPatient;
-      const historyContent = `
-HISTÓRICO MÉDICO COMPLETO
-=========================
-
-PACIENTE: ${patient.full_name}
-TELEFONE: ${patient.contact_phone}
-DATA NASCIMENTO: ${patient.birth_date ? format(new Date(patient.birth_date), 'dd/MM/yyyy', { locale: ptBR }) : 'Não informado'}
-DATA CADASTRO: ${format(new Date(patient.created_at), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
-
-HISTÓRICO MÉDICO:
-${patient.medical_history_notes || 'Nenhum histórico registrado.'}
-
-=========================
-Relatório gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
-      `;
-
-      // Create and download as text file
-      const blob = new Blob([historyContent], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = globalThis.document.createElement('a');
-      a.href = url;
-      a.download = `historico_${patient.full_name.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.txt`;
-      globalThis.document.body.appendChild(a);
-      a.click();
-      globalThis.document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      toast({
-        title: 'Sucesso',
-        description: 'Histórico completo baixado com sucesso!',
-      });
-    } catch (error) {
-      console.error('Erro ao gerar histórico:', error);
-      toast({
-        title: 'Erro',
-        description: 'Erro ao gerar histórico completo',
-        variant: 'destructive',
-      });
-    }
   };
 
   const handleCreatePatient = async () => {
@@ -527,14 +339,14 @@ Relatório gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })
                         })()}
                       </div>
                     )}
-                     {patient.medical_history_notes && (
-                       <div className="text-sm">
-                         <span className="font-medium">Histórico: </span>
-                         <span className="text-muted-foreground line-clamp-2">
-                           {renderMedicalHistory(patient.medical_history_notes)}
-                         </span>
-                       </div>
-                     )}
+                    {patient.medical_history_notes && (
+                      <div className="text-sm">
+                        <span className="font-medium">Histórico: </span>
+                        <span className="text-muted-foreground line-clamp-2">
+                          {patient.medical_history_notes}
+                        </span>
+                      </div>
+                    )}
                     <div className="text-xs text-muted-foreground">
                       Cadastrado em {(() => {
                         try {
@@ -604,65 +416,30 @@ Relatório gerado em: ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: ptBR })
                                 
                                 <div className="space-y-4">
                                   <div className="h-full">
-                                    <Label htmlFor="edit_medical_history" className="text-base font-medium">Histórico Médico</Label>
-                                     <div className="space-y-3">
-                                       <Textarea
-                                         id="edit_medical_history"
-                                         value={formData.medical_history_notes}
-                                         onChange={(e) => setFormData(prev => ({ ...prev, medical_history_notes: e.target.value }))}
-                                         placeholder="Informações relevantes do histórico médico..."
-                                         className="mt-2 min-h-[300px] resize-none"
-                                       />
-                                       {/* Preview of attachments */}
-                                       {formData.medical_history_notes && (
-                                         <div className="p-3 bg-muted/30 rounded-md border border-border/50">
-                                           <div className="text-sm font-medium mb-2">Preview:</div>
-                                           <div className="text-sm whitespace-pre-wrap">
-                                             {renderMedicalHistory(formData.medical_history_notes)}
-                                           </div>
-                                         </div>
-                                       )}
-                                       <div className="flex gap-2">
-                                        <Button 
-                                          type="button"
-                                          variant="outline" 
-                                          size="sm"
-                                          onClick={handleAttachDocument}
-                                          className="flex items-center gap-2"
-                                        >
-                                          <Paperclip className="h-4 w-4" />
-                                          Anexar Documento
-                                        </Button>
-                                        
-                                        <Button 
-                                          type="button"
-                                          variant="outline" 
-                                          size="sm"
-                                          onClick={handleDownloadFullHistory}
-                                          className="flex items-center gap-2"
-                                        >
-                                          <Download className="h-4 w-4" />
-                                          Download Histórico Completo
-                                        </Button>
-                                      </div>
-                                    </div>
+                                    <Label htmlFor="edit_medical_history">Histórico Médico</Label>
+                                    <Textarea
+                                      id="edit_medical_history"
+                                      value={formData.medical_history_notes}
+                                      onChange={(e) => setFormData(prev => ({ ...prev, medical_history_notes: e.target.value }))}
+                                      placeholder="Informações relevantes do histórico médico..."
+                                      className="mt-2 min-h-[400px] resize-none"
+                                    />
                                   </div>
                                 </div>
                               </div>
                             </div>
-                            
-                            <DialogFooter className="p-6 pt-4 border-t border-border/50">
-                              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                                Cancelar
-                              </Button>
-                              <Button 
-                                onClick={handleEditPatient}
-                                disabled={!formData.full_name || !formData.contact_phone}
-                              >
-                                Salvar Alterações
-                              </Button>
-                            </DialogFooter>
                           </div>
+                          <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                              Cancelar
+                            </Button>
+                            <Button 
+                              onClick={handleEditPatient}
+                              disabled={!formData.full_name || !formData.contact_phone}
+                            >
+                              Salvar Alterações
+                            </Button>
+                          </DialogFooter>
                         </DialogContent>
                       </Dialog>
 
