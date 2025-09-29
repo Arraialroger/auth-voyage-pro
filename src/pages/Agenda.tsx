@@ -13,7 +13,6 @@ import { NewAppointmentModal } from '@/components/NewAppointmentModal';
 import { AddToWaitingListModal } from '@/components/AddToWaitingListModal';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { ThemeToggle } from '@/components/ThemeToggle';
-
 interface Appointment {
   id: string;
   appointment_start_time: string;
@@ -28,9 +27,11 @@ interface Appointment {
     full_name: string;
   } | null;
 }
-
 export default function Agenda() {
-  const { user, signOut } = useAuth();
+  const {
+    user,
+    signOut
+  } = useAuth();
   const navigate = useNavigate();
   const userProfile = useUserProfile();
   const [currentWeek, setCurrentWeek] = useState(new Date());
@@ -42,36 +43,37 @@ export default function Agenda() {
     appointment_date?: Date;
     start_time?: string;
   }>({});
-
-  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
-
-  const { data: appointments = [], isLoading } = useQuery({
+  const weekStart = startOfWeek(currentWeek, {
+    weekStartsOn: 1
+  });
+  const weekEnd = endOfWeek(currentWeek, {
+    weekStartsOn: 1
+  });
+  const {
+    data: appointments = [],
+    isLoading
+  } = useQuery({
     queryKey: ['appointments', weekStart.toISOString(), weekEnd.toISOString(), userProfile.type, userProfile.professionalId],
     queryFn: async () => {
       try {
-        let query = supabase
-          .from('appointments')
-          .select(`
+        let query = supabase.from('appointments').select(`
             id,
             appointment_start_time,
             appointment_end_time,
             patients:patient_id (full_name),
             treatments:treatment_id (treatment_name),
             professionals:professional_id (full_name)
-          `)
-          .gte('appointment_start_time', weekStart.toISOString())
-          .lte('appointment_start_time', weekEnd.toISOString())
-          .order('appointment_start_time');
+          `).gte('appointment_start_time', weekStart.toISOString()).lte('appointment_start_time', weekEnd.toISOString()).order('appointment_start_time');
 
         // Se for profissional, filtrar apenas seus agendamentos
         if (userProfile.type === 'professional' && userProfile.professionalId) {
           query = query.eq('professional_id', userProfile.professionalId);
         }
-
-        const { data, error } = await query;
+        const {
+          data,
+          error
+        } = await query;
         if (error) throw error;
-
         return (data || []).map((apt: any) => ({
           id: apt.id,
           appointment_start_time: apt.appointment_start_time,
@@ -86,31 +88,30 @@ export default function Agenda() {
       }
     }
   });
-
   const handleLogout = async () => {
     await signOut();
     navigate('/');
   };
-
   const previousWeek = () => setCurrentWeek(subWeeks(currentWeek, 1));
   const nextWeek = () => setCurrentWeek(addWeeks(currentWeek, 1));
 
   // Get professionals based on user profile
-  const { data: allProfessionals = [] } = useQuery({
+  const {
+    data: allProfessionals = []
+  } = useQuery({
     queryKey: ['all-professionals', userProfile.type, userProfile.professionalId],
     queryFn: async () => {
       try {
-        let query = supabase
-          .from('professionals')
-          .select('id, full_name')
-          .order('full_name');
+        let query = supabase.from('professionals').select('id, full_name').order('full_name');
 
         // Se for profissional, mostrar apenas ele mesmo
         if (userProfile.type === 'professional' && userProfile.professionalId) {
           query = query.eq('id', userProfile.professionalId);
         }
-
-        const { data, error } = await query;
+        const {
+          data,
+          error
+        } = await query;
         if (error) throw error;
         return data || [];
       } catch (error) {
@@ -120,7 +121,6 @@ export default function Agenda() {
     },
     enabled: !userProfile.loading
   });
-
   const handleEmptySlotClick = (professional: any, day: Date, timeSlot: string) => {
     setModalInitialValues({
       professional_id: professional.id,
@@ -146,10 +146,10 @@ export default function Agenda() {
 
   // Use all professionals instead of just those with appointments
   const professionals = allProfessionals;
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-
-  return (
-    <div className="min-h-screen bg-gradient-subtle">
+  const weekDays = Array.from({
+    length: 7
+  }, (_, i) => addDays(weekStart, i));
+  return <div className="min-h-screen bg-gradient-subtle">
       {/* Header */}
       <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-3 lg:py-4">
@@ -184,11 +184,9 @@ export default function Agenda() {
                 <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                   <User className="h-4 w-4" />
                   <span className="hidden sm:inline">{user?.email}</span>
-                  {userProfile.type && (
-                    <span className="px-2 py-1 bg-muted rounded-md text-xs">
+                  {userProfile.type && <span className="px-2 py-1 bg-muted rounded-md text-xs">
                       {userProfile.type === 'receptionist' ? 'Recepcionista' : 'Profissional'}
-                    </span>
-                  )}
+                    </span>}
                 </div>
                 <ThemeToggle />
                 <Button variant="outline" onClick={handleLogout} className="group border-border/50 hover:border-destructive hover:text-destructive">
@@ -202,7 +200,7 @@ export default function Agenda() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-4 lg:py-8 overflow-x-hidden">
+      <main className="container mx-auto px-4 py-4 lg:py-8 overflow-x-hidden bg-zinc-950">
         <div className="max-w-7xl mx-auto space-y-4 lg:space-y-6">
           {/* Navigation */}
           <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-elegant">
@@ -217,8 +215,8 @@ export default function Agenda() {
                   <div className="flex-1 px-2 text-center">
                     <h2 className="text-lg font-semibold truncate">
                       {format(currentDay, "EEEE, dd 'de' MMMM", {
-                        locale: ptBR
-                      })}
+                      locale: ptBR
+                    })}
                     </h2>
                   </div>
                   
@@ -228,8 +226,7 @@ export default function Agenda() {
                 </div>
                 
                 {/* Professional Selector for Mobile */}
-                {userProfile.type === 'receptionist' && (
-                  <div className="space-y-2">
+                {userProfile.type === 'receptionist' && <div className="space-y-2">
                     <label className="text-sm font-medium text-muted-foreground">Profissional:</label>
                     <Select value={selectedProfessional} onValueChange={setSelectedProfessional}>
                       <SelectTrigger className="w-full">
@@ -237,33 +234,23 @@ export default function Agenda() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Todos os profissionais</SelectItem>
-                        {allProfessionals.map(prof => (
-                          <SelectItem key={prof.id} value={prof.id}>
+                        {allProfessionals.map(prof => <SelectItem key={prof.id} value={prof.id}>
                             {prof.full_name}
-                          </SelectItem>
-                        ))}
+                          </SelectItem>)}
                       </SelectContent>
                     </Select>
-                  </div>
-                )}
+                  </div>}
                 
                 {/* Mobile action buttons */}
                 <div className="flex flex-col gap-2 w-full">
-                  <AddToWaitingListModal
-                    trigger={
-                      <Button variant="outline" className="w-full gap-2">
+                  <AddToWaitingListModal trigger={<Button variant="outline" className="w-full gap-2">
                         <Clock className="h-4 w-4" />
                         Lista de Espera
-                      </Button>
-                    }
-                  />
-                  <Button 
-                    onClick={() => {
-                      setModalInitialValues({});
-                      setModalOpen(true);
-                    }} 
-                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
+                      </Button>} />
+                  <Button onClick={() => {
+                  setModalInitialValues({});
+                  setModalOpen(true);
+                }} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
                     <Plus className="h-4 w-4 mr-2" />
                     Novo Agendamento
                   </Button>
@@ -280,25 +267,21 @@ export default function Agenda() {
                 <div className="flex items-center space-x-4">
                   <h2 className="text-xl font-semibold">
                     {format(weekStart, "dd 'de' MMMM", {
-                      locale: ptBR
-                    })} - {format(weekEnd, "dd 'de' MMMM 'de' yyyy", {
-                      locale: ptBR
-                    })}
+                    locale: ptBR
+                  })} - {format(weekEnd, "dd 'de' MMMM 'de' yyyy", {
+                    locale: ptBR
+                  })}
                   </h2>
                   
                   <div className="flex gap-2">
-                    <AddToWaitingListModal
-                      trigger={
-                        <Button variant="outline" className="gap-2">
+                    <AddToWaitingListModal trigger={<Button variant="outline" className="gap-2">
                           <Clock className="h-4 w-4" />
                           Lista de Espera
-                        </Button>
-                      }
-                    />
+                        </Button>} />
                     <Button onClick={() => {
-                      setModalInitialValues({});
-                      setModalOpen(true);
-                    }} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                    setModalInitialValues({});
+                    setModalOpen(true);
+                  }} className="bg-primary text-primary-foreground hover:bg-primary/90">
                       <Plus className="h-4 w-4 mr-2" />
                       Novo Agendamento
                     </Button>
@@ -316,43 +299,33 @@ export default function Agenda() {
           {/* Calendar */}
           <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-elegant">
             <CardContent className="p-4 lg:p-6">
-              {isLoading ? (
-                <div className="text-center py-8">
+              {isLoading ? <div className="text-center py-8">
                   <div className="animate-spin inline-block w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
                   <p className="mt-2 text-muted-foreground">Carregando agendamentos...</p>
-                </div>
-              ) : (
-                <>
+                </div> : <>
                   {/* Mobile: Card view for single day */}
                   <div className="md:hidden space-y-4">
                     {(() => {
-                      // Filter professionals based on selection
-                      const visibleProfessionals = selectedProfessional === 'all' ? professionals : professionals.filter(p => p.id === selectedProfessional);
-                      const dayKey = format(currentDay, 'yyyy-MM-dd');
-                      
-                      if (visibleProfessionals.length === 0) {
-                        return (
-                          <div className="text-center py-12">
+                  // Filter professionals based on selection
+                  const visibleProfessionals = selectedProfessional === 'all' ? professionals : professionals.filter(p => p.id === selectedProfessional);
+                  const dayKey = format(currentDay, 'yyyy-MM-dd');
+                  if (visibleProfessionals.length === 0) {
+                    return <div className="text-center py-12">
                             <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                             <h3 className="text-lg font-semibold mb-2">Nenhum profissional encontrado</h3>
                             <p className="text-muted-foreground">
                               Não há profissionais disponíveis para esta seleção.
                             </p>
-                          </div>
-                        );
-                      }
-                      
-                      return visibleProfessionals.map(professional => {
-                        const dayAppointments = appointmentsByProfessional[professional.full_name]?.[dayKey] || [];
-                        return (
-                          <Card key={professional.id} className="border-border/30">
+                          </div>;
+                  }
+                  return visibleProfessionals.map(professional => {
+                    const dayAppointments = appointmentsByProfessional[professional.full_name]?.[dayKey] || [];
+                    return <Card key={professional.id} className="border-border/30">
                             <CardHeader className="pb-3">
                               <CardTitle className="text-lg">{professional.full_name}</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2">
-                              {dayAppointments.length > 0 ? (
-                                dayAppointments.map(appointment => (
-                                  <div key={appointment.id} className="bg-primary text-primary-foreground p-3 rounded-md shadow-sm">
+                              {dayAppointments.length > 0 ? dayAppointments.map(appointment => <div key={appointment.id} className="bg-primary text-primary-foreground p-3 rounded-md shadow-sm">
                                     <div className="font-medium text-sm mb-1">
                                       {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
                                     </div>
@@ -362,14 +335,10 @@ export default function Agenda() {
                                     <div className="text-xs text-primary-foreground/80 mt-1">
                                       {appointment.treatment?.treatment_name || 'Tratamento não identificado'}
                                     </div>
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="text-center py-6 text-muted-foreground">
+                                  </div>) : <div className="text-center py-6 text-muted-foreground">
                                   <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
                                   <p className="text-sm">Nenhum agendamento para este dia</p>
-                                </div>
-                              )}
+                                </div>}
                               
                               {/* Add appointment button */}
                               <Button variant="outline" className="w-full mt-3" onClick={() => handleEmptySlotClick(professional, currentDay, '09:00')}>
@@ -377,10 +346,9 @@ export default function Agenda() {
                                 Novo Agendamento
                               </Button>
                             </CardContent>
-                          </Card>
-                        );
-                      });
-                    })()}
+                          </Card>;
+                  });
+                })()}
                   </div>
 
                   {/* Desktop: Grid view for full week */}
@@ -390,31 +358,25 @@ export default function Agenda() {
                       <div className="font-semibold text-sm text-muted-foreground p-2">
                         Profissional
                       </div>
-                      {weekDays.map(day => (
-                        <div key={day.toISOString()} className="font-semibold text-sm text-center p-2">
+                      {weekDays.map(day => <div key={day.toISOString()} className="font-semibold text-sm text-center p-2">
                           <div>{format(day, 'EEE', {
-                            locale: ptBR
-                          })}</div>
+                        locale: ptBR
+                      })}</div>
                           <div className="text-xs text-muted-foreground">{format(day, 'dd/MM')}</div>
-                        </div>
-                      ))}
+                        </div>)}
                     </div>
 
                     {/* Calendar Body */}
-                    {professionals.length > 0 ? (
-                      <div className="min-w-[800px]">
-                        {professionals.map(professional => (
-                          <div key={professional.id} className="grid grid-cols-8 gap-2 mb-4 border-b border-border/30 pb-4">
+                    {professionals.length > 0 ? <div className="min-w-[800px]">
+                        {professionals.map(professional => <div key={professional.id} className="grid grid-cols-8 gap-2 mb-4 border-b border-border/30 pb-4">
                             <div className="font-medium p-2 text-sm">
                               {professional.full_name}
                             </div>
                             {weekDays.map(day => {
-                              const dayKey = format(day, 'yyyy-MM-dd');
-                              const dayAppointments = appointmentsByProfessional[professional.full_name]?.[dayKey] || [];
-                              return (
-                                <div key={dayKey} className="min-h-[120px] p-1 border border-border/20 rounded-md bg-muted/20 hover:bg-muted/40 transition-colors">
-                                  {dayAppointments.map(appointment => (
-                                    <div key={appointment.id} className="bg-primary text-primary-foreground p-2 rounded-md mb-1 text-xs shadow-sm">
+                      const dayKey = format(day, 'yyyy-MM-dd');
+                      const dayAppointments = appointmentsByProfessional[professional.full_name]?.[dayKey] || [];
+                      return <div key={dayKey} className="min-h-[120px] p-1 border border-border/20 rounded-md bg-muted/20 hover:bg-muted/40 transition-colors">
+                                  {dayAppointments.map(appointment => <div key={appointment.id} className="bg-primary text-primary-foreground p-2 rounded-md mb-1 text-xs shadow-sm">
                                       <div className="font-medium">
                                         {format(new Date(appointment.appointment_start_time), 'HH:mm')}
                                       </div>
@@ -424,47 +386,33 @@ export default function Agenda() {
                                       <div className="truncate text-primary-foreground/80">
                                         {appointment.treatment?.treatment_name || 'Tratamento não identificado'}
                                       </div>
-                                    </div>
-                                  ))}
+                                    </div>)}
                                   
                                   {/* Empty slot click area */}
                                   <div onClick={() => handleEmptySlotClick(professional, day, '09:00')} className="h-8 flex items-center justify-center cursor-pointer opacity-60 hover:opacity-100 transition-opacity bg-muted/40 hover:bg-muted/60 rounded border border-dashed border-muted-foreground/30">
                                     <Plus className="h-4 w-4 text-muted-foreground" />
                                   </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-12">
+                                </div>;
+                    })}
+                          </div>)}
+                      </div> : <div className="text-center py-12">
                         <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                         <h3 className="text-lg font-semibold mb-2">Nenhum profissional cadastrado</h3>
                         <p className="text-muted-foreground">
                           Não há profissionais cadastrados no sistema.
                         </p>
-                      </div>
-                    )}
+                      </div>}
                   </div>
-                </>
-              )}
+                </>}
             </CardContent>
           </Card>
         </div>
       </main>
 
       {/* New Appointment Modal */}
-      <NewAppointmentModal 
-        trigger={<div />} 
-        open={modalOpen} 
-        onOpenChange={setModalOpen} 
-        initialValues={modalInitialValues} 
-        onSuccess={() => {
-          setModalOpen(false);
-          setModalInitialValues({});
-        }} 
-      />
-    </div>
-  );
+      <NewAppointmentModal trigger={<div />} open={modalOpen} onOpenChange={setModalOpen} initialValues={modalInitialValues} onSuccess={() => {
+      setModalOpen(false);
+      setModalInitialValues({});
+    }} />
+    </div>;
 }
