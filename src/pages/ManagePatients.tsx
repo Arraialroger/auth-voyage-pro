@@ -49,6 +49,7 @@ export default function ManagePatients() {
   const [viewingDocument, setViewingDocument] = useState<PatientDocument | null>(null);
   const [documentPreviewUrl, setDocumentPreviewUrl] = useState<string | null>(null);
   const [isDocumentPreviewOpen, setIsDocumentPreviewOpen] = useState(false);
+
   const [formData, setFormData] = useState({
     full_name: '',
     contact_phone: '',
@@ -56,23 +57,24 @@ export default function ManagePatients() {
     medical_history_notes: ''
   });
 
-  const { data: patients = [], isLoading } = useQuery({
+  const { data: patients, isLoading } = useQuery({
     queryKey: ['patients'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('patients')
         .select('*')
-        .order('full_name');
+        .order('full_name', { ascending: true });
       
       if (error) throw error;
       return data as Patient[];
     }
   });
 
-  const { data: patientDocuments = [] } = useQuery({
+  const { data: patientDocuments } = useQuery({
     queryKey: ['patient-documents', editingPatient?.id],
     queryFn: async () => {
       if (!editingPatient?.id) return [];
+      
       const { data, error } = await supabase
         .from('patient_documents')
         .select('*')
@@ -82,88 +84,63 @@ export default function ManagePatients() {
       if (error) throw error;
       return data as PatientDocument[];
     },
-    enabled: !!editingPatient?.id,
+    enabled: !!editingPatient?.id
   });
 
-  const filteredPatients = patients.filter(patient =>
+  const filteredPatients = patients?.filter(patient =>
     patient.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     patient.contact_phone.includes(searchTerm)
-  );
+  ) || [];
 
-  const handleLogout = async () => {
-    await signOut();
-    navigate('/');
-  };
-
-  const resetForm = () => {
-    setFormData({
-      full_name: '',
-      contact_phone: '',
-      birth_date: '',
-      medical_history_notes: ''
-    });
-    setSelectedFiles(null);
-  };
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    setSelectedFiles(files);
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedFiles(e.target.files);
   };
 
   const handleUploadDocuments = async () => {
-    if (!selectedFiles || !editingPatient) {
-      toast({
-        title: 'Erro',
-        description: 'Selecione arquivos para fazer upload',
-        variant: 'destructive',
-      });
-      return;
-    }
+    if (!selectedFiles || !editingPatient) return;
 
     setIsUploading(true);
     try {
-      for (const file of Array.from(selectedFiles)) {
+      for (const file of selectedFiles) {
         const fileExt = file.name.split('.').pop();
-        const fileName = `${editingPatient.id}/${Date.now()}.${fileExt}`;
+        const fileName = `${Date.now()}_${file.name}`;
+        const filePath = `patient-documents/${editingPatient.id}/${fileName}`;
 
-        // Upload file to storage
         const { error: uploadError } = await supabase.storage
-          .from('medical-documents')
-          .upload(fileName, file);
+          .from('patient-documents')
+          .upload(filePath, file);
 
         if (uploadError) throw uploadError;
 
-        // Save document info to database
         const { error: dbError } = await supabase
           .from('patient_documents')
           .insert({
             patient_id: editingPatient.id,
             file_name: file.name,
-            file_path: fileName,
+            file_path: filePath,
             file_size: file.size,
-            mime_type: file.type,
-            uploaded_by: (await supabase.auth.getUser()).data.user?.id
+            mime_type: file.type
           });
 
         if (dbError) throw dbError;
       }
 
-      queryClient.invalidateQueries({ queryKey: ['patient-documents', editingPatient.id] });
       toast({
-        title: 'Sucesso',
-        description: `${selectedFiles.length} documento(s) enviado(s) com sucesso!`,
+        title: "Documentos enviados com sucesso",
+        description: `${selectedFiles.length} documento(s) foram carregados.`
       });
+
       setSelectedFiles(null);
-      
-      // Clear the file input
       const fileInput = document.getElementById('document-upload') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
+      
+      queryClient.invalidateQueries({ queryKey: ['patient-documents'] });
     } catch (error) {
       console.error('Erro ao fazer upload:', error);
       toast({
-        title: 'Erro',
-        description: 'Erro ao fazer upload dos documentos',
-        variant: 'destructive',
+        title: "Erro ao enviar documentos",
+        description: "Ocorreu um erro ao fazer upload dos arquivos.",
+        variant: "destructive"
       });
     } finally {
       setIsUploading(false);
@@ -173,7 +150,7 @@ export default function ManagePatients() {
   const handleViewDocument = async (doc: PatientDocument) => {
     try {
       const { data, error } = await supabase.storage
-        .from('medical-documents')
+        .from('patient-documents')
         .download(doc.file_path);
 
       if (error) throw error;
@@ -185,9 +162,9 @@ export default function ManagePatients() {
     } catch (error) {
       console.error('Erro ao visualizar documento:', error);
       toast({
-        title: 'Erro',
-        description: 'Erro ao carregar documento para visualização',
-        variant: 'destructive',
+        title: "Erro ao visualizar documento",
+        description: "Não foi possível carregar o documento.",
+        variant: "destructive"
       });
     }
   };
@@ -195,64 +172,37 @@ export default function ManagePatients() {
   const handleDownloadDocument = async (doc: PatientDocument) => {
     try {
       const { data, error } = await supabase.storage
-        .from('medical-documents')
+        .from('patient-documents')
         .download(doc.file_path);
 
       if (error) throw error;
 
-      // Create download link
       const url = URL.createObjectURL(data);
-      const a = globalThis.document.createElement('a');
+      const a = document.createElement('a');
       a.href = url;
       a.download = doc.file_name;
-      globalThis.document.body.appendChild(a);
+      document.body.appendChild(a);
       a.click();
-      globalThis.document.body.removeChild(a);
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
-
-      toast({
-        title: 'Sucesso',
-        description: 'Download realizado com sucesso!',
-      });
     } catch (error) {
-      console.error('Erro ao fazer download:', error);
+      console.error('Erro ao baixar documento:', error);
       toast({
-        title: 'Erro',
-        description: 'Erro ao fazer download do documento',
-        variant: 'destructive',
+        title: "Erro ao baixar documento",
+        description: "Não foi possível baixar o arquivo.",
+        variant: "destructive"
       });
     }
-  };
-
-  const closeDocumentPreview = () => {
-    if (documentPreviewUrl) {
-      URL.revokeObjectURL(documentPreviewUrl);
-    }
-    setDocumentPreviewUrl(null);
-    setViewingDocument(null);
-    setIsDocumentPreviewOpen(false);
-  };
-
-  const getFileIcon = (mimeType?: string) => {
-    if (!mimeType) return FileText;
-    if (mimeType.startsWith('image/')) return Image;
-    return FileText;
-  };
-
-  const isImageFile = (mimeType?: string) => {
-    return mimeType?.startsWith('image/') || false;
   };
 
   const handleDeleteDocument = async (doc: PatientDocument) => {
     try {
-      // Delete from storage
       const { error: storageError } = await supabase.storage
-        .from('medical-documents')
+        .from('patient-documents')
         .remove([doc.file_path]);
 
       if (storageError) throw storageError;
 
-      // Delete from database
       const { error: dbError } = await supabase
         .from('patient_documents')
         .delete()
@@ -260,22 +210,53 @@ export default function ManagePatients() {
 
       if (dbError) throw dbError;
 
-      queryClient.invalidateQueries({ queryKey: ['patient-documents', editingPatient?.id] });
       toast({
-        title: 'Sucesso',
-        description: 'Documento excluído com sucesso!',
+        title: "Documento excluído",
+        description: "O documento foi removido com sucesso."
       });
+
+      queryClient.invalidateQueries({ queryKey: ['patient-documents'] });
     } catch (error) {
       console.error('Erro ao excluir documento:', error);
       toast({
-        title: 'Erro',
-        description: 'Erro ao excluir documento',
-        variant: 'destructive',
+        title: "Erro ao excluir documento",
+        description: "Não foi possível remover o arquivo.",
+        variant: "destructive"
       });
     }
   };
 
+  const closeDocumentPreview = () => {
+    setIsDocumentPreviewOpen(false);
+    setViewingDocument(null);
+    if (documentPreviewUrl) {
+      URL.revokeObjectURL(documentPreviewUrl);
+      setDocumentPreviewUrl(null);
+    }
+  };
+
+  const getFileIcon = (mimeType?: string) => {
+    if (!mimeType) return FileText;
+    
+    if (mimeType.startsWith('image/')) return Image;
+    if (mimeType === 'application/pdf') return FileText;
+    return FileText;
+  };
+
+  const isImageFile = (mimeType?: string) => {
+    return mimeType?.startsWith('image/') || false;
+  };
+
   const handleCreatePatient = async () => {
+    if (!formData.full_name || !formData.contact_phone) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Nome e telefone são obrigatórios.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('patients')
@@ -289,25 +270,37 @@ export default function ManagePatients() {
       if (error) throw error;
 
       toast({
-        title: 'Paciente criado',
-        description: 'O novo paciente foi criado com sucesso.',
+        title: "Paciente criado com sucesso",
+        description: `${formData.full_name} foi adicionado ao sistema.`
       });
 
-      queryClient.invalidateQueries({ queryKey: ['patients'] });
+      setFormData({
+        full_name: '',
+        contact_phone: '',
+        birth_date: '',
+        medical_history_notes: ''
+      });
       setIsCreateDialogOpen(false);
-      resetForm();
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
     } catch (error) {
-      console.error('Error creating patient:', error);
+      console.error('Erro ao criar paciente:', error);
       toast({
-        title: 'Erro',
-        description: 'Erro ao criar paciente. Tente novamente.',
-        variant: 'destructive',
+        title: "Erro ao criar paciente",
+        description: "Ocorreu um erro ao salvar os dados.",
+        variant: "destructive"
       });
     }
   };
 
   const handleEditPatient = async () => {
-    if (!editingPatient) return;
+    if (!editingPatient || !formData.full_name || !formData.contact_phone) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Nome e telefone são obrigatórios.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     try {
       const { error } = await supabase
@@ -323,20 +316,19 @@ export default function ManagePatients() {
       if (error) throw error;
 
       toast({
-        title: 'Paciente atualizado',
-        description: 'Os dados do paciente foram atualizados com sucesso.',
+        title: "Paciente atualizado",
+        description: "As informações foram salvas com sucesso."
       });
 
-      queryClient.invalidateQueries({ queryKey: ['patients'] });
       setIsEditDialogOpen(false);
       setEditingPatient(null);
-      resetForm();
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
     } catch (error) {
-      console.error('Error updating patient:', error);
+      console.error('Erro ao editar paciente:', error);
       toast({
-        title: 'Erro',
-        description: 'Erro ao atualizar paciente. Tente novamente.',
-        variant: 'destructive',
+        title: "Erro ao editar paciente",
+        description: "Ocorreu um erro ao salvar as alterações.",
+        variant: "destructive"
       });
     }
   };
@@ -351,17 +343,17 @@ export default function ManagePatients() {
       if (error) throw error;
 
       toast({
-        title: 'Paciente excluído',
-        description: 'O paciente foi excluído com sucesso.',
+        title: "Paciente excluído",
+        description: "O paciente foi removido do sistema."
       });
 
       queryClient.invalidateQueries({ queryKey: ['patients'] });
     } catch (error) {
-      console.error('Error deleting patient:', error);
+      console.error('Erro ao excluir paciente:', error);
       toast({
-        title: 'Erro',
-        description: 'Erro ao excluir paciente. Tente novamente.',
-        variant: 'destructive',
+        title: "Erro ao excluir paciente",
+        description: "Ocorreu um erro ao remover o paciente.",
+        variant: "destructive"
       });
     }
   };
@@ -378,82 +370,90 @@ export default function ManagePatients() {
   };
 
   const openCreateDialog = () => {
-    resetForm();
+    setFormData({
+      full_name: '',
+      contact_phone: '',
+      birth_date: '',
+      medical_history_notes: ''
+    });
     setIsCreateDialogOpen(true);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-subtle overflow-x-hidden">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm">
-        <div className="container mx-auto px-2 sm:px-4 py-4 flex justify-between items-center flex-wrap gap-2">
-          <div className="flex items-center space-x-2 sm:space-x-3">
-            <Users className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-            <h1 className="text-lg sm:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Gerenciar Pacientes
-            </h1>
-          </div>
-          
-          <div className="flex items-center space-x-1 sm:space-x-4">
-            <Button variant="outline" onClick={() => navigate('/admin')} className="border-border/50 text-xs sm:text-sm px-2 sm:px-4">
-              <ArrowLeft className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Voltar</span>
-            </Button>
-            <div className="hidden md:flex items-center space-x-2 text-sm text-muted-foreground">
-              <span>{user?.email}</span>
+      <header className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                onClick={() => navigate(-1)}
+                className="hover:bg-accent/80"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar
+              </Button>
+              <div className="flex items-center space-x-2">
+                <Users className="h-6 w-6 text-primary" />
+                <h1 className="text-xl sm:text-2xl font-bold">Gerenciar Pacientes</h1>
+              </div>
             </div>
-            <Button variant="outline" onClick={handleLogout} className="group border-border/50 hover:border-destructive hover:text-destructive text-xs sm:text-sm px-2 sm:px-4">
-              Sair
-            </Button>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-muted-foreground hidden sm:inline">
+                {user?.email}
+              </span>
+              <Button variant="outline" onClick={signOut}>
+                Sair
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-2 sm:px-4 py-8">
-        <div className="max-w-7xl mx-auto space-y-6">
-          {/* Actions Bar */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div className="relative w-full md:w-auto">
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="space-y-6">
+          {/* Search and Create */}
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
                 placeholder="Buscar pacientes..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full md:w-80"
+                className="pl-9"
               />
             </div>
-            
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
-                <Button onClick={openCreateDialog} className="w-full md:w-auto">
-                  <Plus className="mr-2 h-4 w-4" />
+                <Button onClick={openCreateDialog} className="shrink-0">
+                  <Plus className="h-4 w-4 mr-2" />
                   Novo Paciente
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Criar Novo Paciente</DialogTitle>
+                  <DialogTitle>Novo Paciente</DialogTitle>
                   <DialogDescription>
-                    Preencha as informações do novo paciente abaixo.
+                    Adicione as informações do novo paciente.
                   </DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
+                <div className="space-y-4 py-4">
                   <div>
-                    <Label htmlFor="name">Nome Completo *</Label>
+                    <Label htmlFor="full_name">Nome Completo *</Label>
                     <Input
-                      id="name"
+                      id="full_name"
                       value={formData.full_name}
-                      onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
+                      onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                       placeholder="Digite o nome completo"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="phone">Telefone *</Label>
+                    <Label htmlFor="contact_phone">Telefone *</Label>
                     <Input
-                      id="phone"
+                      id="contact_phone"
                       value={formData.contact_phone}
-                      onChange={(e) => setFormData(prev => ({ ...prev, contact_phone: e.target.value }))}
+                      onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
                       placeholder="(11) 99999-9999"
                     />
                   </div>
@@ -463,16 +463,17 @@ export default function ManagePatients() {
                       id="birth_date"
                       type="date"
                       value={formData.birth_date}
-                      onChange={(e) => setFormData(prev => ({ ...prev, birth_date: e.target.value }))}
+                      onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="medical_history">Histórico Médico</Label>
+                    <Label htmlFor="medical_history_notes">Histórico Médico</Label>
                     <Textarea
-                      id="medical_history"
+                      id="medical_history_notes"
                       value={formData.medical_history_notes}
-                      onChange={(e) => setFormData(prev => ({ ...prev, medical_history_notes: e.target.value }))}
-                      placeholder="Informações relevantes do histórico médico"
+                      onChange={(e) => setFormData({ ...formData, medical_history_notes: e.target.value })}
+                      placeholder="Informações relevantes do histórico médico..."
+                      rows={3}
                     />
                   </div>
                 </div>
@@ -491,11 +492,11 @@ export default function ManagePatients() {
             </Dialog>
           </div>
 
-          {/* Patients Grid */}
+          {/* Patients List */}
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-lg p-6 space-y-4 animate-fade-in">
+              {[1, 2, 3, 4, 5, 6].map((index) => (
+                <div key={index} className="border rounded-lg p-6 space-y-4 animate-pulse">
                   <div className="space-y-2">
                     <div className="h-6 w-3/4 bg-muted/60 rounded animate-pulse" />
                     <div className="h-4 w-1/2 bg-muted/60 rounded animate-pulse" />
@@ -582,8 +583,9 @@ export default function ManagePatients() {
                             </DialogHeader>
                             
                             <div className="flex-1 overflow-y-auto p-6">
-                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-6xl mx-auto">
-                                <div className="space-y-4">
+                              <div className="space-y-6">
+                                {/* Campos básicos em linha horizontal */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                   <div>
                                     <Label htmlFor="edit_name">Nome Completo *</Label>
                                     <Input
@@ -615,120 +617,119 @@ export default function ManagePatients() {
                                     />
                                   </div>
                                 </div>
-                                
-                                <div className="space-y-4">
-                                  <div className="h-full">
-                                    <Label htmlFor="edit_medical_history">Histórico Médico</Label>
-                                    <Textarea
-                                      id="edit_medical_history"
-                                      value={formData.medical_history_notes}
-                                      onChange={(e) => setFormData(prev => ({ ...prev, medical_history_notes: e.target.value }))}
-                                      placeholder="Informações relevantes do histórico médico..."
-                                      className="mt-2 min-h-[300px] resize-none"
-                                    />
+
+                                {/* Textarea do histórico médico em largura total */}
+                                <div>
+                                  <Label htmlFor="edit_medical_history">Histórico Médico</Label>
+                                  <Textarea
+                                    id="edit_medical_history"
+                                    value={formData.medical_history_notes}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, medical_history_notes: e.target.value }))}
+                                    placeholder="Informações relevantes do histórico médico..."
+                                    className="mt-2 min-h-[150px] resize-none"
+                                  />
+                                </div>
+
+                                {/* Seção de documentos em largura total */}
+                                <div className="space-y-4 border-t pt-4">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="h-5 w-5 text-muted-foreground" />
+                                    <Label className="text-base font-medium">Documentos Médicos</Label>
                                   </div>
 
-                                  {/* Documents Section */}
-                                  <div className="space-y-4 border-t pt-4">
+                                  {/* Upload Section */}
+                                  <div className="space-y-3">
                                     <div className="flex items-center gap-2">
-                                      <FileText className="h-5 w-5 text-muted-foreground" />
-                                      <Label className="text-base font-medium">Documentos Médicos</Label>
+                                      <Input
+                                        id="document-upload"
+                                        type="file"
+                                        multiple
+                                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                        onChange={handleFileSelect}
+                                        className="flex-1"
+                                      />
+                                      <Button 
+                                        onClick={handleUploadDocuments}
+                                        disabled={!selectedFiles || isUploading}
+                                        size="sm"
+                                        className="shrink-0"
+                                      >
+                                        {isUploading ? (
+                                          "Enviando..."
+                                        ) : (
+                                          <>
+                                            <Upload className="h-4 w-4 mr-1" />
+                                            Upload
+                                          </>
+                                        )}
+                                      </Button>
                                     </div>
-
-                                    {/* Upload Section */}
-                                    <div className="space-y-3">
-                                      <div className="flex items-center gap-2">
-                                        <Input
-                                          id="document-upload"
-                                          type="file"
-                                          multiple
-                                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                          onChange={handleFileSelect}
-                                          className="flex-1"
-                                        />
-                                        <Button 
-                                          onClick={handleUploadDocuments}
-                                          disabled={!selectedFiles || isUploading}
-                                          size="sm"
-                                          className="shrink-0"
-                                        >
-                                          {isUploading ? (
-                                            "Enviando..."
-                                          ) : (
-                                            <>
-                                              <Upload className="h-4 w-4 mr-1" />
-                                              Upload
-                                            </>
-                                          )}
-                                        </Button>
+                                    {selectedFiles && (
+                                      <div className="text-sm text-muted-foreground">
+                                        {selectedFiles.length} arquivo(s) selecionado(s)
                                       </div>
-                                      {selectedFiles && (
-                                        <div className="text-sm text-muted-foreground">
-                                          {selectedFiles.length} arquivo(s) selecionado(s)
-                                        </div>
-                                      )}
-                                    </div>
+                                    )}
+                                  </div>
 
-                                     {/* Documents List */}
-                                     <div className="max-h-48 overflow-y-auto space-y-2">
-                                       {patientDocuments?.map((doc) => {
-                                         const FileIcon = getFileIcon(doc.mime_type);
-                                         return (
-                                           <div
-                                             key={doc.id}
-                                             className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
-                                           >
-                                             <div 
-                                               className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer"
-                                               onClick={() => handleViewDocument(doc)}
-                                             >
-                                               <FileIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-                                               <div className="min-w-0 flex-1">
-                                                 <p className="text-sm font-medium truncate hover:text-primary transition-colors">{doc.file_name}</p>
-                                                 <p className="text-xs text-muted-foreground">
-                                                   {new Date(doc.created_at).toLocaleDateString('pt-BR')}
-                                                   {doc.file_size && ` • ${Math.round(doc.file_size / 1024)} KB`}
-                                                 </p>
-                                               </div>
-                                             </div>
-                                             <div className="flex items-center gap-1 shrink-0">
-                                               <Button
-                                                 variant="ghost"
-                                                 size="sm"
-                                                 onClick={() => handleViewDocument(doc)}
-                                                 className="h-8 w-8 p-0 text-primary hover:text-primary"
-                                                 title="Visualizar documento"
-                                               >
-                                                 <Eye className="h-4 w-4" />
-                                               </Button>
-                                               <Button
-                                                 variant="ghost"
-                                                 size="sm"
-                                                 onClick={() => handleDownloadDocument(doc)}
-                                                 className="h-8 w-8 p-0"
-                                                 title="Baixar documento"
-                                               >
-                                                 <Download className="h-4 w-4" />
-                                               </Button>
-                                               <Button
-                                                 variant="ghost"
-                                                 size="sm"
-                                                 onClick={() => handleDeleteDocument(doc)}
-                                                 className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                                                 title="Excluir documento"
-                                               >
-                                                 <X className="h-4 w-4" />
-                                               </Button>
-                                             </div>
-                                           </div>
-                                         );
-                                       })}
-                                      {(!patientDocuments || patientDocuments.length === 0) && (
-                                        <div className="text-center py-4 text-sm text-muted-foreground">
-                                          Nenhum documento encontrado
+                                  {/* Documents List */}
+                                  <div className="max-h-48 overflow-y-auto space-y-2">
+                                    {patientDocuments?.map((doc) => {
+                                      const FileIcon = getFileIcon(doc.mime_type);
+                                      return (
+                                        <div
+                                          key={doc.id}
+                                          className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
+                                        >
+                                          <div 
+                                            className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer"
+                                            onClick={() => handleViewDocument(doc)}
+                                          >
+                                            <FileIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                                            <div className="min-w-0 flex-1">
+                                              <p className="text-sm font-medium truncate hover:text-primary transition-colors">{doc.file_name}</p>
+                                              <p className="text-xs text-muted-foreground">
+                                                {new Date(doc.created_at).toLocaleDateString('pt-BR')}
+                                                {doc.file_size && ` • ${Math.round(doc.file_size / 1024)} KB`}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-1 shrink-0">
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => handleViewDocument(doc)}
+                                              className="h-8 w-8 p-0 text-primary hover:text-primary"
+                                              title="Visualizar documento"
+                                            >
+                                              <Eye className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => handleDownloadDocument(doc)}
+                                              className="h-8 w-8 p-0"
+                                              title="Baixar documento"
+                                            >
+                                              <Download className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => handleDeleteDocument(doc)}
+                                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                              title="Excluir documento"
+                                            >
+                                              <X className="h-4 w-4" />
+                                            </Button>
+                                          </div>
                                         </div>
-                                      )}
-                                    </div>
+                                      );
+                                    })}
+                                    {(!patientDocuments || patientDocuments.length === 0) && (
+                                      <div className="text-center py-4 text-sm text-muted-foreground">
+                                        Nenhum documento encontrado
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               </div>
