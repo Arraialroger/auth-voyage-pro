@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Users, Plus, Edit, Trash2, ArrowLeft, Search, Upload, Download, FileText, X } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, ArrowLeft, Search, Upload, Download, FileText, X, Eye, Image } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -46,6 +46,9 @@ export default function ManagePatients() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [viewingDocument, setViewingDocument] = useState<PatientDocument | null>(null);
+  const [documentPreviewUrl, setDocumentPreviewUrl] = useState<string | null>(null);
+  const [isDocumentPreviewOpen, setIsDocumentPreviewOpen] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
     contact_phone: '',
@@ -167,6 +170,28 @@ export default function ManagePatients() {
     }
   };
 
+  const handleViewDocument = async (doc: PatientDocument) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('medical-documents')
+        .download(doc.file_path);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      setDocumentPreviewUrl(url);
+      setViewingDocument(doc);
+      setIsDocumentPreviewOpen(true);
+    } catch (error) {
+      console.error('Erro ao visualizar documento:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao carregar documento para visualização',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleDownloadDocument = async (doc: PatientDocument) => {
     try {
       const { data, error } = await supabase.storage
@@ -197,6 +222,25 @@ export default function ManagePatients() {
         variant: 'destructive',
       });
     }
+  };
+
+  const closeDocumentPreview = () => {
+    if (documentPreviewUrl) {
+      URL.revokeObjectURL(documentPreviewUrl);
+    }
+    setDocumentPreviewUrl(null);
+    setViewingDocument(null);
+    setIsDocumentPreviewOpen(false);
+  };
+
+  const getFileIcon = (mimeType?: string) => {
+    if (!mimeType) return FileText;
+    if (mimeType.startsWith('image/')) return Image;
+    return FileText;
+  };
+
+  const isImageFile = (mimeType?: string) => {
+    return mimeType?.startsWith('image/') || false;
   };
 
   const handleDeleteDocument = async (doc: PatientDocument) => {
@@ -528,7 +572,7 @@ export default function ManagePatients() {
                             <Edit className="h-4 w-4" />
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-0 gap-0">
+                        <DialogContent className="max-w-4xl max-h-[90vh] w-full p-0 gap-0">
                           <div className="flex flex-col h-full">
                             <DialogHeader className="p-6 pb-4 border-b border-border/50">
                               <DialogTitle className="text-xl">Editar Paciente</DialogTitle>
@@ -625,43 +669,60 @@ export default function ManagePatients() {
                                       )}
                                     </div>
 
-                                    {/* Documents List */}
-                                    <div className="max-h-40 overflow-y-auto space-y-2">
-                                      {patientDocuments?.map((doc) => (
-                                        <div
-                                          key={doc.id}
-                                          className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                                        >
-                                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                                            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                                            <div className="min-w-0 flex-1">
-                                              <p className="text-sm font-medium truncate">{doc.file_name}</p>
-                                              <p className="text-xs text-muted-foreground">
-                                                {new Date(doc.created_at).toLocaleDateString('pt-BR')}
-                                                {doc.file_size && ` • ${Math.round(doc.file_size / 1024)} KB`}
-                                              </p>
-                                            </div>
-                                          </div>
-                                          <div className="flex items-center gap-1 shrink-0">
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => handleDownloadDocument(doc)}
-                                              className="h-8 w-8 p-0"
-                                            >
-                                              <Download className="h-4 w-4" />
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => handleDeleteDocument(doc)}
-                                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                                            >
-                                              <X className="h-4 w-4" />
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      ))}
+                                     {/* Documents List */}
+                                     <div className="max-h-48 overflow-y-auto space-y-2">
+                                       {patientDocuments?.map((doc) => {
+                                         const FileIcon = getFileIcon(doc.mime_type);
+                                         return (
+                                           <div
+                                             key={doc.id}
+                                             className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors"
+                                           >
+                                             <div 
+                                               className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer"
+                                               onClick={() => handleViewDocument(doc)}
+                                             >
+                                               <FileIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                                               <div className="min-w-0 flex-1">
+                                                 <p className="text-sm font-medium truncate hover:text-primary transition-colors">{doc.file_name}</p>
+                                                 <p className="text-xs text-muted-foreground">
+                                                   {new Date(doc.created_at).toLocaleDateString('pt-BR')}
+                                                   {doc.file_size && ` • ${Math.round(doc.file_size / 1024)} KB`}
+                                                 </p>
+                                               </div>
+                                             </div>
+                                             <div className="flex items-center gap-1 shrink-0">
+                                               <Button
+                                                 variant="ghost"
+                                                 size="sm"
+                                                 onClick={() => handleViewDocument(doc)}
+                                                 className="h-8 w-8 p-0 text-primary hover:text-primary"
+                                                 title="Visualizar documento"
+                                               >
+                                                 <Eye className="h-4 w-4" />
+                                               </Button>
+                                               <Button
+                                                 variant="ghost"
+                                                 size="sm"
+                                                 onClick={() => handleDownloadDocument(doc)}
+                                                 className="h-8 w-8 p-0"
+                                                 title="Baixar documento"
+                                               >
+                                                 <Download className="h-4 w-4" />
+                                               </Button>
+                                               <Button
+                                                 variant="ghost"
+                                                 size="sm"
+                                                 onClick={() => handleDeleteDocument(doc)}
+                                                 className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                                 title="Excluir documento"
+                                               >
+                                                 <X className="h-4 w-4" />
+                                               </Button>
+                                             </div>
+                                           </div>
+                                         );
+                                       })}
                                       {(!patientDocuments || patientDocuments.length === 0) && (
                                         <div className="text-center py-4 text-sm text-muted-foreground">
                                           Nenhum documento encontrado
@@ -740,6 +801,67 @@ export default function ManagePatients() {
           )}
         </div>
       </main>
+
+      {/* Document Preview Modal */}
+      <Dialog open={isDocumentPreviewOpen} onOpenChange={closeDocumentPreview}>
+        <DialogContent className="max-w-4xl max-h-[90vh] w-full p-0 gap-0">
+          <DialogHeader className="p-6 pb-4 border-b border-border/50">
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {viewingDocument?.file_name}
+            </DialogTitle>
+            <DialogDescription>
+              Visualização do documento • {viewingDocument?.file_size && `${Math.round(viewingDocument.file_size / 1024)} KB`}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-hidden p-6">
+            {documentPreviewUrl && viewingDocument && (
+              <div className="w-full h-full flex items-center justify-center">
+                {isImageFile(viewingDocument.mime_type) ? (
+                  <img 
+                    src={documentPreviewUrl} 
+                    alt={viewingDocument.file_name}
+                    className="max-w-full max-h-[60vh] object-contain rounded-lg shadow-md"
+                  />
+                ) : viewingDocument.mime_type === 'application/pdf' ? (
+                  <iframe
+                    src={documentPreviewUrl}
+                    className="w-full h-[60vh] rounded-lg border"
+                    title={viewingDocument.file_name}
+                  />
+                ) : (
+                  <div className="text-center space-y-4 p-8">
+                    <FileText className="h-16 w-16 text-muted-foreground mx-auto" />
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">Visualização não disponível</h3>
+                      <p className="text-muted-foreground mb-4">
+                        Este tipo de arquivo não pode ser visualizado diretamente no navegador.
+                      </p>
+                      <Button onClick={() => handleDownloadDocument(viewingDocument)}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Baixar Arquivo
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter className="p-6 pt-4 border-t border-border/50">
+            <Button variant="outline" onClick={closeDocumentPreview}>
+              Fechar
+            </Button>
+            {viewingDocument && (
+              <Button onClick={() => handleDownloadDocument(viewingDocument)}>
+                <Download className="h-4 w-4 mr-2" />
+                Baixar
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
