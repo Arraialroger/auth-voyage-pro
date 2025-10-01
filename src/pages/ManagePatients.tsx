@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Users, Plus, Edit, Trash2, ArrowLeft, Search, Upload, Download, FileText, X, Eye, Image } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, ArrowLeft, Search, Upload, Download, FileText, X, Eye, Image, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -86,6 +86,15 @@ export default function ManagePatients() {
     },
     enabled: !!editingPatient?.id
   });
+
+  const formatWhatsAppLink = (phone: string) => {
+    if (!phone) return '#';
+    // Remove caracteres especiais
+    const cleanPhone = phone.replace(/\D/g, '');
+    // Adiciona código do país se não tiver
+    const phoneWithCountry = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+    return `https://wa.me/${phoneWithCountry}`;
+  };
 
   const filteredPatients = patients?.filter(patient =>
     patient.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -525,7 +534,17 @@ export default function ManagePatients() {
                       {patient.full_name}
                     </CardTitle>
                     <CardDescription className="flex items-center space-x-2">
-                      <span>{patient.contact_phone}</span>
+                      <a
+                        href={formatWhatsAppLink(patient.contact_phone)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors group"
+                      >
+                        <MessageCircle className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                        <span className="underline-offset-4 group-hover:underline">
+                          {patient.contact_phone}
+                        </span>
+                      </a>
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -605,6 +624,19 @@ export default function ManagePatients() {
                                       placeholder="(11) 99999-9999"
                                       className="mt-2"
                                     />
+                                    {formData.contact_phone && (
+                                      <a
+                                        href={formatWhatsAppLink(formData.contact_phone)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors mt-1 group"
+                                      >
+                                        <MessageCircle className="h-3 w-3 group-hover:scale-110 transition-transform" />
+                                        <span className="underline-offset-4 group-hover:underline">
+                                          Abrir no WhatsApp
+                                        </span>
+                                      </a>
+                                    )}
                                   </div>
                                   <div>
                                     <Label htmlFor="edit_birth_date">Data de Nascimento</Label>
