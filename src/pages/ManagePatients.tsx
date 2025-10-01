@@ -113,10 +113,10 @@ export default function ManagePatients() {
       for (const file of selectedFiles) {
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}_${file.name}`;
-        const filePath = `patient-documents/${editingPatient.id}/${fileName}`;
+        const filePath = `${editingPatient.id}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
-          .from('patient-documents')
+          .from('medical-documents')
           .upload(filePath, file);
 
         if (uploadError) throw uploadError;
@@ -159,7 +159,7 @@ export default function ManagePatients() {
   const handleViewDocument = async (doc: PatientDocument) => {
     try {
       const { data, error } = await supabase.storage
-        .from('patient-documents')
+        .from('medical-documents')
         .download(doc.file_path);
 
       if (error) throw error;
@@ -181,7 +181,7 @@ export default function ManagePatients() {
   const handleDownloadDocument = async (doc: PatientDocument) => {
     try {
       const { data, error } = await supabase.storage
-        .from('patient-documents')
+        .from('medical-documents')
         .download(doc.file_path);
 
       if (error) throw error;
@@ -207,7 +207,7 @@ export default function ManagePatients() {
   const handleDeleteDocument = async (doc: PatientDocument) => {
     try {
       const { error: storageError } = await supabase.storage
-        .from('patient-documents')
+        .from('medical-documents')
         .remove([doc.file_path]);
 
       if (storageError) throw storageError;
