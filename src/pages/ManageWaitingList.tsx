@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Clock, Settings, Calendar, Trash2 } from 'lucide-react';
+import { Clock, Settings, Calendar, Trash2, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -38,6 +38,7 @@ interface WaitingListEntry {
   created_at: string;
   patients: {
     full_name: string;
+    contact_phone: string;
   };
   professionals: {
     full_name: string;
@@ -57,6 +58,15 @@ export default function ManageWaitingList() {
     navigate('/');
   };
 
+  const formatWhatsAppLink = (phone: string) => {
+    if (!phone) return '#';
+    // Remove caracteres especiais
+    const cleanPhone = phone.replace(/\D/g, '');
+    // Adiciona código do país se não tiver
+    const phoneWithCountry = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+    return `https://wa.me/${phoneWithCountry}`;
+  };
+
   const { data: waitingList = [], isLoading } = useQuery({
     queryKey: ['waiting-list'],
     queryFn: async () => {
@@ -68,7 +78,7 @@ export default function ManageWaitingList() {
           professional_id,
           notes,
           created_at,
-          patients (full_name),
+          patients (full_name, contact_phone),
           professionals (full_name)
         `)
         .order('created_at', { ascending: false });
@@ -184,6 +194,7 @@ export default function ManageWaitingList() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Paciente</TableHead>
+                      <TableHead>Telefone</TableHead>
                       <TableHead>Profissional Desejado</TableHead>
                       <TableHead>Observações</TableHead>
                       <TableHead>Data de Entrada</TableHead>
@@ -195,6 +206,23 @@ export default function ManageWaitingList() {
                       <TableRow key={entry.id}>
                         <TableCell className="font-medium">
                           {entry.patients.full_name}
+                        </TableCell>
+                        <TableCell>
+                          {entry.patients.contact_phone ? (
+                            <a
+                              href={formatWhatsAppLink(entry.patients.contact_phone)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors group"
+                            >
+                              <MessageCircle className="h-4 w-4 group-hover:scale-110 transition-transform" />
+                              <span className="underline-offset-4 group-hover:underline">
+                                {entry.patients.contact_phone}
+                              </span>
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           {entry.professionals.full_name}
