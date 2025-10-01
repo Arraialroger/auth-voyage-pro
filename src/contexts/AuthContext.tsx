@@ -125,13 +125,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
+    
+    // Limpar estado local sempre, independente de erro
+    setSession(null);
+    setUser(null);
+    
+    // Tratar erro de sessão inexistente como sucesso (usuário já está deslogado)
     if (error) {
-      toast({
-        title: "Erro ao fazer logout",
-        description: error.message,
-        variant: "destructive",
-      });
+      const isSessionError = error.message?.toLowerCase().includes('session') || 
+                            error.message?.toLowerCase().includes('auth session missing');
+      
+      if (!isSessionError) {
+        // Erro real, não relacionado a sessão
+        toast({
+          title: "Erro ao fazer logout",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
     }
+    
+    // Logout bem-sucedido (ou sessão já estava inválida)
+    window.location.href = '/login';
   };
 
   const value = {

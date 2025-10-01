@@ -108,19 +108,36 @@ export default function ManagePatients() {
   const handleUploadDocuments = async () => {
     if (!selectedFiles || !editingPatient) return;
 
+    console.log('🔵 Iniciando upload de documentos:', {
+      totalFiles: selectedFiles.length,
+      patientId: editingPatient.id
+    });
+
     setIsUploading(true);
     try {
       for (const file of selectedFiles) {
+        console.log('📄 Processando arquivo:', {
+          name: file.name,
+          size: file.size,
+          type: file.type
+        });
+
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}_${file.name}`;
         const filePath = `${editingPatient.id}/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
+        console.log('⬆️ Fazendo upload para storage:', filePath);
+        const { data: uploadData, error: uploadError } = await supabase.storage
           .from('medical-documents')
           .upload(filePath, file);
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('❌ Erro no upload do storage:', uploadError);
+          throw uploadError;
+        }
+        console.log('✅ Upload storage bem-sucedido:', uploadData);
 
+        console.log('💾 Salvando registro no banco de dados...');
         const { error: dbError } = await supabase
           .from('patient_documents')
           .insert({
@@ -131,7 +148,11 @@ export default function ManagePatients() {
             mime_type: file.type
           });
 
-        if (dbError) throw dbError;
+        if (dbError) {
+          console.error('❌ Erro ao salvar no banco:', dbError);
+          throw dbError;
+        }
+        console.log('✅ Registro salvo no banco de dados');
       }
 
       toast({
@@ -143,12 +164,15 @@ export default function ManagePatients() {
       const fileInput = document.getElementById('document-upload') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
       
-      queryClient.invalidateQueries({ queryKey: ['patient-documents'] });
-    } catch (error) {
-      console.error('Erro ao fazer upload:', error);
+      console.log('🔄 Revalidando queries de documentos...');
+      await queryClient.invalidateQueries({ queryKey: ['patient-documents'] });
+      console.log('✅ Upload completo!');
+    } catch (error: any) {
+      console.error('❌ Erro ao fazer upload:', error);
+      const errorMessage = error?.message || 'Ocorreu um erro ao fazer upload dos arquivos.';
       toast({
         title: "Erro ao enviar documentos",
-        description: "Ocorreu um erro ao fazer upload dos arquivos.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
