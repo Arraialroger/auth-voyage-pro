@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,6 +49,7 @@ export default function ManagePatients() {
   const [viewingDocument, setViewingDocument] = useState<PatientDocument | null>(null);
   const [documentPreviewUrl, setDocumentPreviewUrl] = useState<string | null>(null);
   const [isDocumentPreviewOpen, setIsDocumentPreviewOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -106,7 +107,14 @@ export default function ManagePatients() {
   };
 
   const handleUploadDocuments = async () => {
-    if (!selectedFiles || !editingPatient) return;
+    if (!editingPatient) {
+      toast({ title: "Selecione um paciente", description: "Abra um paciente antes de enviar documentos.", variant: "destructive" });
+      return;
+    }
+    if (!selectedFiles || selectedFiles.length === 0) {
+      toast({ title: "Nenhum arquivo selecionado", description: "Selecione um ou mais arquivos para enviar.", variant: "destructive" });
+      return;
+    }
 
     console.log('🔵 Iniciando upload de documentos:', {
       totalFiles: selectedFiles.length,
@@ -129,7 +137,7 @@ export default function ManagePatients() {
         console.log('⬆️ Fazendo upload para storage:', filePath);
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('medical-documents')
-          .upload(filePath, file);
+          .upload(filePath, file, { contentType: file.type });
 
         if (uploadError) {
           console.error('❌ Erro no upload do storage:', uploadError);
@@ -145,7 +153,8 @@ export default function ManagePatients() {
             file_name: file.name,
             file_path: filePath,
             file_size: file.size,
-            mime_type: file.type
+            mime_type: file.type,
+            uploaded_by: user?.id || null
           });
 
         if (dbError) {
@@ -161,15 +170,22 @@ export default function ManagePatients() {
       });
 
       setSelectedFiles(null);
-      const fileInput = document.getElementById('document-upload') as HTMLInputElement;
-      if (fileInput) fileInput.value = '';
+      if (fileInputRef.current) fileInputRef.current.value = '';
       
       console.log('🔄 Revalidando queries de documentos...');
-      await queryClient.invalidateQueries({ queryKey: ['patient-documents'] });
+      await queryClient.invalidateQueries({ queryKey: ['patient-documents', editingPatient.id] });
       console.log('✅ Upload completo!');
     } catch (error: any) {
       console.error('❌ Erro ao fazer upload:', error);
-      const errorMessage = error?.message || 'Ocorreu um erro ao fazer upload dos arquivos.';
+      const rawMessage = (error?.message as string) || '';
+      let errorMessage = rawMessage || 'Ocorreu um erro ao fazer upload dos arquivos.';
+      // Mensagens mais claras para casos comuns
+      const status = (error as any)?.statusCode;
+      if (status === 401 || status === 403 || /permission|not authorized|unauthorized/i.test(rawMessage)) {
+        errorMessage = 'Permissão negada. Verifique seu papel (Recepcionista ou Profissional) e tente novamente.';
+      } else if (status === 409 || /exists|conflict/i.test(rawMessage)) {
+        errorMessage = 'Já existe um arquivo com este nome. Tente renomear e enviar novamente.';
+      }
       toast({
         title: "Erro ao enviar documentos",
         description: errorMessage,
@@ -248,7 +264,7 @@ export default function ManagePatients() {
         description: "O documento foi removido com sucesso."
       });
 
-      queryClient.invalidateQueries({ queryKey: ['patient-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['patient-documents', doc.patient_id] });
     } catch (error) {
       console.error('Erro ao excluir documento:', error);
       toast({
@@ -703,6 +719,7 @@ export default function ManagePatients() {
                                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                                         onChange={handleFileSelect}
                                         className="flex-1"
+                                        ref={fileInputRef}
                                       />
                                       <Button 
                                         onClick={handleUploadDocuments}
