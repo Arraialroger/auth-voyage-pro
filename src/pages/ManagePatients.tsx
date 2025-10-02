@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Users, Plus, Edit, Trash2, ArrowLeft, Search, Upload, Download, FileText, X, Eye, Image, MessageCircle } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, ArrowLeft, Search, Upload, Download, FileText, X, Eye, Image, MessageCircle, CheckCircle2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -90,14 +90,28 @@ export default function ManagePatients() {
     enabled: !!editingPatient?.id
   });
 
-  const formatWhatsAppLink = (phone: string) => {
+  const formatWhatsAppLink = (phone: string, message?: string) => {
     if (!phone) return '#';
     // Remove caracteres especiais
     const cleanPhone = phone.replace(/\D/g, '');
     // Adiciona código do país se não tiver
     const phoneWithCountry = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+    
+    // Se tiver mensagem, adiciona ao link
+    if (message) {
+      const encodedMessage = encodeURIComponent(message);
+      return `https://wa.me/${phoneWithCountry}?text=${encodedMessage}`;
+    }
+    
     return `https://wa.me/${phoneWithCountry}`;
   };
+
+  const CONFIRMATION_MESSAGE = 
+    "Olá, aqui é a Manuella da Clínica Arraial Odonto 😊. " +
+    "Gostaria de confirmar sua consulta para garantirmos o seu horário. " +
+    "Se não conseguirmos a confirmação até 4 horas antes, precisaremos liberar " +
+    "a vaga para outro paciente, mas não se preocupe: entraremos em contato " +
+    "para remarcar com você. Você prefere confirmar a consulta ou reagendar para outro horário?";
 
   const filteredPatients = patients?.filter(patient =>
     patient.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -677,17 +691,31 @@ export default function ManagePatients() {
                                       className="mt-2"
                                     />
                                     {formData.contact_phone && (
-                                      <a
-                                        href={formatWhatsAppLink(formData.contact_phone)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors mt-1 group"
-                                      >
-                                        <MessageCircle className="h-3 w-3 group-hover:scale-110 transition-transform" />
-                                        <span className="underline-offset-4 group-hover:underline">
-                                          Abrir no WhatsApp
-                                        </span>
-                                      </a>
+                                      <div className="flex flex-col gap-2 mt-1">
+                                        <a
+                                          href={formatWhatsAppLink(formData.contact_phone)}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors group"
+                                        >
+                                          <MessageCircle className="h-3 w-3 group-hover:scale-110 transition-transform" />
+                                          <span className="underline-offset-4 group-hover:underline">
+                                            Abrir no WhatsApp
+                                          </span>
+                                        </a>
+                                        
+                                        <a
+                                          href={formatWhatsAppLink(formData.contact_phone, CONFIRMATION_MESSAGE)}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="flex items-center gap-1 text-sm text-green-600 hover:text-green-700 group"
+                                        >
+                                          <CheckCircle2 className="h-3 w-3 group-hover:scale-110 transition-transform" />
+                                          <span className="underline-offset-4 group-hover:underline">
+                                            Enviar confirmação da consulta
+                                          </span>
+                                        </a>
+                                      </div>
                                     )}
                                   </div>
                                   <div>
