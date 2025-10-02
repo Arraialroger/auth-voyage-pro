@@ -2,23 +2,43 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, LogOut, User, Clock, ChevronLeft, ChevronRight, Plus, Settings, Menu } from 'lucide-react';
+import { Calendar, LogOut, User, Clock, ChevronLeft, ChevronRight, Plus, Settings, Menu, MoreVertical, Edit, Trash2, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useState } from 'react';
 import { startOfWeek, endOfWeek, format, addDays, addWeeks, subWeeks } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { NewAppointmentModal } from '@/components/NewAppointmentModal';
+import { EditAppointmentModal } from '@/components/EditAppointmentModal';
 import { AddToWaitingListModal } from '@/components/AddToWaitingListModal';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useToast } from '@/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 interface Appointment {
   id: string;
   patient_id: string | null;
   appointment_start_time: string;
   appointment_end_time: string;
+  status?: string;
+  notes?: string;
   patient: {
     full_name: string;
   } | null;
@@ -27,7 +47,16 @@ interface Appointment {
   } | null;
   professional: {
     full_name: string;
+    id: string;
   } | null;
+}
+
+interface AvailableSlot {
+  start: Date;
+  end: Date;
+  duration: number;
+  professionalId: string;
+  professionalName: string;
 }
 export default function Agenda() {
   const {
@@ -37,15 +66,25 @@ export default function Agenda() {
   const navigate = useNavigate();
   const userProfile = useUserProfile();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [currentDay, setCurrentDay] = useState(new Date());
   const [selectedProfessional, setSelectedProfessional] = useState<string>('all');
   const [modalOpen, setModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>('');
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [appointmentToCancel, setAppointmentToCancel] = useState<string>('');
   const [modalInitialValues, setModalInitialValues] = useState<{
     professional_id?: string;
     appointment_date?: Date;
     start_time?: string;
   }>({});
+
+  // Configurações de horário de trabalho
+  const WORK_START_HOUR = 8;
+  const WORK_END_HOUR = 18;
+  const MIN_GAP_MINUTES = 30;
   const weekStart = startOfWeek(currentWeek, {
     weekStartsOn: 1
   });
@@ -64,10 +103,12 @@ export default function Agenda() {
             patient_id,
             appointment_start_time,
             appointment_end_time,
+            status,
+            notes,
             patients:patient_id (full_name),
             treatments:treatment_id (treatment_name),
-            professionals:professional_id (full_name)
-          `).gte('appointment_start_time', weekStart.toISOString()).lte('appointment_start_time', weekEnd.toISOString()).order('appointment_start_time');
+            professionals:professional_id (id, full_name)
+          `).gte('appointment_start_time', weekStart.toISOString()).lte('appointment_start_time', weekEnd.toISOString()).neq('status', 'Cancelled').order('appointment_start_time');
 
         // Se for profissional, filtrar apenas seus agendamentos
         if (userProfile.type === 'professional' && userProfile.professionalId) {
@@ -83,6 +124,8 @@ export default function Agenda() {
           patient_id: apt.patient_id,
           appointment_start_time: apt.appointment_start_time,
           appointment_end_time: apt.appointment_end_time,
+          status: apt.status,
+          notes: apt.notes,
           patient: apt.patients,
           treatment: apt.treatments,
           professional: apt.professionals
@@ -99,6 +142,104 @@ export default function Agenda() {
   };
   const previousWeek = () => setCurrentWeek(subWeeks(currentWeek, 1));
   const nextWeek = () => setCurrentWeek(addWeeks(currentWeek, 1));
+
+  const handleCancelAppointment = async (appointmentId: string) => {
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({ status: 'Cancelled' })
+        .eq('id', appointmentId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Agendamento cancelado',
+        description: 'O agendamento foi cancelado com sucesso.',
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      setCancelDialogOpen(false);
+    } catch (error) {
+      console.error('Error cancelling appointment:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao cancelar agendamento. Tente novamente.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleEditAppointment = (appointmentId: string) => {
+    setSelectedAppointmentId(appointmentId);
+    setEditModalOpen(true);
+  };
+
+  const handleCancelDialogOpen = (appointmentId: string) => {
+    setAppointmentToCancel(appointmentId);
+    setCancelDialogOpen(true);
+  };
+
+  // Função para calcular horários vagos
+  const calculateAvailableSlots = (
+    appointments: Appointment[],
+    date: Date,
+    professionalId: string,
+    professionalName: string
+  ): AvailableSlot[] => {
+    const dayKey = format(date, 'yyyy-MM-dd');
+    const dayAppointments = appointments
+      .filter(apt => {
+        const aptDate = format(new Date(apt.appointment_start_time), 'yyyy-MM-dd');
+        return aptDate === dayKey && apt.professional?.id === professionalId;
+      })
+      .sort((a, b) => 
+        new Date(a.appointment_start_time).getTime() - new Date(b.appointment_start_time).getTime()
+      );
+
+    const gaps: AvailableSlot[] = [];
+    let currentTime = new Date(date);
+    currentTime.setHours(WORK_START_HOUR, 0, 0, 0);
+
+    const endTime = new Date(date);
+    endTime.setHours(WORK_END_HOUR, 0, 0, 0);
+
+    for (const apt of dayAppointments) {
+      const aptStart = new Date(apt.appointment_start_time);
+
+      if (aptStart.getTime() > currentTime.getTime()) {
+        const gapMinutes = (aptStart.getTime() - currentTime.getTime()) / 60000;
+
+        if (gapMinutes >= MIN_GAP_MINUTES) {
+          gaps.push({
+            start: new Date(currentTime),
+            end: new Date(aptStart),
+            duration: gapMinutes,
+            professionalId,
+            professionalName,
+          });
+        }
+      }
+
+      currentTime = new Date(apt.appointment_end_time);
+    }
+
+    // Gap após último agendamento
+    if (currentTime.getTime() < endTime.getTime()) {
+      const gapMinutes = (endTime.getTime() - currentTime.getTime()) / 60000;
+
+      if (gapMinutes >= MIN_GAP_MINUTES) {
+        gaps.push({
+          start: new Date(currentTime),
+          end: new Date(endTime),
+          duration: gapMinutes,
+          professionalId,
+          professionalName,
+        });
+      }
+    }
+
+    return gaps;
+  };
 
   // Get professionals based on user profile
   const {
@@ -338,20 +479,101 @@ export default function Agenda() {
                               <CardTitle className="text-lg">{professional.full_name}</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2">
-                              {dayAppointments.length > 0 ? dayAppointments.map(appointment => <div key={appointment.id} onClick={() => handleAppointmentClick(appointment)} className="bg-primary text-primary-foreground p-3 rounded-md shadow-sm cursor-pointer hover:opacity-80 transition-opacity">
-                                    <div className="font-medium text-sm mb-1">
-                                      {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
-                                    </div>
-                                    <div className="text-sm">
-                                      {appointment.patient?.full_name || 'Paciente não identificado'}
-                                    </div>
-                                    <div className="text-xs text-primary-foreground/80 mt-1">
-                                      {appointment.treatment?.treatment_name || 'Tratamento não identificado'}
-                                    </div>
-                                  </div>) : <div className="text-center py-6 text-muted-foreground">
+                              {dayAppointments.length > 0 || calculateAvailableSlots(appointments, currentDay, professional.id, professional.full_name).length > 0 ? (
+                                <>
+                                  {(() => {
+                                    const slots = calculateAvailableSlots(appointments, currentDay, professional.id, professional.full_name);
+                                    const allItems: Array<{type: 'appointment' | 'gap', data: any}> = [
+                                      ...dayAppointments.map(apt => ({ type: 'appointment' as const, data: apt })),
+                                      ...slots.map(slot => ({ type: 'gap' as const, data: slot }))
+                                    ].sort((a, b) => {
+                                      const timeA = a.type === 'appointment' 
+                                        ? new Date(a.data.appointment_start_time).getTime()
+                                        : a.data.start.getTime();
+                                      const timeB = b.type === 'appointment'
+                                        ? new Date(b.data.appointment_start_time).getTime()
+                                        : b.data.start.getTime();
+                                      return timeA - timeB;
+                                    });
+
+                                    return allItems.map((item, idx) => {
+                                      if (item.type === 'appointment') {
+                                        const appointment = item.data;
+                                        return (
+                                          <div key={`apt-${appointment.id}`} className="relative bg-primary text-primary-foreground p-3 rounded-md shadow-sm group">
+                                            <div className="flex justify-between items-start">
+                                              <div className="flex-1 cursor-pointer" onClick={() => handleAppointmentClick(appointment)}>
+                                                <div className="font-medium text-sm mb-1">
+                                                  {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
+                                                </div>
+                                                <div className="text-sm">
+                                                  {appointment.patient?.full_name || 'Paciente não identificado'}
+                                                </div>
+                                                <div className="text-xs text-primary-foreground/80 mt-1">
+                                                  {appointment.treatment?.treatment_name || 'Tratamento não identificado'}
+                                                </div>
+                                              </div>
+                                              <DropdownMenu>
+                                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-primary-foreground hover:bg-primary-foreground/20">
+                                                    <MoreVertical className="h-4 w-4" />
+                                                  </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-48">
+                                                  <DropdownMenuItem onClick={() => handleEditAppointment(appointment.id)}>
+                                                    <Edit className="mr-2 h-4 w-4" />
+                                                    Editar Agendamento
+                                                  </DropdownMenuItem>
+                                                  <DropdownMenuItem onClick={() => handleAppointmentClick(appointment)}>
+                                                    <Eye className="mr-2 h-4 w-4" />
+                                                    Ver Paciente
+                                                  </DropdownMenuItem>
+                                                  <DropdownMenuSeparator />
+                                                  <DropdownMenuItem 
+                                                    onClick={() => handleCancelDialogOpen(appointment.id)}
+                                                    className="text-destructive focus:text-destructive"
+                                                  >
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    Cancelar Agendamento
+                                                  </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                              </DropdownMenu>
+                                            </div>
+                                          </div>
+                                        );
+                                      } else {
+                                        const gap = item.data;
+                                        return (
+                                          <div 
+                                            key={`gap-${idx}`}
+                                            onClick={() => handleEmptySlotClick(
+                                              { id: gap.professionalId, full_name: gap.professionalName },
+                                              currentDay,
+                                              format(gap.start, 'HH:mm')
+                                            )}
+                                            className="border-2 border-dashed border-muted-foreground/30 bg-muted/30 p-3 rounded-md cursor-pointer hover:bg-muted/50 hover:border-muted-foreground/50 transition-all"
+                                          >
+                                            <div className="flex items-center gap-2 text-muted-foreground">
+                                              <Clock className="h-4 w-4" />
+                                              <div className="flex-1">
+                                                <div className="font-medium text-sm">Horário Vago</div>
+                                                <div className="text-xs">{format(gap.start, 'HH:mm')} - {format(gap.end, 'HH:mm')}</div>
+                                                <div className="text-xs opacity-70">{Math.floor(gap.duration)} min disponíveis</div>
+                                              </div>
+                                              <Plus className="h-4 w-4" />
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+                                    });
+                                  })()}
+                                </>
+                              ) : (
+                                <div className="text-center py-6 text-muted-foreground">
                                   <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
                                   <p className="text-sm">Nenhum agendamento para este dia</p>
-                                </div>}
+                                </div>
+                              )}
                               
                               {/* Add appointment button */}
                               <Button variant="outline" className="w-full mt-3" onClick={() => handleEmptySlotClick(professional, currentDay, '09:00')}>
@@ -388,23 +610,97 @@ export default function Agenda() {
                             {weekDays.map(day => {
                       const dayKey = format(day, 'yyyy-MM-dd');
                       const dayAppointments = appointmentsByProfessional[professional.full_name]?.[dayKey] || [];
-                      return <div key={dayKey} className="min-h-[120px] p-1 border border-border/20 rounded-md bg-muted/20 hover:bg-muted/40 transition-colors">
-                                  {dayAppointments.map(appointment => <div key={appointment.id} onClick={() => handleAppointmentClick(appointment)} className="bg-primary text-primary-foreground p-2 rounded-md mb-1 text-xs shadow-sm cursor-pointer hover:opacity-80 transition-opacity">
-                                      <div className="font-medium">
-                                        {format(new Date(appointment.appointment_start_time), 'HH:mm')}
-                                      </div>
-                                      <div className="truncate">
-                                        {appointment.patient?.full_name || 'Paciente não identificado'}
-                                      </div>
-                                      <div className="truncate text-primary-foreground/80">
-                                        {appointment.treatment?.treatment_name || 'Tratamento não identificado'}
-                                      </div>
-                                    </div>)}
+                      const availableSlots = calculateAvailableSlots(appointments, day, professional.id, professional.full_name);
+                      
+                      const allItems: Array<{type: 'appointment' | 'gap', data: any}> = [
+                        ...dayAppointments.map(apt => ({ type: 'appointment' as const, data: apt })),
+                        ...availableSlots.map(slot => ({ type: 'gap' as const, data: slot }))
+                      ].sort((a, b) => {
+                        const timeA = a.type === 'appointment' 
+                          ? new Date(a.data.appointment_start_time).getTime()
+                          : a.data.start.getTime();
+                        const timeB = b.type === 'appointment'
+                          ? new Date(b.data.appointment_start_time).getTime()
+                          : b.data.start.getTime();
+                        return timeA - timeB;
+                      });
+
+                      return <div key={dayKey} className="min-h-[120px] p-1 border border-border/20 rounded-md bg-muted/20 hover:bg-muted/40 transition-colors space-y-1">
+                                  {allItems.map((item, idx) => {
+                                    if (item.type === 'appointment') {
+                                      const appointment = item.data;
+                                      return (
+                                        <div key={`apt-${appointment.id}`} className="relative bg-primary text-primary-foreground p-2 rounded-md text-xs shadow-sm group">
+                                          <div className="flex justify-between items-start gap-1">
+                                            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleAppointmentClick(appointment)}>
+                                              <div className="font-medium">
+                                                {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
+                                              </div>
+                                              <div className="truncate">
+                                                {appointment.patient?.full_name || 'Paciente não identificado'}
+                                              </div>
+                                              <div className="truncate text-primary-foreground/80">
+                                                {appointment.treatment?.treatment_name || 'Tratamento não identificado'}
+                                              </div>
+                                            </div>
+                                            <DropdownMenu>
+                                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-primary-foreground hover:bg-primary-foreground/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                  <MoreVertical className="h-3 w-3" />
+                                                </Button>
+                                              </DropdownMenuTrigger>
+                                              <DropdownMenuContent align="end" className="w-48">
+                                                <DropdownMenuItem onClick={() => handleEditAppointment(appointment.id)}>
+                                                  <Edit className="mr-2 h-4 w-4" />
+                                                  Editar
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleAppointmentClick(appointment)}>
+                                                  <Eye className="mr-2 h-4 w-4" />
+                                                  Ver Paciente
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem 
+                                                  onClick={() => handleCancelDialogOpen(appointment.id)}
+                                                  className="text-destructive focus:text-destructive"
+                                                >
+                                                  <Trash2 className="mr-2 h-4 w-4" />
+                                                  Cancelar
+                                                </DropdownMenuItem>
+                                              </DropdownMenuContent>
+                                            </DropdownMenu>
+                                          </div>
+                                        </div>
+                                      );
+                                    } else {
+                                      const gap = item.data;
+                                      return (
+                                        <div 
+                                          key={`gap-${idx}`}
+                                          onClick={() => handleEmptySlotClick(
+                                            { id: gap.professionalId, full_name: gap.professionalName },
+                                            day,
+                                            format(gap.start, 'HH:mm')
+                                          )}
+                                          className="border border-dashed border-muted-foreground/30 bg-muted/30 p-1 rounded cursor-pointer hover:bg-muted/50 hover:border-muted-foreground/50 transition-all"
+                                        >
+                                          <div className="flex items-center gap-1 text-muted-foreground">
+                                            <Clock className="h-3 w-3" />
+                                            <div className="flex-1 min-w-0">
+                                              <div className="text-xs font-medium truncate">Vago</div>
+                                              <div className="text-[10px] truncate">{format(gap.start, 'HH:mm')}-{format(gap.end, 'HH:mm')}</div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                  })}
                                   
                                   {/* Empty slot click area */}
-                                  <div onClick={() => handleEmptySlotClick(professional, day, '09:00')} className="h-8 flex items-center justify-center cursor-pointer opacity-60 hover:opacity-100 transition-opacity bg-muted/40 hover:bg-muted/60 rounded border border-dashed border-muted-foreground/30">
-                                    <Plus className="h-4 w-4 text-muted-foreground" />
-                                  </div>
+                                  {allItems.length === 0 && (
+                                    <div onClick={() => handleEmptySlotClick(professional, day, '09:00')} className="h-full min-h-[100px] flex items-center justify-center cursor-pointer opacity-60 hover:opacity-100 transition-opacity bg-muted/40 hover:bg-muted/60 rounded border border-dashed border-muted-foreground/30">
+                                      <Plus className="h-4 w-4 text-muted-foreground" />
+                                    </div>
+                                  )}
                                 </div>;
                     })}
                           </div>)}
@@ -427,5 +723,39 @@ export default function Agenda() {
       setModalOpen(false);
       setModalInitialValues({});
     }} />
+
+      {/* Edit Appointment Modal */}
+      {selectedAppointmentId && (
+        <EditAppointmentModal 
+          appointmentId={selectedAppointmentId}
+          open={editModalOpen}
+          onOpenChange={setEditModalOpen}
+          onSuccess={() => {
+            setEditModalOpen(false);
+            setSelectedAppointmentId('');
+          }}
+        />
+      )}
+
+      {/* Cancel Confirmation Dialog */}
+      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar Agendamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Não, manter</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => handleCancelAppointment(appointmentToCancel)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sim, cancelar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>;
 }
