@@ -116,7 +116,7 @@ export default function Agenda() {
             patients:patient_id (full_name),
             treatments:treatment_id (treatment_name),
             professionals:professional_id (id, full_name)
-          `).gte('appointment_start_time', weekStart.toISOString()).lte('appointment_start_time', weekEnd.toISOString()).order('appointment_start_time');
+          `).gte('appointment_start_time', weekStart.toISOString()).lte('appointment_start_time', weekEnd.toISOString()).neq('status', 'Cancelled').order('appointment_start_time');
 
         // Se for profissional, filtrar apenas seus agendamentos
         if (userProfile.type === 'professional' && userProfile.professionalId) {
