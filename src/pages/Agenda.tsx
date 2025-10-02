@@ -607,35 +607,25 @@ export default function Agenda() {
                                                      Ver Paciente
                                                    </DropdownMenuItem>
                                                    <DropdownMenuSeparator />
-                                                   <DropdownMenuSub>
-                                                     <DropdownMenuSubTrigger>
-                                                       Alterar Status
-                                                     </DropdownMenuSubTrigger>
-                                                     <DropdownMenuSubContent>
-                                                       <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Scheduled')}>
-                                                         Agendado
-                                                       </DropdownMenuItem>
-                                                       <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Confirmed')}>
-                                                         Confirmado
-                                                       </DropdownMenuItem>
-                                                       <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Completed')}>
-                                                         Concluído
-                                                       </DropdownMenuItem>
-                                                       <DropdownMenuSeparator />
-                                                       <DropdownMenuItem 
-                                                         onClick={() => handleStatusChange(appointment.id, 'Cancelled')}
-                                                         className="text-destructive focus:text-destructive"
-                                                       >
-                                                         Cancelado
-                                                       </DropdownMenuItem>
-                                                       <DropdownMenuItem 
-                                                         onClick={() => handleStatusChange(appointment.id, 'No-Show')}
-                                                         className="text-warning focus:text-warning"
-                                                       >
-                                                         Faltou
-                                                       </DropdownMenuItem>
-                                                     </DropdownMenuSubContent>
-                                                   </DropdownMenuSub>
+                                                    <DropdownMenuSub>
+                                                      <DropdownMenuSubTrigger>
+                                                        Alterar Status
+                                                      </DropdownMenuSubTrigger>
+                                                      <DropdownMenuSubContent>
+                                                        <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Scheduled')}>
+                                                          Agendado
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Confirmed')}>
+                                                          Confirmado
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Completed')}>
+                                                          Concluído
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'No-Show')}>
+                                                          Faltou
+                                                        </DropdownMenuItem>
+                                                      </DropdownMenuSubContent>
+                                                    </DropdownMenuSub>
                                                    <DropdownMenuSeparator />
                                                    <DropdownMenuItem 
                                                      onClick={() => handleCancelDialogOpen(appointment.id)}
@@ -772,35 +762,25 @@ export default function Agenda() {
                                                    Ver Paciente
                                                  </DropdownMenuItem>
                                                  <DropdownMenuSeparator />
-                                                 <DropdownMenuSub>
-                                                   <DropdownMenuSubTrigger>
-                                                     Alterar Status
-                                                   </DropdownMenuSubTrigger>
-                                                   <DropdownMenuSubContent>
-                                                     <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Scheduled')}>
-                                                       Agendado
-                                                     </DropdownMenuItem>
-                                                     <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Confirmed')}>
-                                                       Confirmado
-                                                     </DropdownMenuItem>
-                                                     <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Completed')}>
-                                                       Concluído
-                                                     </DropdownMenuItem>
-                                                     <DropdownMenuSeparator />
-                                                     <DropdownMenuItem 
-                                                       onClick={() => handleStatusChange(appointment.id, 'Cancelled')}
-                                                       className="text-destructive focus:text-destructive"
-                                                     >
-                                                       Cancelado
-                                                     </DropdownMenuItem>
-                                                     <DropdownMenuItem 
-                                                       onClick={() => handleStatusChange(appointment.id, 'No-Show')}
-                                                       className="text-warning focus:text-warning"
-                                                     >
-                                                       Faltou
-                                                     </DropdownMenuItem>
-                                                   </DropdownMenuSubContent>
-                                                 </DropdownMenuSub>
+                                                  <DropdownMenuSub>
+                                                    <DropdownMenuSubTrigger>
+                                                      Alterar Status
+                                                    </DropdownMenuSubTrigger>
+                                                    <DropdownMenuSubContent>
+                                                      <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Scheduled')}>
+                                                        Agendado
+                                                      </DropdownMenuItem>
+                                                      <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Confirmed')}>
+                                                        Confirmado
+                                                      </DropdownMenuItem>
+                                                      <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Completed')}>
+                                                        Concluído
+                                                      </DropdownMenuItem>
+                                                      <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'No-Show')}>
+                                                        Faltou
+                                                      </DropdownMenuItem>
+                                                    </DropdownMenuSubContent>
+                                                  </DropdownMenuSub>
                                                  <DropdownMenuSeparator />
                                                  <DropdownMenuItem 
                                                    onClick={() => handleCancelDialogOpen(appointment.id)}

@@ -15,6 +15,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Form,
   FormControl,
   FormField,
@@ -71,6 +81,8 @@ interface EditAppointmentModalProps {
 
 export function EditAppointmentModal({ appointmentId, open, onOpenChange, onSuccess }: EditAppointmentModalProps) {
   const [patientSearchOpen, setPatientSearchOpen] = useState(false);
+  const [cancelAndAddDialogOpen, setCancelAndAddDialogOpen] = useState(false);
+  const [waitingListNotes, setWaitingListNotes] = useState('');
   const queryClient = useQueryClient();
 
   const form = useForm<AppointmentFormData>({
@@ -182,6 +194,51 @@ export function EditAppointmentModal({ appointmentId, open, onOpenChange, onSucc
       }
     }
   }, [watchTreatmentId, watchStartTime, treatments, form]);
+
+  const handleCancelAndAddToWaitingList = async () => {
+    try {
+      const formValues = form.getValues();
+      
+      // Update appointment status to Cancelled
+      const { error: updateError } = await supabase
+        .from('appointments')
+        .update({ status: 'Cancelled' })
+        .eq('id', appointmentId);
+
+      if (updateError) throw updateError;
+
+      // Add to waiting list
+      const { error: insertError } = await supabase
+        .from('waiting_list')
+        .insert({
+          patient_id: formValues.patient_id,
+          professional_id: formValues.professional_id,
+          notes: waitingListNotes || 'Cancelado e adicionado à lista de espera',
+        });
+
+      if (insertError) throw insertError;
+
+      toast({
+        title: 'Sucesso',
+        description: 'Agendamento cancelado e paciente adicionado à lista de espera.',
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['waiting_list'] });
+      
+      setCancelAndAddDialogOpen(false);
+      setWaitingListNotes('');
+      onOpenChange(false);
+      onSuccess?.();
+    } catch (error) {
+      console.error('Error cancelling and adding to waiting list:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao processar solicitação. Tente novamente.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const onSubmit = async (data: AppointmentFormData) => {
     try {
@@ -470,18 +527,61 @@ export function EditAppointmentModal({ appointmentId, open, onOpenChange, onSucc
                 )}
               />
 
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                  Cancelar
+              <div className="flex flex-col sm:flex-row justify-between gap-2">
+                <Button 
+                  type="button" 
+                  variant="destructive" 
+                  onClick={() => setCancelAndAddDialogOpen(true)}
+                  className="sm:mr-auto"
+                >
+                  Cancelar e Add. à Lista de Espera
                 </Button>
-                <Button type="submit">
-                  Salvar Alterações
-                </Button>
+                <div className="flex gap-2 sm:ml-auto">
+                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit">
+                    Salvar Alterações
+                  </Button>
+                </div>
               </div>
             </form>
           </Form>
         )}
       </DialogContent>
+
+      <AlertDialog open={cancelAndAddDialogOpen} onOpenChange={setCancelAndAddDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar e Adicionar à Lista de Espera</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação cancelará o agendamento e adicionará o paciente à lista de espera do profissional.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="py-4">
+            <label className="text-sm font-medium mb-2 block">
+              Observações (opcional)
+            </label>
+            <Textarea
+              value={waitingListNotes}
+              onChange={(e) => setWaitingListNotes(e.target.value)}
+              placeholder="Motivo do cancelamento ou observações..."
+              className="resize-none"
+              rows={3}
+            />
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setWaitingListNotes('')}>
+              Voltar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelAndAddToWaitingList}>
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
