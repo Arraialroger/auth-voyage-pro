@@ -493,9 +493,9 @@ export default function Agenda() {
                 
                 <div className="flex items-center space-x-4">
                   <h2 className="text-xl font-semibold">
-                    {format(weekStart, "dd 'de' MMMM", {
+                    {format(weekStart, "dd/MM", {
                     locale: ptBR
-                  })} - {format(weekEnd, "dd 'de' MMMM 'de' yyyy", {
+                  })} - {format(weekEnd, "dd/MM 'de' yyyy", {
                     locale: ptBR
                   })}
                   </h2>
