@@ -13,8 +13,10 @@ import { NewAppointmentModal } from '@/components/NewAppointmentModal';
 import { AddToWaitingListModal } from '@/components/AddToWaitingListModal';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useToast } from '@/hooks/use-toast';
 interface Appointment {
   id: string;
+  patient_id: string | null;
   appointment_start_time: string;
   appointment_end_time: string;
   patient: {
@@ -34,6 +36,7 @@ export default function Agenda() {
   } = useAuth();
   const navigate = useNavigate();
   const userProfile = useUserProfile();
+  const { toast } = useToast();
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [currentDay, setCurrentDay] = useState(new Date());
   const [selectedProfessional, setSelectedProfessional] = useState<string>('all');
@@ -58,6 +61,7 @@ export default function Agenda() {
       try {
         let query = supabase.from('appointments').select(`
             id,
+            patient_id,
             appointment_start_time,
             appointment_end_time,
             patients:patient_id (full_name),
@@ -76,6 +80,7 @@ export default function Agenda() {
         if (error) throw error;
         return (data || []).map((apt: any) => ({
           id: apt.id,
+          patient_id: apt.patient_id,
           appointment_start_time: apt.appointment_start_time,
           appointment_end_time: apt.appointment_end_time,
           patient: apt.patients,
@@ -128,6 +133,14 @@ export default function Agenda() {
       start_time: timeSlot
     });
     setModalOpen(true);
+  };
+
+  const handleAppointmentClick = (appointment: Appointment) => {
+    if (!appointment.patient_id) {
+      toast({ title: "Paciente não identificado", variant: "destructive" });
+      return;
+    }
+    navigate(`/admin/patients?patientId=${appointment.patient_id}`);
   };
 
   // Group appointments by professional and day
@@ -325,7 +338,7 @@ export default function Agenda() {
                               <CardTitle className="text-lg">{professional.full_name}</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2">
-                              {dayAppointments.length > 0 ? dayAppointments.map(appointment => <div key={appointment.id} className="bg-primary text-primary-foreground p-3 rounded-md shadow-sm">
+                              {dayAppointments.length > 0 ? dayAppointments.map(appointment => <div key={appointment.id} onClick={() => handleAppointmentClick(appointment)} className="bg-primary text-primary-foreground p-3 rounded-md shadow-sm cursor-pointer hover:opacity-80 transition-opacity">
                                     <div className="font-medium text-sm mb-1">
                                       {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
                                     </div>
@@ -376,7 +389,7 @@ export default function Agenda() {
                       const dayKey = format(day, 'yyyy-MM-dd');
                       const dayAppointments = appointmentsByProfessional[professional.full_name]?.[dayKey] || [];
                       return <div key={dayKey} className="min-h-[120px] p-1 border border-border/20 rounded-md bg-muted/20 hover:bg-muted/40 transition-colors">
-                                  {dayAppointments.map(appointment => <div key={appointment.id} className="bg-primary text-primary-foreground p-2 rounded-md mb-1 text-xs shadow-sm">
+                                  {dayAppointments.map(appointment => <div key={appointment.id} onClick={() => handleAppointmentClick(appointment)} className="bg-primary text-primary-foreground p-2 rounded-md mb-1 text-xs shadow-sm cursor-pointer hover:opacity-80 transition-opacity">
                                       <div className="font-medium">
                                         {format(new Date(appointment.appointment_start_time), 'HH:mm')}
                                       </div>
