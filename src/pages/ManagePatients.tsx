@@ -658,9 +658,8 @@ export default function ManagePatients() {
                             <Edit className="h-4 w-4" />
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-4xl max-h-[90vh] w-full p-0 gap-0">
-                          <div className="flex flex-col h-full">
-                            <DialogHeader className="p-6 pb-4 border-b border-border/50">
+                        <DialogContent className="max-w-4xl max-h-[90vh] w-full flex flex-col">
+                            <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b border-border/50">
                               <DialogTitle className="text-xl">Editar Paciente</DialogTitle>
                               <DialogDescription>
                                 Atualize as informações do paciente abaixo.
@@ -843,12 +842,12 @@ export default function ManagePatients() {
                                         Nenhum documento encontrado
                                       </div>
                                     )}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
+                                   </div>
+                                 </div>
+                               </div>
+                             </div>
                             
-                            <DialogFooter className="p-6 pt-4 border-t border-border/50">
+                            <DialogFooter className="flex-shrink-0 p-6 pt-4 border-t border-border/50">
                               <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                                 Cancelar
                               </Button>
@@ -856,11 +855,10 @@ export default function ManagePatients() {
                                 onClick={handleEditPatient}
                                 disabled={!formData.full_name || !formData.contact_phone}
                               >
-                                Salvar Alterações
-                              </Button>
-                            </DialogFooter>
-                          </div>
-                        </DialogContent>
+                                 Salvar Alterações
+                               </Button>
+                             </DialogFooter>
+                         </DialogContent>
                       </Dialog>
 
                       <AlertDialog>
