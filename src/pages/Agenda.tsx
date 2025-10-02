@@ -213,7 +213,7 @@ export default function Agenda() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-4 lg:py-8 overflow-x-hidden bg-gray-50">
+      <main className="container mx-auto px-4 py-4 lg:py-8 overflow-x-hidden bg-background">
         <div className="max-w-7xl mx-auto space-y-4 lg:space-y-6">
           {/* Navigation */}
           <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-elegant">
