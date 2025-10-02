@@ -20,8 +20,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,12 +36,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'Completed' | 'Cancelled' | 'No-Show';
+
 interface Appointment {
   id: string;
   patient_id: string | null;
   appointment_start_time: string;
   appointment_end_time: string;
-  status?: string;
+  status?: AppointmentStatus;
   notes?: string;
   patient: {
     full_name: string;
@@ -75,6 +81,8 @@ export default function Agenda() {
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>('');
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [appointmentToCancel, setAppointmentToCancel] = useState<string>('');
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [statusChangeData, setStatusChangeData] = useState<{appointmentId: string, newStatus: AppointmentStatus} | null>(null);
   const [modalInitialValues, setModalInitialValues] = useState<{
     professional_id?: string;
     appointment_date?: Date;
@@ -108,7 +116,7 @@ export default function Agenda() {
             patients:patient_id (full_name),
             treatments:treatment_id (treatment_name),
             professionals:professional_id (id, full_name)
-          `).gte('appointment_start_time', weekStart.toISOString()).lte('appointment_start_time', weekEnd.toISOString()).neq('status', 'Cancelled').order('appointment_start_time');
+          `).gte('appointment_start_time', weekStart.toISOString()).lte('appointment_start_time', weekEnd.toISOString()).order('appointment_start_time');
 
         // Se for profissional, filtrar apenas seus agendamentos
         if (userProfile.type === 'professional' && userProfile.professionalId) {
@@ -177,6 +185,71 @@ export default function Agenda() {
   const handleCancelDialogOpen = (appointmentId: string) => {
     setAppointmentToCancel(appointmentId);
     setCancelDialogOpen(true);
+  };
+
+  // Função para obter variante do badge de status
+  const getStatusBadgeVariant = (status?: AppointmentStatus): "default" | "secondary" | "success" | "warning" | "destructive" => {
+    switch (status) {
+      case 'Scheduled': return 'default';
+      case 'Confirmed': return 'success';
+      case 'Completed': return 'secondary';
+      case 'Cancelled': return 'destructive';
+      case 'No-Show': return 'warning';
+      default: return 'default';
+    }
+  };
+
+  // Função para obter label do status
+  const getStatusLabel = (status?: AppointmentStatus): string => {
+    switch (status) {
+      case 'Scheduled': return 'Agendado';
+      case 'Confirmed': return 'Confirmado';
+      case 'Completed': return 'Concluído';
+      case 'Cancelled': return 'Cancelado';
+      case 'No-Show': return 'Faltou';
+      default: return 'Desconhecido';
+    }
+  };
+
+  // Função para alterar status
+  const handleStatusChange = async (appointmentId: string, newStatus: AppointmentStatus) => {
+    // Se for status crítico, mostrar confirmação
+    if (newStatus === 'Cancelled' || newStatus === 'No-Show') {
+      setStatusChangeData({ appointmentId, newStatus });
+      setStatusDialogOpen(true);
+      return;
+    }
+
+    // Para outros status, alterar diretamente
+    await updateAppointmentStatus(appointmentId, newStatus);
+  };
+
+  // Função para atualizar status no banco
+  const updateAppointmentStatus = async (appointmentId: string, newStatus: AppointmentStatus) => {
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({ status: newStatus })
+        .eq('id', appointmentId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Status atualizado',
+        description: `O agendamento foi marcado como "${getStatusLabel(newStatus)}".`,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      setStatusDialogOpen(false);
+      setStatusChangeData(null);
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao atualizar status. Tente novamente.',
+        variant: 'destructive',
+      });
+    }
   };
 
   // Função para calcular horários vagos
@@ -500,46 +573,81 @@ export default function Agenda() {
                                       if (item.type === 'appointment') {
                                         const appointment = item.data;
                                         return (
-                                          <div key={`apt-${appointment.id}`} className="relative bg-primary text-primary-foreground p-3 rounded-md shadow-sm group">
-                                            <div className="flex justify-between items-start">
-                                              <div className="flex-1 cursor-pointer" onClick={() => handleAppointmentClick(appointment)}>
-                                                <div className="font-medium text-sm mb-1">
-                                                  {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
-                                                </div>
-                                                <div className="text-sm">
-                                                  {appointment.patient?.full_name || 'Paciente não identificado'}
-                                                </div>
-                                                <div className="text-xs text-primary-foreground/80 mt-1">
-                                                  {appointment.treatment?.treatment_name || 'Tratamento não identificado'}
-                                                </div>
-                                              </div>
-                                              <DropdownMenu>
-                                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-primary-foreground hover:bg-primary-foreground/20">
-                                                    <MoreVertical className="h-4 w-4" />
-                                                  </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-48">
-                                                  <DropdownMenuItem onClick={() => handleEditAppointment(appointment.id)}>
-                                                    <Edit className="mr-2 h-4 w-4" />
-                                                    Editar Agendamento
-                                                  </DropdownMenuItem>
-                                                  <DropdownMenuItem onClick={() => handleAppointmentClick(appointment)}>
-                                                    <Eye className="mr-2 h-4 w-4" />
-                                                    Ver Paciente
-                                                  </DropdownMenuItem>
-                                                  <DropdownMenuSeparator />
-                                                  <DropdownMenuItem 
-                                                    onClick={() => handleCancelDialogOpen(appointment.id)}
-                                                    className="text-destructive focus:text-destructive"
-                                                  >
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    Cancelar Agendamento
-                                                  </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                              </DropdownMenu>
-                                            </div>
-                                          </div>
+                                           <div key={`apt-${appointment.id}`} className="relative bg-primary text-primary-foreground p-3 rounded-md shadow-sm group">
+                                             <div className="flex justify-between items-start gap-2">
+                                               <div className="flex-1 cursor-pointer" onClick={() => handleAppointmentClick(appointment)}>
+                                                 <div className="flex items-center gap-2 mb-1">
+                                                   <div className="font-medium text-sm">
+                                                     {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
+                                                   </div>
+                                                   <Badge variant={getStatusBadgeVariant(appointment.status)} className="text-[10px] px-1.5 py-0">
+                                                     {getStatusLabel(appointment.status)}
+                                                   </Badge>
+                                                 </div>
+                                                 <div className="text-sm">
+                                                   {appointment.patient?.full_name || 'Paciente não identificado'}
+                                                 </div>
+                                                 <div className="text-xs text-primary-foreground/80 mt-1">
+                                                   {appointment.treatment?.treatment_name || 'Tratamento não identificado'}
+                                                 </div>
+                                               </div>
+                                               <DropdownMenu>
+                                                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                   <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-primary-foreground hover:bg-primary-foreground/20">
+                                                     <MoreVertical className="h-4 w-4" />
+                                                   </Button>
+                                                 </DropdownMenuTrigger>
+                                                 <DropdownMenuContent align="end" className="w-48">
+                                                   <DropdownMenuItem onClick={() => handleEditAppointment(appointment.id)}>
+                                                     <Edit className="mr-2 h-4 w-4" />
+                                                     Editar Agendamento
+                                                   </DropdownMenuItem>
+                                                   <DropdownMenuItem onClick={() => handleAppointmentClick(appointment)}>
+                                                     <Eye className="mr-2 h-4 w-4" />
+                                                     Ver Paciente
+                                                   </DropdownMenuItem>
+                                                   <DropdownMenuSeparator />
+                                                   <DropdownMenuSub>
+                                                     <DropdownMenuSubTrigger>
+                                                       Alterar Status
+                                                     </DropdownMenuSubTrigger>
+                                                     <DropdownMenuSubContent>
+                                                       <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Scheduled')}>
+                                                         Agendado
+                                                       </DropdownMenuItem>
+                                                       <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Confirmed')}>
+                                                         Confirmado
+                                                       </DropdownMenuItem>
+                                                       <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Completed')}>
+                                                         Concluído
+                                                       </DropdownMenuItem>
+                                                       <DropdownMenuSeparator />
+                                                       <DropdownMenuItem 
+                                                         onClick={() => handleStatusChange(appointment.id, 'Cancelled')}
+                                                         className="text-destructive focus:text-destructive"
+                                                       >
+                                                         Cancelado
+                                                       </DropdownMenuItem>
+                                                       <DropdownMenuItem 
+                                                         onClick={() => handleStatusChange(appointment.id, 'No-Show')}
+                                                         className="text-warning focus:text-warning"
+                                                       >
+                                                         Faltou
+                                                       </DropdownMenuItem>
+                                                     </DropdownMenuSubContent>
+                                                   </DropdownMenuSub>
+                                                   <DropdownMenuSeparator />
+                                                   <DropdownMenuItem 
+                                                     onClick={() => handleCancelDialogOpen(appointment.id)}
+                                                     className="text-destructive focus:text-destructive"
+                                                   >
+                                                     <Trash2 className="mr-2 h-4 w-4" />
+                                                     Cancelar Agendamento
+                                                   </DropdownMenuItem>
+                                                 </DropdownMenuContent>
+                                               </DropdownMenu>
+                                             </div>
+                                           </div>
                                         );
                                       } else {
                                         const gap = item.data;
@@ -630,46 +738,81 @@ export default function Agenda() {
                                     if (item.type === 'appointment') {
                                       const appointment = item.data;
                                       return (
-                                        <div key={`apt-${appointment.id}`} className="relative bg-primary text-primary-foreground p-2 rounded-md text-xs shadow-sm group">
-                                          <div className="flex justify-between items-start gap-1">
-                                            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleAppointmentClick(appointment)}>
-                                              <div className="font-medium">
-                                                {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
-                                              </div>
-                                              <div className="truncate">
-                                                {appointment.patient?.full_name || 'Paciente não identificado'}
-                                              </div>
-                                              <div className="truncate text-primary-foreground/80">
-                                                {appointment.treatment?.treatment_name || 'Tratamento não identificado'}
-                                              </div>
-                                            </div>
-                                            <DropdownMenu>
-                                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                                <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-primary-foreground hover:bg-primary-foreground/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                  <MoreVertical className="h-3 w-3" />
-                                                </Button>
-                                              </DropdownMenuTrigger>
-                                              <DropdownMenuContent align="end" className="w-48">
-                                                <DropdownMenuItem onClick={() => handleEditAppointment(appointment.id)}>
-                                                  <Edit className="mr-2 h-4 w-4" />
-                                                  Editar
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleAppointmentClick(appointment)}>
-                                                  <Eye className="mr-2 h-4 w-4" />
-                                                  Ver Paciente
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem 
-                                                  onClick={() => handleCancelDialogOpen(appointment.id)}
-                                                  className="text-destructive focus:text-destructive"
-                                                >
-                                                  <Trash2 className="mr-2 h-4 w-4" />
-                                                  Cancelar
-                                                </DropdownMenuItem>
-                                              </DropdownMenuContent>
-                                            </DropdownMenu>
-                                          </div>
-                                        </div>
+                                         <div key={`apt-${appointment.id}`} className="relative bg-primary text-primary-foreground p-2 rounded-md text-xs shadow-sm group">
+                                           <div className="flex justify-between items-start gap-1">
+                                             <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleAppointmentClick(appointment)}>
+                                               <div className="flex items-center gap-1 mb-0.5">
+                                                 <div className="font-medium">
+                                                   {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
+                                                 </div>
+                                                 <Badge variant={getStatusBadgeVariant(appointment.status)} className="text-[9px] px-1 py-0">
+                                                   {getStatusLabel(appointment.status)}
+                                                 </Badge>
+                                               </div>
+                                               <div className="truncate">
+                                                 {appointment.patient?.full_name || 'Paciente não identificado'}
+                                               </div>
+                                               <div className="truncate text-primary-foreground/80">
+                                                 {appointment.treatment?.treatment_name || 'Tratamento não identificado'}
+                                               </div>
+                                             </div>
+                                             <DropdownMenu>
+                                               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                 <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-primary-foreground hover:bg-primary-foreground/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                   <MoreVertical className="h-3 w-3" />
+                                                 </Button>
+                                               </DropdownMenuTrigger>
+                                               <DropdownMenuContent align="end" className="w-48">
+                                                 <DropdownMenuItem onClick={() => handleEditAppointment(appointment.id)}>
+                                                   <Edit className="mr-2 h-4 w-4" />
+                                                   Editar
+                                                 </DropdownMenuItem>
+                                                 <DropdownMenuItem onClick={() => handleAppointmentClick(appointment)}>
+                                                   <Eye className="mr-2 h-4 w-4" />
+                                                   Ver Paciente
+                                                 </DropdownMenuItem>
+                                                 <DropdownMenuSeparator />
+                                                 <DropdownMenuSub>
+                                                   <DropdownMenuSubTrigger>
+                                                     Alterar Status
+                                                   </DropdownMenuSubTrigger>
+                                                   <DropdownMenuSubContent>
+                                                     <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Scheduled')}>
+                                                       Agendado
+                                                     </DropdownMenuItem>
+                                                     <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Confirmed')}>
+                                                       Confirmado
+                                                     </DropdownMenuItem>
+                                                     <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Completed')}>
+                                                       Concluído
+                                                     </DropdownMenuItem>
+                                                     <DropdownMenuSeparator />
+                                                     <DropdownMenuItem 
+                                                       onClick={() => handleStatusChange(appointment.id, 'Cancelled')}
+                                                       className="text-destructive focus:text-destructive"
+                                                     >
+                                                       Cancelado
+                                                     </DropdownMenuItem>
+                                                     <DropdownMenuItem 
+                                                       onClick={() => handleStatusChange(appointment.id, 'No-Show')}
+                                                       className="text-warning focus:text-warning"
+                                                     >
+                                                       Faltou
+                                                     </DropdownMenuItem>
+                                                   </DropdownMenuSubContent>
+                                                 </DropdownMenuSub>
+                                                 <DropdownMenuSeparator />
+                                                 <DropdownMenuItem 
+                                                   onClick={() => handleCancelDialogOpen(appointment.id)}
+                                                   className="text-destructive focus:text-destructive"
+                                                 >
+                                                   <Trash2 className="mr-2 h-4 w-4" />
+                                                   Cancelar
+                                                 </DropdownMenuItem>
+                                               </DropdownMenuContent>
+                                             </DropdownMenu>
+                                           </div>
+                                         </div>
                                       );
                                     } else {
                                       const gap = item.data;
@@ -753,6 +896,27 @@ export default function Agenda() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Sim, cancelar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Status Change Confirmation Dialog */}
+      <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Alterar Status do Agendamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja alterar o status deste agendamento para "{statusChangeData ? getStatusLabel(statusChangeData.newStatus) : ''}"?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setStatusChangeData(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => statusChangeData && updateAppointmentStatus(statusChangeData.appointmentId, statusChangeData.newStatus)}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              Confirmar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
