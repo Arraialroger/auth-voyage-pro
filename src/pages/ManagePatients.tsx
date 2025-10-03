@@ -8,12 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, Plus, Edit, Trash2, ArrowLeft, Search, Upload, Download, FileText, X, Eye, Image, MessageCircle, CheckCircle2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { PatientAppointmentHistory } from '@/components/PatientAppointmentHistory';
 
 interface Patient {
   id: string;
@@ -662,87 +664,96 @@ export default function ManagePatients() {
                             <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b border-border/50">
                               <DialogTitle className="text-xl">Editar Paciente</DialogTitle>
                               <DialogDescription>
-                                Atualize as informações do paciente abaixo.
+                                Visualize e atualize as informações do paciente.
                               </DialogDescription>
                             </DialogHeader>
                             
-                            <div className="flex-1 overflow-y-auto p-6">
-                              <div className="space-y-6">
-                                {/* Campos básicos em linha horizontal */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                  <div>
-                                    <Label htmlFor="edit_name">Nome Completo *</Label>
-                                    <Input
-                                      id="edit_name"
-                                      value={formData.full_name}
-                                      onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
-                                      placeholder="Digite o nome completo"
-                                      className="mt-2"
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label htmlFor="edit_phone">Telefone *</Label>
-                                    <Input
-                                      id="edit_phone"
-                                      value={formData.contact_phone}
-                                      onChange={(e) => setFormData(prev => ({ ...prev, contact_phone: e.target.value }))}
-                                      placeholder="(11) 99999-9999"
-                                      className="mt-2"
-                                    />
-                                    {formData.contact_phone && (
-                                      <div className="flex flex-col gap-2 mt-1">
-                                        <a
-                                          href={formatWhatsAppLink(formData.contact_phone)}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors group"
-                                        >
-                                          <MessageCircle className="h-3 w-3 group-hover:scale-110 transition-transform" />
-                                          <span className="underline-offset-4 group-hover:underline">
-                                            Abrir no WhatsApp
-                                          </span>
-                                        </a>
-                                        
-                                        <a
-                                          href={formatWhatsAppLink(formData.contact_phone, CONFIRMATION_MESSAGE)}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="flex items-center gap-1 text-sm text-green-600 hover:text-green-700 group"
-                                        >
-                                          <CheckCircle2 className="h-3 w-3 group-hover:scale-110 transition-transform" />
-                                          <span className="underline-offset-4 group-hover:underline">
-                                            Enviar confirmação da consulta
-                                          </span>
-                                        </a>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div>
-                                    <Label htmlFor="edit_birth_date">Data de Nascimento</Label>
-                                    <Input
-                                      id="edit_birth_date"
-                                      type="date"
-                                      value={formData.birth_date}
-                                      onChange={(e) => setFormData(prev => ({ ...prev, birth_date: e.target.value }))}
-                                      className="mt-2"
-                                    />
-                                  </div>
-                                </div>
+                            <Tabs defaultValue="info" className="flex-1 flex flex-col">
+                              <TabsList className="mx-6 mt-4 grid w-auto grid-cols-3">
+                                <TabsTrigger value="info">Informações</TabsTrigger>
+                                <TabsTrigger value="documents">Documentos</TabsTrigger>
+                                <TabsTrigger value="history">Histórico</TabsTrigger>
+                              </TabsList>
 
-                                {/* Textarea do histórico médico em largura total */}
-                                <div>
-                                  <Label htmlFor="edit_medical_history">Histórico Médico</Label>
-                                  <Textarea
-                                    id="edit_medical_history"
-                                    value={formData.medical_history_notes}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, medical_history_notes: e.target.value }))}
-                                    placeholder="Informações relevantes do histórico médico..."
-                                    className="mt-2 min-h-[150px] resize-none"
-                                  />
-                                </div>
+                              <div className="flex-1 overflow-y-auto px-6">
+                                {/* Tab: Informações do Paciente */}
+                                <TabsContent value="info" className="space-y-6 mt-6">
+                                  {/* Campos básicos em linha horizontal */}
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div>
+                                      <Label htmlFor="edit_name">Nome Completo *</Label>
+                                      <Input
+                                        id="edit_name"
+                                        value={formData.full_name}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
+                                        placeholder="Digite o nome completo"
+                                        className="mt-2"
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label htmlFor="edit_phone">Telefone *</Label>
+                                      <Input
+                                        id="edit_phone"
+                                        value={formData.contact_phone}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, contact_phone: e.target.value }))}
+                                        placeholder="(11) 99999-9999"
+                                        className="mt-2"
+                                      />
+                                      {formData.contact_phone && (
+                                        <div className="flex flex-col gap-2 mt-1">
+                                          <a
+                                            href={formatWhatsAppLink(formData.contact_phone)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors group"
+                                          >
+                                            <MessageCircle className="h-3 w-3 group-hover:scale-110 transition-transform" />
+                                            <span className="underline-offset-4 group-hover:underline">
+                                              Abrir no WhatsApp
+                                            </span>
+                                          </a>
+                                          
+                                          <a
+                                            href={formatWhatsAppLink(formData.contact_phone, CONFIRMATION_MESSAGE)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-1 text-sm text-green-600 hover:text-green-700 group"
+                                          >
+                                            <CheckCircle2 className="h-3 w-3 group-hover:scale-110 transition-transform" />
+                                            <span className="underline-offset-4 group-hover:underline">
+                                              Enviar confirmação da consulta
+                                            </span>
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div>
+                                      <Label htmlFor="edit_birth_date">Data de Nascimento</Label>
+                                      <Input
+                                        id="edit_birth_date"
+                                        type="date"
+                                        value={formData.birth_date}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, birth_date: e.target.value }))}
+                                        className="mt-2"
+                                      />
+                                    </div>
+                                  </div>
 
-                                {/* Seção de documentos em largura total */}
-                                <div className="space-y-4 border-t pt-4">
+                                  {/* Textarea do histórico médico em largura total */}
+                                  <div>
+                                    <Label htmlFor="edit_medical_history">Histórico Médico</Label>
+                                    <Textarea
+                                      id="edit_medical_history"
+                                      value={formData.medical_history_notes}
+                                      onChange={(e) => setFormData(prev => ({ ...prev, medical_history_notes: e.target.value }))}
+                                      placeholder="Informações relevantes do histórico médico..."
+                                      className="mt-2 min-h-[150px] resize-none"
+                                    />
+                                  </div>
+                                </TabsContent>
+
+                                {/* Tab: Documentos Médicos */}
+                                <TabsContent value="documents" className="space-y-4 mt-6">
                                   <div className="flex items-center gap-2">
                                     <FileText className="h-5 w-5 text-muted-foreground" />
                                     <Label className="text-base font-medium">Documentos Médicos</Label>
@@ -784,7 +795,7 @@ export default function ManagePatients() {
                                   </div>
 
                                   {/* Documents List */}
-                                  <div className="max-h-48 overflow-y-auto space-y-2">
+                                  <div className="max-h-96 overflow-y-auto space-y-2">
                                     {patientDocuments?.map((doc) => {
                                       const FileIcon = getFileIcon(doc.mime_type);
                                       return (
@@ -838,14 +849,21 @@ export default function ManagePatients() {
                                       );
                                     })}
                                     {(!patientDocuments || patientDocuments.length === 0) && (
-                                      <div className="text-center py-4 text-sm text-muted-foreground">
+                                      <div className="text-center py-8 text-sm text-muted-foreground">
                                         Nenhum documento encontrado
                                       </div>
                                     )}
-                                   </div>
-                                 </div>
-                               </div>
-                             </div>
+                                  </div>
+                                </TabsContent>
+
+                                {/* Tab: Histórico de Consultas */}
+                                <TabsContent value="history" className="mt-6">
+                                  {editingPatient && (
+                                    <PatientAppointmentHistory patientId={editingPatient.id} />
+                                  )}
+                                </TabsContent>
+                              </div>
+                            </Tabs>
                             
                             <DialogFooter className="flex-shrink-0 p-6 pt-4 border-t border-border/50">
                               <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
