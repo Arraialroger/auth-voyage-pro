@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Users, UserCheck, Stethoscope, Settings, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { DashboardStats } from '@/components/DashboardStats';
 
 export default function Administration() {
   const navigate = useNavigate();
@@ -77,17 +78,25 @@ export default function Administration() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="max-w-6xl mx-auto space-y-8">
           <div className="text-center space-y-2">
             <h2 className="text-3xl font-bold text-foreground">
               Painel de Administração
             </h2>
             <p className="text-muted-foreground text-lg">
-              Gerencie todos os aspectos do sistema de agendamentos
+              Visão geral e gerenciamento do sistema
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+          {/* Dashboard com estatísticas */}
+          <DashboardStats />
+
+          {/* Seção de Gerenciamento */}
+          <div className="space-y-4">
+            <h3 className="text-2xl font-semibold text-foreground">
+              Gerenciamento
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {adminCards.map((card) => {
               const IconComponent = card.icon;
               return (
@@ -115,6 +124,7 @@ export default function Administration() {
                 </Card>
               );
             })}
+            </div>
           </div>
         </div>
       </main>
