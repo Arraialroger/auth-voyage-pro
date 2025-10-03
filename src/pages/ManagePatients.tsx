@@ -857,7 +857,7 @@ export default function ManagePatients() {
                                 </TabsContent>
 
                                 {/* Tab: Histórico de Consultas */}
-                                <TabsContent value="history" className="mt-6">
+                                <TabsContent value="history" className="mt-6 space-y-4">
                                   {editingPatient && (
                                     <PatientAppointmentHistory patientId={editingPatient.id} />
                                   )}
