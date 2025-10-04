@@ -80,7 +80,7 @@ export default function Agenda() {
   const [selectedProfessional, setSelectedProfessional] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterTreatment, setFilterTreatment] = useState<string>('all');
-  const [filterPatient, setFilterPatient] = useState<string>('');
+  const [filterPatient, setFilterPatient] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -414,7 +414,7 @@ export default function Agenda() {
     }
     
     // Filter by patient name
-    if (filterPatient && !apt.patient?.full_name.toLowerCase().includes(filterPatient.toLowerCase())) {
+    if (filterPatient !== 'all' && !apt.patient?.full_name.toLowerCase().includes(filterPatient.toLowerCase())) {
       return false;
     }
     
@@ -425,7 +425,7 @@ export default function Agenda() {
   const activeFiltersCount = [
     filterStatus !== 'all',
     filterTreatment !== 'all',
-    filterPatient !== ''
+    filterPatient !== 'all'
   ].filter(Boolean).length;
 
   // Group appointments by professional and day
@@ -528,7 +528,7 @@ export default function Agenda() {
                       onClick={() => {
                         setFilterStatus('all');
                         setFilterTreatment('all');
-                        setFilterPatient('');
+                        setFilterPatient('all');
                       }}
                       className="gap-1 text-muted-foreground hover:text-foreground"
                     >
@@ -583,7 +583,7 @@ export default function Agenda() {
                           <SelectValue placeholder="Todos os pacientes" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Todos</SelectItem>
+                          <SelectItem value="all">Todos</SelectItem>
                           {allPatients.map(patient => (
                             <SelectItem key={patient.id} value={patient.full_name}>
                               {patient.full_name}
