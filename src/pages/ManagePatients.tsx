@@ -660,7 +660,7 @@ export default function ManagePatients() {
                             <Edit className="h-4 w-4" />
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-4xl max-h-[90vh] w-full flex flex-col">
+                        <DialogContent className="max-w-4xl max-h-[90vh] w-full flex flex-col min-h-0">
                             <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b border-border/50">
                               <DialogTitle className="text-xl">Editar Paciente</DialogTitle>
                               <DialogDescription>
@@ -668,14 +668,14 @@ export default function ManagePatients() {
                               </DialogDescription>
                             </DialogHeader>
                             
-                            <Tabs defaultValue="info" className="flex-1 flex flex-col">
-                              <TabsList className="mx-6 mt-4 grid w-auto grid-cols-3">
+                            <Tabs defaultValue="info" className="flex-1 flex flex-col min-h-0">
+                              <TabsList className="mx-6 mt-4 grid w-auto grid-cols-3 shrink-0">
                                 <TabsTrigger value="info">Informações</TabsTrigger>
                                 <TabsTrigger value="documents">Documentos</TabsTrigger>
                                 <TabsTrigger value="history">Histórico</TabsTrigger>
                               </TabsList>
 
-                              <div className="flex-1 overflow-y-auto px-6">
+                              <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-4">
                                 {/* Tab: Informações do Paciente */}
                                 <TabsContent value="info" className="space-y-6 mt-6">
                                   {/* Campos básicos em linha horizontal */}
