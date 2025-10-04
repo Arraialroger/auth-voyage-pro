@@ -2,7 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, LogOut, User, Clock, ChevronLeft, ChevronRight, Plus, Settings, Menu, MoreVertical, Edit, Trash2, Eye } from 'lucide-react';
+import { Calendar, LogOut, User, Clock, ChevronLeft, ChevronRight, Plus, Settings, Menu, MoreVertical, Edit, Trash2, Eye, Filter, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,6 +41,7 @@ type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'Completed' | 'Cancelled' |
 interface Appointment {
   id: string;
   patient_id: string | null;
+  treatment_id?: string | null;
   appointment_start_time: string;
   appointment_end_time: string;
   status?: AppointmentStatus;
@@ -49,6 +50,7 @@ interface Appointment {
     full_name: string;
   } | null;
   treatment: {
+    id: string;
     treatment_name: string;
   } | null;
   professional: {
@@ -76,6 +78,10 @@ export default function Agenda() {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [currentDay, setCurrentDay] = useState(new Date());
   const [selectedProfessional, setSelectedProfessional] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterTreatment, setFilterTreatment] = useState<string>('all');
+  const [filterPatient, setFilterPatient] = useState<string>('');
+  const [showFilters, setShowFilters] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>('');
@@ -99,6 +105,42 @@ export default function Agenda() {
   const weekEnd = endOfWeek(currentWeek, {
     weekStartsOn: 1
   });
+  // Fetch treatments for filter
+  const { data: allTreatments = [] } = useQuery({
+    queryKey: ['treatments'],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from('treatments')
+          .select('id, treatment_name')
+          .order('treatment_name');
+        if (error) throw error;
+        return data || [];
+      } catch (error) {
+        console.error('Erro ao buscar tratamentos:', error);
+        return [];
+      }
+    }
+  });
+
+  // Fetch patients for filter
+  const { data: allPatients = [] } = useQuery({
+    queryKey: ['patients-for-filter'],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from('patients')
+          .select('id, full_name')
+          .order('full_name');
+        if (error) throw error;
+        return data || [];
+      } catch (error) {
+        console.error('Erro ao buscar pacientes:', error);
+        return [];
+      }
+    }
+  });
+
   const {
     data: appointments = [],
     isLoading
@@ -109,12 +151,13 @@ export default function Agenda() {
         let query = supabase.from('appointments').select(`
             id,
             patient_id,
+            treatment_id,
             appointment_start_time,
             appointment_end_time,
             status,
             notes,
             patients:patient_id (full_name),
-            treatments:treatment_id (treatment_name),
+            treatments:treatment_id (id, treatment_name),
             professionals:professional_id (id, full_name)
           `).gte('appointment_start_time', weekStart.toISOString()).lte('appointment_start_time', weekEnd.toISOString()).neq('status', 'Cancelled').order('appointment_start_time');
 
@@ -130,6 +173,7 @@ export default function Agenda() {
         return (data || []).map((apt: any) => ({
           id: apt.id,
           patient_id: apt.patient_id,
+          treatment_id: apt.treatment_id,
           appointment_start_time: apt.appointment_start_time,
           appointment_end_time: apt.appointment_end_time,
           status: apt.status,
@@ -357,8 +401,35 @@ export default function Agenda() {
     navigate(`/admin/patients?patientId=${appointment.patient_id}`);
   };
 
+  // Apply filters to appointments
+  const filteredAppointments = appointments.filter(apt => {
+    // Filter by status
+    if (filterStatus !== 'all' && apt.status !== filterStatus) {
+      return false;
+    }
+    
+    // Filter by treatment
+    if (filterTreatment !== 'all' && apt.treatment?.id !== filterTreatment) {
+      return false;
+    }
+    
+    // Filter by patient name
+    if (filterPatient && !apt.patient?.full_name.toLowerCase().includes(filterPatient.toLowerCase())) {
+      return false;
+    }
+    
+    return true;
+  });
+
+  // Count active filters
+  const activeFiltersCount = [
+    filterStatus !== 'all',
+    filterTreatment !== 'all',
+    filterPatient !== ''
+  ].filter(Boolean).length;
+
   // Group appointments by professional and day
-  const appointmentsByProfessional = appointments.reduce((acc, apt) => {
+  const appointmentsByProfessional = filteredAppointments.reduce((acc, apt) => {
     const professionalName = apt.professional?.full_name || 'Profissional não identificado';
     if (!acc[professionalName]) {
       acc[professionalName] = {};
@@ -431,7 +502,100 @@ export default function Agenda() {
         <div className="max-w-7xl mx-auto space-y-4 lg:space-y-6">
           {/* Navigation */}
           <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-elegant">
-            <CardContent className="p-4">
+            <CardContent className="p-4 space-y-4">
+              {/* Filters Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="gap-2"
+                  >
+                    <Filter className="h-4 w-4" />
+                    Filtros
+                    {activeFiltersCount > 0 && (
+                      <Badge variant="secondary" className="ml-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                        {activeFiltersCount}
+                      </Badge>
+                    )}
+                  </Button>
+                  
+                  {activeFiltersCount > 0 && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => {
+                        setFilterStatus('all');
+                        setFilterTreatment('all');
+                        setFilterPatient('');
+                      }}
+                      className="gap-1 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3 w-3" />
+                      Limpar
+                    </Button>
+                  )}
+                </div>
+
+                {showFilters && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-muted/30 rounded-lg border border-border/50">
+                    {/* Status Filter */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground">Status</label>
+                      <Select value={filterStatus} onValueChange={setFilterStatus}>
+                        <SelectTrigger className="bg-background">
+                          <SelectValue placeholder="Todos os status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos</SelectItem>
+                          <SelectItem value="Scheduled">Agendado</SelectItem>
+                          <SelectItem value="Confirmed">Confirmado</SelectItem>
+                          <SelectItem value="Completed">Concluído</SelectItem>
+                          <SelectItem value="No-Show">Faltou</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Treatment Filter */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground">Tratamento</label>
+                      <Select value={filterTreatment} onValueChange={setFilterTreatment}>
+                        <SelectTrigger className="bg-background">
+                          <SelectValue placeholder="Todos os tratamentos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos</SelectItem>
+                          {allTreatments.map(treatment => (
+                            <SelectItem key={treatment.id} value={treatment.id}>
+                              {treatment.treatment_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Patient Filter */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground">Paciente</label>
+                      <Select value={filterPatient} onValueChange={setFilterPatient}>
+                        <SelectTrigger className="bg-background">
+                          <SelectValue placeholder="Todos os pacientes" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Todos</SelectItem>
+                          {allPatients.map(patient => (
+                            <SelectItem key={patient.id} value={patient.full_name}>
+                              {patient.full_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Mobile: Day navigation */}
               <div className="md:hidden space-y-4">
                 <div className="flex items-center justify-between">
@@ -552,10 +716,10 @@ export default function Agenda() {
                               <CardTitle className="text-lg">{professional.full_name}</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2">
-                              {dayAppointments.length > 0 || calculateAvailableSlots(appointments, currentDay, professional.id, professional.full_name).length > 0 ? (
+                              {dayAppointments.length > 0 || calculateAvailableSlots(filteredAppointments, currentDay, professional.id, professional.full_name).length > 0 ? (
                                 <>
-                                  {(() => {
-                                    const slots = calculateAvailableSlots(appointments, currentDay, professional.id, professional.full_name);
+                                   {(() => {
+                                    const slots = calculateAvailableSlots(filteredAppointments, currentDay, professional.id, professional.full_name);
                                     const allItems: Array<{type: 'appointment' | 'gap', data: any}> = [
                                       ...dayAppointments.map(apt => ({ type: 'appointment' as const, data: apt })),
                                       ...slots.map(slot => ({ type: 'gap' as const, data: slot }))
@@ -708,7 +872,7 @@ export default function Agenda() {
                             {weekDays.map(day => {
                       const dayKey = format(day, 'yyyy-MM-dd');
                       const dayAppointments = appointmentsByProfessional[professional.full_name]?.[dayKey] || [];
-                      const availableSlots = calculateAvailableSlots(appointments, day, professional.id, professional.full_name);
+                      const availableSlots = calculateAvailableSlots(filteredAppointments, day, professional.id, professional.full_name);
                       
                       const allItems: Array<{type: 'appointment' | 'gap', data: any}> = [
                         ...dayAppointments.map(apt => ({ type: 'appointment' as const, data: apt })),
