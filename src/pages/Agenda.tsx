@@ -12,6 +12,7 @@ import { ptBR } from 'date-fns/locale';
 import { NewAppointmentModal } from '@/components/NewAppointmentModal';
 import { EditAppointmentModal } from '@/components/EditAppointmentModal';
 import { AddToWaitingListModal } from '@/components/AddToWaitingListModal';
+import { AppointmentReminderButton } from '@/components/AppointmentReminderButton';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useToast } from '@/hooks/use-toast';
@@ -36,7 +37,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'Completed' | 'Cancelled' | 'No-Show';
+type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'Completed' | 'Cancelled' | 'No-Show' | 'Pending Confirmation';
 
 interface Appointment {
   id: string;
@@ -46,8 +47,10 @@ interface Appointment {
   appointment_end_time: string;
   status?: AppointmentStatus;
   notes?: string;
+  last_reminder_sent_at?: string | null;
   patient: {
     full_name: string;
+    contact_phone?: string;
   } | null;
   treatment: {
     id: string;
@@ -156,7 +159,8 @@ export default function Agenda() {
             appointment_end_time,
             status,
             notes,
-            patients:patient_id (full_name),
+            last_reminder_sent_at,
+            patients:patient_id (full_name, contact_phone),
             treatments:treatment_id (id, treatment_name),
             professionals:professional_id (id, full_name)
           `).gte('appointment_start_time', weekStart.toISOString()).lte('appointment_start_time', weekEnd.toISOString()).neq('status', 'Cancelled').order('appointment_start_time');
@@ -178,6 +182,7 @@ export default function Agenda() {
           appointment_end_time: apt.appointment_end_time,
           status: apt.status,
           notes: apt.notes,
+          last_reminder_sent_at: apt.last_reminder_sent_at,
           patient: apt.patients,
           treatment: apt.treatments,
           professional: apt.professionals
@@ -239,6 +244,7 @@ export default function Agenda() {
       case 'Completed': return 'secondary';
       case 'Cancelled': return 'destructive';
       case 'No-Show': return 'warning';
+      case 'Pending Confirmation': return 'warning';
       default: return 'default';
     }
   };
@@ -251,6 +257,7 @@ export default function Agenda() {
       case 'Completed': return 'Concluído';
       case 'Cancelled': return 'Cancelado';
       case 'No-Show': return 'Faltou';
+      case 'Pending Confirmation': return 'Aguardando Confirmação';
       default: return 'Desconhecido';
     }
   };
@@ -921,29 +928,45 @@ export default function Agenda() {
                                                    <Edit className="mr-2 h-4 w-4" />
                                                    Editar
                                                  </DropdownMenuItem>
-                                                 <DropdownMenuItem onClick={() => handleAppointmentClick(appointment)}>
-                                                   <Eye className="mr-2 h-4 w-4" />
-                                                   Ver Paciente
-                                                 </DropdownMenuItem>
-                                                 <DropdownMenuSeparator />
+                                                  <DropdownMenuItem onClick={() => handleAppointmentClick(appointment)}>
+                                                    <Eye className="mr-2 h-4 w-4" />
+                                                    Ver Paciente
+                                                  </DropdownMenuItem>
+                                                  <DropdownMenuSeparator />
+                                                  <DropdownMenuItem asChild>
+                                                    <div className="w-full">
+                                                      <AppointmentReminderButton
+                                                        appointmentId={appointment.id}
+                                                        patientPhone={appointment.patient?.contact_phone || ''}
+                                                        patientName={appointment.patient?.full_name || ''}
+                                                        appointmentDate={appointment.appointment_start_time}
+                                                        treatmentName={appointment.treatment?.treatment_name || ''}
+                                                        lastReminderSent={appointment.last_reminder_sent_at}
+                                                      />
+                                                    </div>
+                                                  </DropdownMenuItem>
+                                                  <DropdownMenuSeparator />
                                                   <DropdownMenuSub>
                                                     <DropdownMenuSubTrigger>
                                                       Alterar Status
                                                     </DropdownMenuSubTrigger>
-                                                    <DropdownMenuSubContent>
-                                                      <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Scheduled')}>
-                                                        Agendado
-                                                      </DropdownMenuItem>
-                                                      <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Confirmed')}>
-                                                        Confirmado
-                                                      </DropdownMenuItem>
-                                                      <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Completed')}>
-                                                        Concluído
-                                                      </DropdownMenuItem>
-                                                      <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'No-Show')}>
-                                                        Faltou
-                                                      </DropdownMenuItem>
-                                                    </DropdownMenuSubContent>
+                                                     <DropdownMenuSubContent>
+                                                       <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Scheduled')}>
+                                                         Agendado
+                                                       </DropdownMenuItem>
+                                                       <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Pending Confirmation')}>
+                                                         Aguardando Confirmação
+                                                       </DropdownMenuItem>
+                                                       <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Confirmed')}>
+                                                         Confirmado
+                                                       </DropdownMenuItem>
+                                                       <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Completed')}>
+                                                         Concluído
+                                                       </DropdownMenuItem>
+                                                       <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'No-Show')}>
+                                                         Faltou
+                                                       </DropdownMenuItem>
+                                                     </DropdownMenuSubContent>
                                                   </DropdownMenuSub>
                                                  <DropdownMenuSeparator />
                                                  <DropdownMenuItem 

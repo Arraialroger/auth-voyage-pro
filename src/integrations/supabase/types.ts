@@ -18,8 +18,10 @@ export type Database = {
         Row: {
           appointment_end_time: string
           appointment_start_time: string
+          confirmation_sent_at: string | null
           created_at: string
           id: string
+          last_reminder_sent_at: string | null
           notes: string | null
           patient_id: string | null
           professional_id: string | null
@@ -29,8 +31,10 @@ export type Database = {
         Insert: {
           appointment_end_time: string
           appointment_start_time: string
+          confirmation_sent_at?: string | null
           created_at?: string
           id?: string
+          last_reminder_sent_at?: string | null
           notes?: string | null
           patient_id?: string | null
           professional_id?: string | null
@@ -40,8 +44,10 @@ export type Database = {
         Update: {
           appointment_end_time?: string
           appointment_start_time?: string
+          confirmation_sent_at?: string | null
           created_at?: string
           id?: string
+          last_reminder_sent_at?: string | null
           notes?: string | null
           patient_id?: string | null
           professional_id?: string | null
@@ -331,6 +337,7 @@ export type Database = {
         | "Completed"
         | "Cancelled"
         | "No-Show"
+        | "Pending Confirmation"
       specialization_enum: "Cirurgião-Dentista" | "Ortodontista"
     }
     CompositeTypes: {
@@ -465,6 +472,7 @@ export const Constants = {
         "Completed",
         "Cancelled",
         "No-Show",
+        "Pending Confirmation",
       ],
       specialization_enum: ["Cirurgião-Dentista", "Ortodontista"],
     },
