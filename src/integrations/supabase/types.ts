@@ -151,6 +151,7 @@ export type Database = {
         Row: {
           birth_date: string | null
           contact_phone: string
+          cpf: string | null
           created_at: string
           full_name: string
           id: string
@@ -159,6 +160,7 @@ export type Database = {
         Insert: {
           birth_date?: string | null
           contact_phone: string
+          cpf?: string | null
           created_at?: string
           full_name: string
           id?: string
@@ -167,6 +169,7 @@ export type Database = {
         Update: {
           birth_date?: string | null
           contact_phone?: string
+          cpf?: string | null
           created_at?: string
           full_name?: string
           id?: string

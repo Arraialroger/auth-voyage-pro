@@ -21,6 +21,7 @@ interface Patient {
   id: string;
   full_name: string;
   contact_phone: string;
+  cpf: string | null;
   birth_date: string | null;
   medical_history_notes: string | null;
   created_at: string;
@@ -58,6 +59,7 @@ export default function ManagePatients() {
   const [formData, setFormData] = useState({
     full_name: '',
     contact_phone: '',
+    cpf: '',
     birth_date: '',
     medical_history_notes: ''
   });
@@ -330,6 +332,7 @@ export default function ManagePatients() {
         .insert([{
           full_name: formData.full_name,
           contact_phone: formData.contact_phone,
+          cpf: formData.cpf || null,
           birth_date: formData.birth_date || null,
           medical_history_notes: formData.medical_history_notes || null
         }]);
@@ -344,6 +347,7 @@ export default function ManagePatients() {
       setFormData({
         full_name: '',
         contact_phone: '',
+        cpf: '',
         birth_date: '',
         medical_history_notes: ''
       });
@@ -375,6 +379,7 @@ export default function ManagePatients() {
         .update({
           full_name: formData.full_name,
           contact_phone: formData.contact_phone,
+          cpf: formData.cpf || null,
           birth_date: formData.birth_date || null,
           medical_history_notes: formData.medical_history_notes || null
         })
@@ -430,6 +435,7 @@ export default function ManagePatients() {
     setFormData({
       full_name: patient.full_name,
       contact_phone: patient.contact_phone,
+      cpf: patient.cpf || '',
       birth_date: patient.birth_date || '',
       medical_history_notes: patient.medical_history_notes || ''
     });
@@ -440,6 +446,7 @@ export default function ManagePatients() {
     setFormData({
       full_name: '',
       contact_phone: '',
+      cpf: '',
       birth_date: '',
       medical_history_notes: ''
     });
@@ -525,14 +532,25 @@ export default function ManagePatients() {
                       placeholder="Digite o nome completo"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="contact_phone">Telefone *</Label>
-                    <Input
-                      id="contact_phone"
-                      value={formData.contact_phone}
-                      onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
-                      placeholder="(11) 99999-9999"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="contact_phone">Telefone *</Label>
+                      <Input
+                        id="contact_phone"
+                        value={formData.contact_phone}
+                        onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                        placeholder="(11) 99999-9999"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="cpf">CPF</Label>
+                      <Input
+                        id="cpf"
+                        value={formData.cpf}
+                        onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                        placeholder="000.000.000-00"
+                      />
+                    </div>
                   </div>
                   <div>
                     <Label htmlFor="birth_date">Data de Nascimento</Label>
@@ -679,7 +697,7 @@ export default function ManagePatients() {
                                 {/* Tab: Informações do Paciente */}
                                 <TabsContent value="info" className="space-y-6 mt-6">
                                   {/* Campos básicos em linha horizontal */}
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                     <div>
                                       <Label htmlFor="edit_name">Nome Completo *</Label>
                                       <Input
@@ -726,6 +744,16 @@ export default function ManagePatients() {
                                           </a>
                                         </div>
                                       )}
+                                    </div>
+                                    <div>
+                                      <Label htmlFor="edit_cpf">CPF</Label>
+                                      <Input
+                                        id="edit_cpf"
+                                        value={formData.cpf}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, cpf: e.target.value }))}
+                                        placeholder="000.000.000-00"
+                                        className="mt-2"
+                                      />
                                     </div>
                                     <div>
                                       <Label htmlFor="edit_birth_date">Data de Nascimento</Label>
