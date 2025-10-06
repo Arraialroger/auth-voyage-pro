@@ -16,29 +16,10 @@ import { AppointmentReminderButton } from '@/components/AppointmentReminderButto
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useToast } from '@/hooks/use-toast';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'Completed' | 'Cancelled' | 'No-Show' | 'Pending Confirmation';
-
 interface Appointment {
   id: string;
   patient_id: string | null;
@@ -61,7 +42,6 @@ interface Appointment {
     id: string;
   } | null;
 }
-
 interface AvailableSlot {
   start: Date;
   end: Date;
@@ -76,7 +56,9 @@ export default function Agenda() {
   } = useAuth();
   const navigate = useNavigate();
   const userProfile = useUserProfile();
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const queryClient = useQueryClient();
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [currentDay, setCurrentDay] = useState(new Date());
@@ -91,7 +73,10 @@ export default function Agenda() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [appointmentToCancel, setAppointmentToCancel] = useState<string>('');
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
-  const [statusChangeData, setStatusChangeData] = useState<{appointmentId: string, newStatus: AppointmentStatus} | null>(null);
+  const [statusChangeData, setStatusChangeData] = useState<{
+    appointmentId: string;
+    newStatus: AppointmentStatus;
+  } | null>(null);
   const [modalInitialValues, setModalInitialValues] = useState<{
     professional_id?: string;
     appointment_date?: Date;
@@ -121,14 +106,16 @@ export default function Agenda() {
     weekStartsOn: 1
   });
   // Fetch treatments for filter
-  const { data: allTreatments = [] } = useQuery({
+  const {
+    data: allTreatments = []
+  } = useQuery({
     queryKey: ['treatments'],
     queryFn: async () => {
       try {
-        const { data, error } = await supabase
-          .from('treatments')
-          .select('id, treatment_name')
-          .order('treatment_name');
+        const {
+          data,
+          error
+        } = await supabase.from('treatments').select('id, treatment_name').order('treatment_name');
         if (error) throw error;
         return data || [];
       } catch (error) {
@@ -139,14 +126,16 @@ export default function Agenda() {
   });
 
   // Fetch patients for filter
-  const { data: allPatients = [] } = useQuery({
+  const {
+    data: allPatients = []
+  } = useQuery({
     queryKey: ['patients-for-filter'],
     queryFn: async () => {
       try {
-        const { data, error } = await supabase
-          .from('patients')
-          .select('id, full_name')
-          .order('full_name');
+        const {
+          data,
+          error
+        } = await supabase.from('patients').select('id, full_name').order('full_name');
         if (error) throw error;
         return data || [];
       } catch (error) {
@@ -155,7 +144,6 @@ export default function Agenda() {
       }
     }
   });
-
   const {
     data: appointments = [],
     isLoading
@@ -211,38 +199,35 @@ export default function Agenda() {
   };
   const previousWeek = () => setCurrentWeek(subWeeks(currentWeek, 1));
   const nextWeek = () => setCurrentWeek(addWeeks(currentWeek, 1));
-
   const handleCancelAppointment = async (appointmentId: string) => {
     try {
-      const { error } = await supabase
-        .from('appointments')
-        .update({ status: 'Cancelled' })
-        .eq('id', appointmentId);
-
+      const {
+        error
+      } = await supabase.from('appointments').update({
+        status: 'Cancelled'
+      }).eq('id', appointmentId);
       if (error) throw error;
-
       toast({
         title: 'Agendamento cancelado',
-        description: 'O agendamento foi cancelado com sucesso.',
+        description: 'O agendamento foi cancelado com sucesso.'
       });
-
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({
+        queryKey: ['appointments']
+      });
       setCancelDialogOpen(false);
     } catch (error) {
       console.error('Error cancelling appointment:', error);
       toast({
         title: 'Erro',
         description: 'Erro ao cancelar agendamento. Tente novamente.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     }
   };
-
   const handleEditAppointment = (appointmentId: string) => {
     setSelectedAppointmentId(appointmentId);
     setEditModalOpen(true);
   };
-
   const handleCancelDialogOpen = (appointmentId: string) => {
     setAppointmentToCancel(appointmentId);
     setCancelDialogOpen(true);
@@ -251,26 +236,40 @@ export default function Agenda() {
   // Função para obter variante do badge de status
   const getStatusBadgeVariant = (status?: AppointmentStatus): "default" | "secondary" | "success" | "warning" | "destructive" => {
     switch (status) {
-      case 'Scheduled': return 'default';
-      case 'Confirmed': return 'success';
-      case 'Completed': return 'secondary';
-      case 'Cancelled': return 'destructive';
-      case 'No-Show': return 'warning';
-      case 'Pending Confirmation': return 'warning';
-      default: return 'default';
+      case 'Scheduled':
+        return 'default';
+      case 'Confirmed':
+        return 'success';
+      case 'Completed':
+        return 'secondary';
+      case 'Cancelled':
+        return 'destructive';
+      case 'No-Show':
+        return 'warning';
+      case 'Pending Confirmation':
+        return 'warning';
+      default:
+        return 'default';
     }
   };
 
   // Função para obter label do status
   const getStatusLabel = (status?: AppointmentStatus): string => {
     switch (status) {
-      case 'Scheduled': return 'Agendado';
-      case 'Confirmed': return 'Confirmado';
-      case 'Completed': return 'Concluído';
-      case 'Cancelled': return 'Cancelado';
-      case 'No-Show': return 'Faltou';
-      case 'Pending Confirmation': return 'Aguardando Confirmação';
-      default: return 'Desconhecido';
+      case 'Scheduled':
+        return 'Agendado';
+      case 'Confirmed':
+        return 'Confirmado';
+      case 'Completed':
+        return 'Concluído';
+      case 'Cancelled':
+        return 'Cancelado';
+      case 'No-Show':
+        return 'Faltou';
+      case 'Pending Confirmation':
+        return 'Aguardando Confirmação';
+      default:
+        return 'Desconhecido';
     }
   };
 
@@ -278,7 +277,10 @@ export default function Agenda() {
   const handleStatusChange = async (appointmentId: string, newStatus: AppointmentStatus) => {
     // Se for status crítico, mostrar confirmação
     if (newStatus === 'Cancelled' || newStatus === 'No-Show') {
-      setStatusChangeData({ appointmentId, newStatus });
+      setStatusChangeData({
+        appointmentId,
+        newStatus
+      });
       setStatusDialogOpen(true);
       return;
     }
@@ -290,19 +292,19 @@ export default function Agenda() {
   // Função para atualizar status no banco
   const updateAppointmentStatus = async (appointmentId: string, newStatus: AppointmentStatus) => {
     try {
-      const { error } = await supabase
-        .from('appointments')
-        .update({ status: newStatus })
-        .eq('id', appointmentId);
-
+      const {
+        error
+      } = await supabase.from('appointments').update({
+        status: newStatus
+      }).eq('id', appointmentId);
       if (error) throw error;
-
       toast({
         title: 'Status atualizado',
-        description: `O agendamento foi marcado como "${getStatusLabel(newStatus)}".`,
+        description: `O agendamento foi marcado como "${getStatusLabel(newStatus)}".`
       });
-
-      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({
+        queryKey: ['appointments']
+      });
       setStatusDialogOpen(false);
       setStatusChangeData(null);
     } catch (error) {
@@ -310,74 +312,56 @@ export default function Agenda() {
       toast({
         title: 'Erro',
         description: 'Erro ao atualizar status. Tente novamente.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     }
   };
 
   // Função para calcular horários vagos
-  const calculateAvailableSlots = (
-    appointments: Appointment[],
-    date: Date,
-    professionalId: string,
-    professionalName: string
-  ): AvailableSlot[] => {
+  const calculateAvailableSlots = (appointments: Appointment[], date: Date, professionalId: string, professionalName: string): AvailableSlot[] => {
     // Não mostrar slots para domingos
     if (isSunday(date)) return [];
-
     const dayKey = format(date, 'yyyy-MM-dd');
-    const dayAppointments = appointments
-      .filter(apt => {
-        const aptDate = format(new Date(apt.appointment_start_time), 'yyyy-MM-dd');
-        return aptDate === dayKey && apt.professional?.id === professionalId;
-      })
-      .sort((a, b) => 
-        new Date(a.appointment_start_time).getTime() - new Date(b.appointment_start_time).getTime()
-      );
-
+    const dayAppointments = appointments.filter(apt => {
+      const aptDate = format(new Date(apt.appointment_start_time), 'yyyy-MM-dd');
+      return aptDate === dayKey && apt.professional?.id === professionalId;
+    }).sort((a, b) => new Date(a.appointment_start_time).getTime() - new Date(b.appointment_start_time).getTime());
     const gaps: AvailableSlot[] = [];
     let currentTime = new Date(date);
     currentTime.setHours(WORK_START_HOUR, 0, 0, 0);
-
     const workEndHour = getWorkEndHour(date);
     const endTime = new Date(date);
     endTime.setHours(workEndHour, 0, 0, 0);
-
     for (const apt of dayAppointments) {
       const aptStart = new Date(apt.appointment_start_time);
-
       if (aptStart.getTime() > currentTime.getTime()) {
         const gapMinutes = (aptStart.getTime() - currentTime.getTime()) / 60000;
-
         if (gapMinutes >= MIN_GAP_MINUTES) {
           gaps.push({
             start: new Date(currentTime),
             end: new Date(aptStart),
             duration: gapMinutes,
             professionalId,
-            professionalName,
+            professionalName
           });
         }
       }
-
       currentTime = new Date(apt.appointment_end_time);
     }
 
     // Gap após último agendamento
     if (currentTime.getTime() < endTime.getTime()) {
       const gapMinutes = (endTime.getTime() - currentTime.getTime()) / 60000;
-
       if (gapMinutes >= MIN_GAP_MINUTES) {
         gaps.push({
           start: new Date(currentTime),
           end: new Date(endTime),
           duration: gapMinutes,
           professionalId,
-          professionalName,
+          professionalName
         });
       }
     }
-
     return gaps;
   };
 
@@ -415,10 +399,12 @@ export default function Agenda() {
     });
     setModalOpen(true);
   };
-
   const handleAppointmentClick = (appointment: Appointment) => {
     if (!appointment.patient_id) {
-      toast({ title: "Paciente não identificado", variant: "destructive" });
+      toast({
+        title: "Paciente não identificado",
+        variant: "destructive"
+      });
       return;
     }
     navigate(`/admin/patients?patientId=${appointment.patient_id}`);
@@ -430,26 +416,21 @@ export default function Agenda() {
     if (filterStatus !== 'all' && apt.status !== filterStatus) {
       return false;
     }
-    
+
     // Filter by treatment
     if (filterTreatment !== 'all' && apt.treatment?.id !== filterTreatment) {
       return false;
     }
-    
+
     // Filter by patient name
     if (filterPatient !== 'all' && !apt.patient?.full_name.toLowerCase().includes(filterPatient.toLowerCase())) {
       return false;
     }
-    
     return true;
   });
 
   // Count active filters
-  const activeFiltersCount = [
-    filterStatus !== 'all',
-    filterTreatment !== 'all',
-    filterPatient !== 'all'
-  ].filter(Boolean).length;
+  const activeFiltersCount = [filterStatus !== 'all', filterTreatment !== 'all', filterPatient !== 'all'].filter(Boolean).length;
 
   // Group appointments by professional and day
   const appointmentsByProfessional = filteredAppointments.reduce((acc, apt) => {
@@ -529,40 +510,25 @@ export default function Agenda() {
               {/* Filters Section */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setShowFilters(!showFilters)}
-                    className="gap-2"
-                  >
+                  <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)} className="gap-2">
                     <Filter className="h-4 w-4" />
                     Filtros
-                    {activeFiltersCount > 0 && (
-                      <Badge variant="secondary" className="ml-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                    {activeFiltersCount > 0 && <Badge variant="secondary" className="ml-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
                         {activeFiltersCount}
-                      </Badge>
-                    )}
+                      </Badge>}
                   </Button>
                   
-                  {activeFiltersCount > 0 && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => {
-                        setFilterStatus('all');
-                        setFilterTreatment('all');
-                        setFilterPatient('all');
-                      }}
-                      className="gap-1 text-muted-foreground hover:text-foreground"
-                    >
+                  {activeFiltersCount > 0 && <Button variant="ghost" size="sm" onClick={() => {
+                  setFilterStatus('all');
+                  setFilterTreatment('all');
+                  setFilterPatient('all');
+                }} className="gap-1 text-muted-foreground hover:text-foreground">
                       <X className="h-3 w-3" />
                       Limpar
-                    </Button>
-                  )}
+                    </Button>}
                 </div>
 
-                {showFilters && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-muted/30 rounded-lg border border-border/50">
+                {showFilters && <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-muted/30 rounded-lg border border-border/50">
                     {/* Status Filter */}
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-muted-foreground">Status</label>
@@ -589,11 +555,9 @@ export default function Agenda() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Todos</SelectItem>
-                          {allTreatments.map(treatment => (
-                            <SelectItem key={treatment.id} value={treatment.id}>
+                          {allTreatments.map(treatment => <SelectItem key={treatment.id} value={treatment.id}>
                               {treatment.treatment_name}
-                            </SelectItem>
-                          ))}
+                            </SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
@@ -607,16 +571,13 @@ export default function Agenda() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">Todos</SelectItem>
-                          {allPatients.map(patient => (
-                            <SelectItem key={patient.id} value={patient.full_name}>
+                          {allPatients.map(patient => <SelectItem key={patient.id} value={patient.full_name}>
                               {patient.full_name}
-                            </SelectItem>
-                          ))}
+                            </SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
-                )}
+                  </div>}
               </div>
 
               {/* Mobile: Day navigation */}
@@ -679,13 +640,7 @@ export default function Agenda() {
                 </Button>
                 
                 <div className="flex items-center space-x-4">
-                  <h2 className="text-xl font-semibold">
-                    {format(weekStart, "dd/MM", {
-                    locale: ptBR
-                  })} - {format(weekEnd, "dd/MM 'de' yyyy", {
-                    locale: ptBR
-                  })}
-                  </h2>
+                  
                   
                   <div className="flex gap-2">
                     <AddToWaitingListModal trigger={<Button variant="outline" className="gap-2">
@@ -739,28 +694,27 @@ export default function Agenda() {
                               <CardTitle className="text-lg">{professional.full_name}</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2">
-                              {dayAppointments.length > 0 || calculateAvailableSlots(filteredAppointments, currentDay, professional.id, professional.full_name).length > 0 ? (
-                                <>
+                              {dayAppointments.length > 0 || calculateAvailableSlots(filteredAppointments, currentDay, professional.id, professional.full_name).length > 0 ? <>
                                    {(() => {
-                                    const slots = calculateAvailableSlots(filteredAppointments, currentDay, professional.id, professional.full_name);
-                                    const allItems: Array<{type: 'appointment' | 'gap', data: any}> = [
-                                      ...dayAppointments.map(apt => ({ type: 'appointment' as const, data: apt })),
-                                      ...slots.map(slot => ({ type: 'gap' as const, data: slot }))
-                                    ].sort((a, b) => {
-                                      const timeA = a.type === 'appointment' 
-                                        ? new Date(a.data.appointment_start_time).getTime()
-                                        : a.data.start.getTime();
-                                      const timeB = b.type === 'appointment'
-                                        ? new Date(b.data.appointment_start_time).getTime()
-                                        : b.data.start.getTime();
-                                      return timeA - timeB;
-                                    });
-
-                                    return allItems.map((item, idx) => {
-                                      if (item.type === 'appointment') {
-                                        const appointment = item.data;
-                                        return (
-                                           <div key={`apt-${appointment.id}`} className="relative bg-primary text-primary-foreground p-3 rounded-md shadow-sm group">
+                            const slots = calculateAvailableSlots(filteredAppointments, currentDay, professional.id, professional.full_name);
+                            const allItems: Array<{
+                              type: 'appointment' | 'gap';
+                              data: any;
+                            }> = [...dayAppointments.map(apt => ({
+                              type: 'appointment' as const,
+                              data: apt
+                            })), ...slots.map(slot => ({
+                              type: 'gap' as const,
+                              data: slot
+                            }))].sort((a, b) => {
+                              const timeA = a.type === 'appointment' ? new Date(a.data.appointment_start_time).getTime() : a.data.start.getTime();
+                              const timeB = b.type === 'appointment' ? new Date(b.data.appointment_start_time).getTime() : b.data.start.getTime();
+                              return timeA - timeB;
+                            });
+                            return allItems.map((item, idx) => {
+                              if (item.type === 'appointment') {
+                                const appointment = item.data;
+                                return <div key={`apt-${appointment.id}`} className="relative bg-primary text-primary-foreground p-3 rounded-md shadow-sm group">
                                              <div className="flex justify-between items-start gap-2">
                                                <div className="flex-1 cursor-pointer" onClick={() => handleAppointmentClick(appointment)}>
                                                  <div className="flex items-center gap-2 mb-1">
@@ -779,7 +733,7 @@ export default function Agenda() {
                                                  </div>
                                                </div>
                                                <DropdownMenu>
-                                                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                 <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
                                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-primary-foreground hover:bg-primary-foreground/20">
                                                      <MoreVertical className="h-4 w-4" />
                                                    </Button>
@@ -814,30 +768,20 @@ export default function Agenda() {
                                                       </DropdownMenuSubContent>
                                                     </DropdownMenuSub>
                                                    <DropdownMenuSeparator />
-                                                   <DropdownMenuItem 
-                                                     onClick={() => handleCancelDialogOpen(appointment.id)}
-                                                     className="text-destructive focus:text-destructive"
-                                                   >
+                                                   <DropdownMenuItem onClick={() => handleCancelDialogOpen(appointment.id)} className="text-destructive focus:text-destructive">
                                                      <Trash2 className="mr-2 h-4 w-4" />
                                                      Cancelar Agendamento
                                                    </DropdownMenuItem>
                                                  </DropdownMenuContent>
                                                </DropdownMenu>
                                              </div>
-                                           </div>
-                                        );
-                                      } else {
-                                        const gap = item.data;
-                                        return (
-                                          <div 
-                                            key={`gap-${idx}`}
-                                            onClick={() => handleEmptySlotClick(
-                                              { id: gap.professionalId, full_name: gap.professionalName },
-                                              currentDay,
-                                              format(gap.start, 'HH:mm')
-                                            )}
-                                            className="border-2 border-dashed border-muted-foreground/30 bg-muted/30 p-3 rounded-md cursor-pointer hover:bg-muted/50 hover:border-muted-foreground/50 transition-all"
-                                          >
+                                           </div>;
+                              } else {
+                                const gap = item.data;
+                                return <div key={`gap-${idx}`} onClick={() => handleEmptySlotClick({
+                                  id: gap.professionalId,
+                                  full_name: gap.professionalName
+                                }, currentDay, format(gap.start, 'HH:mm'))} className="border-2 border-dashed border-muted-foreground/30 bg-muted/30 p-3 rounded-md cursor-pointer hover:bg-muted/50 hover:border-muted-foreground/50 transition-all">
                                             <div className="flex items-center gap-2 text-muted-foreground">
                                               <Clock className="h-4 w-4" />
                                               <div className="flex-1">
@@ -847,18 +791,14 @@ export default function Agenda() {
                                               </div>
                                               <Plus className="h-4 w-4" />
                                             </div>
-                                          </div>
-                                        );
-                                      }
-                                    });
-                                  })()}
-                                </>
-                              ) : (
-                                <div className="text-center py-6 text-muted-foreground">
+                                          </div>;
+                              }
+                            });
+                          })()}
+                                </> : <div className="text-center py-6 text-muted-foreground">
                                   <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
                                   <p className="text-sm">Nenhum agendamento para este dia</p>
-                                </div>
-                              )}
+                                </div>}
                               
                               {/* Add appointment button */}
                               <Button variant="outline" className="w-full mt-3" onClick={() => handleEmptySlotClick(professional, currentDay, '09:00')}>
@@ -896,26 +836,25 @@ export default function Agenda() {
                       const dayKey = format(day, 'yyyy-MM-dd');
                       const dayAppointments = appointmentsByProfessional[professional.full_name]?.[dayKey] || [];
                       const availableSlots = calculateAvailableSlots(filteredAppointments, day, professional.id, professional.full_name);
-                      
-                      const allItems: Array<{type: 'appointment' | 'gap', data: any}> = [
-                        ...dayAppointments.map(apt => ({ type: 'appointment' as const, data: apt })),
-                        ...availableSlots.map(slot => ({ type: 'gap' as const, data: slot }))
-                      ].sort((a, b) => {
-                        const timeA = a.type === 'appointment' 
-                          ? new Date(a.data.appointment_start_time).getTime()
-                          : a.data.start.getTime();
-                        const timeB = b.type === 'appointment'
-                          ? new Date(b.data.appointment_start_time).getTime()
-                          : b.data.start.getTime();
+                      const allItems: Array<{
+                        type: 'appointment' | 'gap';
+                        data: any;
+                      }> = [...dayAppointments.map(apt => ({
+                        type: 'appointment' as const,
+                        data: apt
+                      })), ...availableSlots.map(slot => ({
+                        type: 'gap' as const,
+                        data: slot
+                      }))].sort((a, b) => {
+                        const timeA = a.type === 'appointment' ? new Date(a.data.appointment_start_time).getTime() : a.data.start.getTime();
+                        const timeB = b.type === 'appointment' ? new Date(b.data.appointment_start_time).getTime() : b.data.start.getTime();
                         return timeA - timeB;
                       });
-
                       return <div key={dayKey} className="min-h-[120px] p-1 border border-border/20 rounded-md bg-muted/20 hover:bg-muted/40 transition-colors space-y-1">
                                   {allItems.map((item, idx) => {
-                                    if (item.type === 'appointment') {
-                                      const appointment = item.data;
-                                      return (
-                                         <div key={`apt-${appointment.id}`} className="relative bg-primary text-primary-foreground p-2 rounded-md text-xs shadow-sm group">
+                          if (item.type === 'appointment') {
+                            const appointment = item.data;
+                            return <div key={`apt-${appointment.id}`} className="relative bg-primary text-primary-foreground p-2 rounded-md text-xs shadow-sm group">
                                            <div className="flex justify-between items-start gap-1">
                                              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleAppointmentClick(appointment)}>
                                                <div className="flex items-center gap-1 mb-0.5">
@@ -934,7 +873,7 @@ export default function Agenda() {
                                                </div>
                                              </div>
                                              <DropdownMenu>
-                                               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                               <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
                                                  <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-primary-foreground hover:bg-primary-foreground/20 opacity-0 group-hover:opacity-100 transition-opacity">
                                                    <MoreVertical className="h-3 w-3" />
                                                  </Button>
@@ -951,14 +890,7 @@ export default function Agenda() {
                                                   <DropdownMenuSeparator />
                                                   <DropdownMenuItem asChild>
                                                     <div className="w-full">
-                                                      <AppointmentReminderButton
-                                                        appointmentId={appointment.id}
-                                                        patientPhone={appointment.patient?.contact_phone || ''}
-                                                        patientName={appointment.patient?.full_name || ''}
-                                                        appointmentDate={appointment.appointment_start_time}
-                                                        treatmentName={appointment.treatment?.treatment_name || ''}
-                                                        lastReminderSent={appointment.last_reminder_sent_at}
-                                                      />
+                                                      <AppointmentReminderButton appointmentId={appointment.id} patientPhone={appointment.patient?.contact_phone || ''} patientName={appointment.patient?.full_name || ''} appointmentDate={appointment.appointment_start_time} treatmentName={appointment.treatment?.treatment_name || ''} lastReminderSent={appointment.last_reminder_sent_at} />
                                                     </div>
                                                   </DropdownMenuItem>
                                                   <DropdownMenuSeparator />
@@ -985,30 +917,20 @@ export default function Agenda() {
                                                      </DropdownMenuSubContent>
                                                   </DropdownMenuSub>
                                                  <DropdownMenuSeparator />
-                                                 <DropdownMenuItem 
-                                                   onClick={() => handleCancelDialogOpen(appointment.id)}
-                                                   className="text-destructive focus:text-destructive"
-                                                 >
+                                                 <DropdownMenuItem onClick={() => handleCancelDialogOpen(appointment.id)} className="text-destructive focus:text-destructive">
                                                    <Trash2 className="mr-2 h-4 w-4" />
                                                    Cancelar
                                                  </DropdownMenuItem>
                                                </DropdownMenuContent>
                                              </DropdownMenu>
                                            </div>
-                                         </div>
-                                      );
-                                    } else {
-                                      const gap = item.data;
-                                      return (
-                                        <div 
-                                          key={`gap-${idx}`}
-                                          onClick={() => handleEmptySlotClick(
-                                            { id: gap.professionalId, full_name: gap.professionalName },
-                                            day,
-                                            format(gap.start, 'HH:mm')
-                                          )}
-                                          className="border border-dashed border-muted-foreground/30 bg-muted/30 p-1 rounded cursor-pointer hover:bg-muted/50 hover:border-muted-foreground/50 transition-all"
-                                        >
+                                         </div>;
+                          } else {
+                            const gap = item.data;
+                            return <div key={`gap-${idx}`} onClick={() => handleEmptySlotClick({
+                              id: gap.professionalId,
+                              full_name: gap.professionalName
+                            }, day, format(gap.start, 'HH:mm'))} className="border border-dashed border-muted-foreground/30 bg-muted/30 p-1 rounded cursor-pointer hover:bg-muted/50 hover:border-muted-foreground/50 transition-all">
                                           <div className="flex items-center gap-1 text-muted-foreground">
                                             <Clock className="h-3 w-3" />
                                             <div className="flex-1 min-w-0">
@@ -1016,17 +938,14 @@ export default function Agenda() {
                                               <div className="text-[10px] truncate">{format(gap.start, 'HH:mm')}-{format(gap.end, 'HH:mm')}</div>
                                             </div>
                                           </div>
-                                        </div>
-                                      );
-                                    }
-                                  })}
+                                        </div>;
+                          }
+                        })}
                                   
                                   {/* Empty slot click area */}
-                                  {allItems.length === 0 && (
-                                    <div onClick={() => handleEmptySlotClick(professional, day, '09:00')} className="h-full min-h-[100px] flex items-center justify-center cursor-pointer opacity-60 hover:opacity-100 transition-opacity bg-muted/40 hover:bg-muted/60 rounded border border-dashed border-muted-foreground/30">
+                                  {allItems.length === 0 && <div onClick={() => handleEmptySlotClick(professional, day, '09:00')} className="h-full min-h-[100px] flex items-center justify-center cursor-pointer opacity-60 hover:opacity-100 transition-opacity bg-muted/40 hover:bg-muted/60 rounded border border-dashed border-muted-foreground/30">
                                       <Plus className="h-4 w-4 text-muted-foreground" />
-                                    </div>
-                                  )}
+                                    </div>}
                                 </div>;
                     })}
                           </div>)}
@@ -1051,17 +970,10 @@ export default function Agenda() {
     }} />
 
       {/* Edit Appointment Modal */}
-      {selectedAppointmentId && (
-        <EditAppointmentModal 
-          appointmentId={selectedAppointmentId}
-          open={editModalOpen}
-          onOpenChange={setEditModalOpen}
-          onSuccess={() => {
-            setEditModalOpen(false);
-            setSelectedAppointmentId('');
-          }}
-        />
-      )}
+      {selectedAppointmentId && <EditAppointmentModal appointmentId={selectedAppointmentId} open={editModalOpen} onOpenChange={setEditModalOpen} onSuccess={() => {
+      setEditModalOpen(false);
+      setSelectedAppointmentId('');
+    }} />}
 
       {/* Cancel Confirmation Dialog */}
       <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
@@ -1074,10 +986,7 @@ export default function Agenda() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Não, manter</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => handleCancelAppointment(appointmentToCancel)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction onClick={() => handleCancelAppointment(appointmentToCancel)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Sim, cancelar
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1095,10 +1004,7 @@ export default function Agenda() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setStatusChangeData(null)}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => statusChangeData && updateAppointmentStatus(statusChangeData.appointmentId, statusChangeData.newStatus)}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-            >
+            <AlertDialogAction onClick={() => statusChangeData && updateAppointmentStatus(statusChangeData.appointmentId, statusChangeData.newStatus)} className="bg-primary text-primary-foreground hover:bg-primary/90">
               Confirmar
             </AlertDialogAction>
           </AlertDialogFooter>
