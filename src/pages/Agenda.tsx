@@ -468,7 +468,7 @@ export default function Agenda() {
   // Use all professionals instead of just those with appointments
   const professionals = allProfessionals;
   const weekDays = Array.from({
-    length: 7
+    length: 6
   }, (_, i) => addDays(weekStart, i));
   return <div className="min-h-screen bg-gradient-subtle">
       {/* Header */}
@@ -720,22 +720,6 @@ export default function Agenda() {
                   {/* Mobile: Card view for single day */}
                   <div className="md:hidden space-y-4">
                     {(() => {
-                  // Verificar se é domingo
-                  if (isSunday(currentDay)) {
-                    return <div className="text-center py-12">
-                            <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold mb-2">Clínica Fechada</h3>
-                            <p className="text-muted-foreground">
-                              A clínica não abre aos domingos.
-                            </p>
-                            <p className="text-sm text-muted-foreground mt-2">
-                              Horário de atendimento:<br />
-                              Segunda a Sexta: 9h às 18h<br />
-                              Sábado: 9h às 12h
-                            </p>
-                          </div>;
-                  }
-                  
                   // Filter professionals based on selection
                   const visibleProfessionals = selectedProfessional === 'all' ? professionals : professionals.filter(p => p.id === selectedProfessional);
                   const dayKey = format(currentDay, 'yyyy-MM-dd');
@@ -890,7 +874,7 @@ export default function Agenda() {
                   {/* Desktop: Grid view for full week */}
                   <div className="hidden md:block overflow-x-auto">
                     {/* Calendar Header */}
-                    <div className="grid grid-cols-8 gap-2 mb-4 min-w-[800px]">
+                    <div className="grid grid-cols-7 gap-2 mb-4 min-w-[700px]">
                       <div className="font-semibold text-sm text-muted-foreground p-2">
                         Profissional
                       </div>
@@ -903,24 +887,13 @@ export default function Agenda() {
                     </div>
 
                     {/* Calendar Body */}
-                    {professionals.length > 0 ? <div className="min-w-[800px]">
-                        {professionals.map(professional => <div key={professional.id} className="grid grid-cols-8 gap-2 mb-4 border-b border-border/30 pb-4">
+                    {professionals.length > 0 ? <div className="min-w-[700px]">
+                        {professionals.map(professional => <div key={professional.id} className="grid grid-cols-7 gap-2 mb-4 border-b border-border/30 pb-4">
                             <div className="font-medium p-2 text-sm">
                               {professional.full_name}
                             </div>
                             {weekDays.map(day => {
                       const dayKey = format(day, 'yyyy-MM-dd');
-                      
-                      // Verificar se é domingo
-                      if (isSunday(day)) {
-                        return <div key={dayKey} className="min-h-[120px] p-1 border border-border/20 rounded-md bg-muted/10 flex items-center justify-center">
-                          <div className="text-center text-muted-foreground text-xs">
-                            <Calendar className="h-6 w-6 mx-auto mb-1 opacity-50" />
-                            <div className="font-medium">Fechado</div>
-                          </div>
-                        </div>;
-                      }
-
                       const dayAppointments = appointmentsByProfessional[professional.full_name]?.[dayKey] || [];
                       const availableSlots = calculateAvailableSlots(filteredAppointments, day, professional.id, professional.full_name);
                       
