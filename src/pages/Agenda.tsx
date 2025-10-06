@@ -99,9 +99,21 @@ export default function Agenda() {
   }>({});
 
   // Configurações de horário de trabalho
-  const WORK_START_HOUR = 8;
-  const WORK_END_HOUR = 18;
+  const WORK_START_HOUR = 9; // Início às 9h
+  const WORK_END_HOUR = 18; // Fim padrão às 18h (seg-sex)
+  const SATURDAY_END_HOUR = 12; // Sábado até 12h
   const MIN_GAP_MINUTES = 30;
+
+  // Função para obter horário de fim baseado no dia da semana
+  const getWorkEndHour = (date: Date): number => {
+    const dayOfWeek = date.getDay();
+    if (dayOfWeek === 0) return 0; // Domingo - clínica fechada
+    if (dayOfWeek === 6) return SATURDAY_END_HOUR; // Sábado até 12h
+    return WORK_END_HOUR; // Segunda a sexta até 18h
+  };
+
+  // Verifica se é domingo
+  const isSunday = (date: Date): boolean => date.getDay() === 0;
   const weekStart = startOfWeek(currentWeek, {
     weekStartsOn: 1
   });
@@ -310,6 +322,9 @@ export default function Agenda() {
     professionalId: string,
     professionalName: string
   ): AvailableSlot[] => {
+    // Não mostrar slots para domingos
+    if (isSunday(date)) return [];
+
     const dayKey = format(date, 'yyyy-MM-dd');
     const dayAppointments = appointments
       .filter(apt => {
@@ -324,8 +339,9 @@ export default function Agenda() {
     let currentTime = new Date(date);
     currentTime.setHours(WORK_START_HOUR, 0, 0, 0);
 
+    const workEndHour = getWorkEndHour(date);
     const endTime = new Date(date);
-    endTime.setHours(WORK_END_HOUR, 0, 0, 0);
+    endTime.setHours(workEndHour, 0, 0, 0);
 
     for (const apt of dayAppointments) {
       const aptStart = new Date(apt.appointment_start_time);
@@ -704,6 +720,22 @@ export default function Agenda() {
                   {/* Mobile: Card view for single day */}
                   <div className="md:hidden space-y-4">
                     {(() => {
+                  // Verificar se é domingo
+                  if (isSunday(currentDay)) {
+                    return <div className="text-center py-12">
+                            <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                            <h3 className="text-lg font-semibold mb-2">Clínica Fechada</h3>
+                            <p className="text-muted-foreground">
+                              A clínica não abre aos domingos.
+                            </p>
+                            <p className="text-sm text-muted-foreground mt-2">
+                              Horário de atendimento:<br />
+                              Segunda a Sexta: 9h às 18h<br />
+                              Sábado: 9h às 12h
+                            </p>
+                          </div>;
+                  }
+                  
                   // Filter professionals based on selection
                   const visibleProfessionals = selectedProfessional === 'all' ? professionals : professionals.filter(p => p.id === selectedProfessional);
                   const dayKey = format(currentDay, 'yyyy-MM-dd');
@@ -878,6 +910,17 @@ export default function Agenda() {
                             </div>
                             {weekDays.map(day => {
                       const dayKey = format(day, 'yyyy-MM-dd');
+                      
+                      // Verificar se é domingo
+                      if (isSunday(day)) {
+                        return <div key={dayKey} className="min-h-[120px] p-1 border border-border/20 rounded-md bg-muted/10 flex items-center justify-center">
+                          <div className="text-center text-muted-foreground text-xs">
+                            <Calendar className="h-6 w-6 mx-auto mb-1 opacity-50" />
+                            <div className="font-medium">Fechado</div>
+                          </div>
+                        </div>;
+                      }
+
                       const dayAppointments = appointmentsByProfessional[professional.full_name]?.[dayKey] || [];
                       const availableSlots = calculateAvailableSlots(filteredAppointments, day, professional.id, professional.full_name);
                       
