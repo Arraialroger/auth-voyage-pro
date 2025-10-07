@@ -120,6 +120,259 @@ export type Database = {
           },
         ]
       }
+      expenses: {
+        Row: {
+          amount: number
+          category: Database["public"]["Enums"]["expense_category_enum"]
+          created_at: string
+          created_by: string | null
+          description: string
+          expense_date: string
+          id: string
+          payment_method: Database["public"]["Enums"]["payment_method_enum"]
+          receipt_url: string | null
+          status: Database["public"]["Enums"]["expense_status_enum"]
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category: Database["public"]["Enums"]["expense_category_enum"]
+          created_at?: string
+          created_by?: string | null
+          description: string
+          expense_date: string
+          id?: string
+          payment_method: Database["public"]["Enums"]["payment_method_enum"]
+          receipt_url?: string | null
+          status?: Database["public"]["Enums"]["expense_status_enum"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: Database["public"]["Enums"]["expense_category_enum"]
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          expense_date?: string
+          id?: string
+          payment_method?: Database["public"]["Enums"]["payment_method_enum"]
+          receipt_url?: string | null
+          status?: Database["public"]["Enums"]["expense_status_enum"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      financial_goals: {
+        Row: {
+          created_at: string
+          current_amount: number
+          end_date: string
+          goal_name: string
+          id: string
+          start_date: string
+          status: Database["public"]["Enums"]["goal_status_enum"]
+          target_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_amount?: number
+          end_date: string
+          goal_name: string
+          id?: string
+          start_date: string
+          status?: Database["public"]["Enums"]["goal_status_enum"]
+          target_amount: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_amount?: number
+          end_date?: string
+          goal_name?: string
+          id?: string
+          start_date?: string
+          status?: Database["public"]["Enums"]["goal_status_enum"]
+          target_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      financial_transactions: {
+        Row: {
+          amount: number
+          appointment_id: string | null
+          created_at: string
+          created_by: string | null
+          discount_amount: number | null
+          final_amount: number
+          id: string
+          notes: string | null
+          patient_id: string
+          payment_date: string | null
+          payment_method: Database["public"]["Enums"]["payment_method_enum"]
+          status: Database["public"]["Enums"]["payment_status_enum"]
+          transaction_type: Database["public"]["Enums"]["transaction_type_enum"]
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          appointment_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number | null
+          final_amount: number
+          id?: string
+          notes?: string | null
+          patient_id: string
+          payment_date?: string | null
+          payment_method: Database["public"]["Enums"]["payment_method_enum"]
+          status?: Database["public"]["Enums"]["payment_status_enum"]
+          transaction_type?: Database["public"]["Enums"]["transaction_type_enum"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          appointment_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number | null
+          final_amount?: number
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          payment_date?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method_enum"]
+          status?: Database["public"]["Enums"]["payment_status_enum"]
+          transaction_type?: Database["public"]["Enums"]["transaction_type_enum"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_transactions_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      installment_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          due_date: string
+          id: string
+          installment_number: number
+          installment_plan_id: string
+          notes: string | null
+          payment_date: string | null
+          payment_method:
+            | Database["public"]["Enums"]["payment_method_enum"]
+            | null
+          status: Database["public"]["Enums"]["installment_status_enum"]
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          due_date: string
+          id?: string
+          installment_number: number
+          installment_plan_id: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_method?:
+            | Database["public"]["Enums"]["payment_method_enum"]
+            | null
+          status?: Database["public"]["Enums"]["installment_status_enum"]
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_date?: string
+          id?: string
+          installment_number?: number
+          installment_plan_id?: string
+          notes?: string | null
+          payment_date?: string | null
+          payment_method?:
+            | Database["public"]["Enums"]["payment_method_enum"]
+            | null
+          status?: Database["public"]["Enums"]["installment_status_enum"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "installment_payments_installment_plan_id_fkey"
+            columns: ["installment_plan_id"]
+            isOneToOne: false
+            referencedRelation: "installment_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      installment_plans: {
+        Row: {
+          created_at: string
+          first_due_date: string
+          id: string
+          installment_value: number
+          status: Database["public"]["Enums"]["installment_plan_status_enum"]
+          total_installments: number
+          transaction_id: string
+        }
+        Insert: {
+          created_at?: string
+          first_due_date: string
+          id?: string
+          installment_value: number
+          status?: Database["public"]["Enums"]["installment_plan_status_enum"]
+          total_installments: number
+          transaction_id: string
+        }
+        Update: {
+          created_at?: string
+          first_due_date?: string
+          id?: string
+          installment_value?: number
+          status?: Database["public"]["Enums"]["installment_plan_status_enum"]
+          total_installments?: number
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "installment_plans_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "financial_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      n8n_chat_histories: {
+        Row: {
+          id: number
+          message: Json
+          session_id: string
+        }
+        Insert: {
+          id?: number
+          message: Json
+          session_id: string
+        }
+        Update: {
+          id?: number
+          message?: Json
+          session_id?: string
+        }
+        Relationships: []
+      }
       patient_documents: {
         Row: {
           created_at: string
@@ -325,6 +578,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_professional_id: {
+        Args: { _user_id: string }
+        Returns: string
+      }
+      is_professional: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
+      is_receptionist: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       run_sql: {
         Args: { sql_query: string }
         Returns: Json
@@ -338,7 +603,29 @@ export type Database = {
         | "Cancelled"
         | "No-Show"
         | "Pending Confirmation"
+      expense_category_enum:
+        | "rent"
+        | "utilities"
+        | "supplies"
+        | "equipment"
+        | "salary"
+        | "marketing"
+        | "maintenance"
+        | "other"
+      expense_status_enum: "pending" | "paid"
+      goal_status_enum: "active" | "completed" | "cancelled"
+      installment_plan_status_enum: "active" | "completed" | "cancelled"
+      installment_status_enum: "pending" | "paid" | "overdue" | "cancelled"
+      payment_method_enum:
+        | "cash"
+        | "credit_card"
+        | "debit_card"
+        | "pix"
+        | "bank_transfer"
+        | "insurance"
+      payment_status_enum: "pending" | "completed" | "cancelled" | "refunded"
       specialization_enum: "Cirurgião-Dentista" | "Ortodontista"
+      transaction_type_enum: "payment" | "refund" | "discount"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -474,7 +761,31 @@ export const Constants = {
         "No-Show",
         "Pending Confirmation",
       ],
+      expense_category_enum: [
+        "rent",
+        "utilities",
+        "supplies",
+        "equipment",
+        "salary",
+        "marketing",
+        "maintenance",
+        "other",
+      ],
+      expense_status_enum: ["pending", "paid"],
+      goal_status_enum: ["active", "completed", "cancelled"],
+      installment_plan_status_enum: ["active", "completed", "cancelled"],
+      installment_status_enum: ["pending", "paid", "overdue", "cancelled"],
+      payment_method_enum: [
+        "cash",
+        "credit_card",
+        "debit_card",
+        "pix",
+        "bank_transfer",
+        "insurance",
+      ],
+      payment_status_enum: ["pending", "completed", "cancelled", "refunded"],
       specialization_enum: ["Cirurgião-Dentista", "Ortodontista"],
+      transaction_type_enum: ["payment", "refund", "discount"],
     },
   },
 } as const
