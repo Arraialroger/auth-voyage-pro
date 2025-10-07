@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, UserCheck, Stethoscope, Settings, Clock } from 'lucide-react';
+import { Users, UserCheck, Stethoscope, Settings, Clock, DollarSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardStats } from '@/components/DashboardStats';
@@ -46,6 +46,14 @@ export default function Administration() {
       route: '/admin/waiting-list',
       color: 'text-orange-600',
       bgColor: 'bg-orange-50'
+    },
+    {
+      title: 'Finanças',
+      description: 'Controle financeiro, receitas e despesas',
+      icon: DollarSign,
+      route: '/admin/financial',
+      color: 'text-emerald-600',
+      bgColor: 'bg-emerald-50'
     }
   ];
 

@@ -15,6 +15,7 @@ import ManagePatients from "./pages/ManagePatients";
 import ManageProfessionals from "./pages/ManageProfessionals";
 import ManageTreatments from "./pages/ManageTreatments";
 import ManageWaitingList from "./pages/ManageWaitingList";
+import Financial from "./pages/Financial";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,11 @@ const App = () => (
             <Route path="/admin/waiting-list" element={
               <ProtectedRoute>
                 <ManageWaitingList />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/financial" element={
+              <ProtectedRoute>
+                <Financial />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
