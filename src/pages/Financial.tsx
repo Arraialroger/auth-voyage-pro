@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   DollarSign, 
   TrendingUp, 
@@ -12,20 +16,27 @@ import {
   Wallet,
   Target,
   ArrowLeft,
-  FileText
+  FileText,
+  Search,
+  Filter
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { RegisterPaymentModal } from '@/components/RegisterPaymentModal';
 
 const COLORS = ['hsl(282 100% 35%)', 'hsl(142 76% 36%)', 'hsl(38 92% 50%)', 'hsl(199 89% 48%)'];
 
 export default function Financial() {
   const navigate = useNavigate();
   const [selectedMonth] = useState(new Date());
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
 
   // Buscar estatísticas financeiras
   const { data: stats, isLoading } = useQuery({
@@ -73,6 +84,32 @@ export default function Financial() {
     }
   });
 
+  // Buscar transações
+  const { data: transactions = [] } = useQuery({
+    queryKey: ['financial-transactions'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('financial_transactions')
+        .select(`
+          *,
+          patients (full_name),
+          appointments (appointment_start_time)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      
+      return data || [];
+    }
+  });
+
+  // Filtrar transações
+  const filteredTransactions = transactions.filter((t) => {
+    const matchesSearch = t.patients?.full_name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || t.status === statusFilter;
+    const matchesType = typeFilter === "all" || t.transaction_type === typeFilter;
+    return matchesSearch && matchesStatus && matchesType;
+  });
+
   // Dados para gráficos
   const revenueVsExpensesData = [
     { name: 'Receitas', value: stats?.totalRevenue || 0 },
@@ -84,6 +121,41 @@ export default function Financial() {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
+  };
+
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      paid: "default",
+      pending: "secondary",
+      cancelled: "destructive",
+      refunded: "outline",
+    };
+    const labels: Record<string, string> = {
+      paid: "Pago",
+      pending: "Pendente",
+      cancelled: "Cancelado",
+      refunded: "Reembolsado",
+    };
+    return <Badge variant={variants[status] || "outline"}>{labels[status] || status}</Badge>;
+  };
+
+  const getPaymentMethodLabel = (method: string) => {
+    const labels: Record<string, string> = {
+      cash: "Dinheiro",
+      credit_card: "Cartão de Crédito",
+      debit_card: "Cartão de Débito",
+      pix: "PIX",
+      bank_transfer: "Transferência",
+    };
+    return labels[method] || method;
+  };
+
+  const getTransactionTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      payment: "Pagamento",
+      refund: "Reembolso",
+    };
+    return labels[type] || type;
   };
 
   return (
@@ -220,7 +292,11 @@ export default function Financial() {
                     <CardDescription>Acesso rápido às funções principais</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <Button className="w-full justify-start" variant="outline" onClick={() => {}}>
+                    <Button 
+                      className="w-full justify-start" 
+                      variant="outline" 
+                      onClick={() => setPaymentModalOpen(true)}
+                    >
                       <DollarSign className="mr-2 h-4 w-4" />
                       Registrar Pagamento
                     </Button>
@@ -251,27 +327,134 @@ export default function Financial() {
                   <CardDescription>Histórico recente de movimentações financeiras</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-8 text-muted-foreground">
-                    <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>Nenhuma transação registrada ainda</p>
-                    <Button variant="outline" className="mt-4">
-                      Registrar Primeira Transação
-                    </Button>
-                  </div>
+                  {transactions.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>Nenhuma transação registrada ainda</p>
+                      <Button 
+                        variant="outline" 
+                        className="mt-4"
+                        onClick={() => setPaymentModalOpen(true)}
+                      >
+                        Registrar Primeira Transação
+                      </Button>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Paciente</TableHead>
+                          <TableHead>Valor</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {transactions.slice(0, 5).map((transaction) => (
+                          <TableRow key={transaction.id}>
+                            <TableCell>
+                              {format(new Date(transaction.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                            </TableCell>
+                            <TableCell>{transaction.patients?.full_name || "N/A"}</TableCell>
+                            <TableCell className="font-medium">
+                              {formatCurrency(Number(transaction.final_amount))}
+                            </TableCell>
+                            <TableCell>{getStatusBadge(transaction.status)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
 
-            {/* Outras abas (placeholder) */}
+            {/* Transações */}
             <TabsContent value="transactions">
               <Card className="bg-card/80 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle>Transações</CardTitle>
-                  <CardDescription>Histórico completo de pagamentos e transações</CardDescription>
+                  <CardTitle>Transações Financeiras</CardTitle>
+                  <CardDescription>Histórico completo de pagamentos e recebimentos</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-center py-12 text-muted-foreground">
-                    Em desenvolvimento...
+                <CardContent className="space-y-4">
+                  <div className="flex gap-4 flex-wrap">
+                    <div className="flex-1 min-w-[200px]">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Buscar por paciente..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-8"
+                        />
+                      </div>
+                    </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-[180px]">
+                        <Filter className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os status</SelectItem>
+                        <SelectItem value="paid">Pago</SelectItem>
+                        <SelectItem value="pending">Pendente</SelectItem>
+                        <SelectItem value="cancelled">Cancelado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={typeFilter} onValueChange={setTypeFilter}>
+                      <SelectTrigger className="w-[180px]">
+                        <Filter className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="Tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os tipos</SelectItem>
+                        <SelectItem value="payment">Pagamento</SelectItem>
+                        <SelectItem value="refund">Reembolso</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Paciente</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Valor</TableHead>
+                          <TableHead>Desconto</TableHead>
+                          <TableHead>Total</TableHead>
+                          <TableHead>Forma Pagto.</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredTransactions.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={8} className="text-center text-muted-foreground">
+                              Nenhuma transação encontrada
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          filteredTransactions.map((transaction) => (
+                            <TableRow key={transaction.id}>
+                              <TableCell>
+                                {format(new Date(transaction.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                              </TableCell>
+                              <TableCell>{transaction.patients?.full_name || "N/A"}</TableCell>
+                              <TableCell>{getTransactionTypeLabel(transaction.transaction_type)}</TableCell>
+                              <TableCell>{formatCurrency(Number(transaction.amount))}</TableCell>
+                              <TableCell>{formatCurrency(Number(transaction.discount_amount || 0))}</TableCell>
+                              <TableCell className="font-medium">
+                                {formatCurrency(Number(transaction.final_amount))}
+                              </TableCell>
+                              <TableCell>{getPaymentMethodLabel(transaction.payment_method)}</TableCell>
+                              <TableCell>{getStatusBadge(transaction.status)}</TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
                   </div>
                 </CardContent>
               </Card>
@@ -307,6 +490,8 @@ export default function Financial() {
           </Tabs>
         </div>
       </main>
+
+      <RegisterPaymentModal open={paymentModalOpen} onOpenChange={setPaymentModalOpen} />
     </div>
   );
 }
