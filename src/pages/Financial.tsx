@@ -19,15 +19,18 @@ import {
   FileText,
   Search,
   Filter,
-  CheckCircle2
+  CheckCircle2,
+  Download,
+  ExternalLink
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, startOfMonth, endOfMonth, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { RegisterPaymentModal } from '@/components/RegisterPaymentModal';
+import { RegisterExpenseModal } from '@/components/RegisterExpenseModal';
 import { toast } from 'sonner';
 
 const COLORS = ['hsl(282 100% 35%)', 'hsl(142 76% 36%)', 'hsl(38 92% 50%)', 'hsl(199 89% 48%)'];
@@ -37,11 +40,15 @@ export default function Financial() {
   const queryClient = useQueryClient();
   const [selectedMonth] = useState(new Date());
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [receivablesSearchTerm, setReceivablesSearchTerm] = useState("");
   const [receivablesStatusFilter, setReceivablesStatusFilter] = useState<string>("all");
+  const [expensesSearchTerm, setExpensesSearchTerm] = useState("");
+  const [expensesCategoryFilter, setExpensesCategoryFilter] = useState<string>("all");
+  const [expensesStatusFilter, setExpensesStatusFilter] = useState<string>("all");
 
   // Buscar estatísticas financeiras
   const { data: stats, isLoading } = useQuery({
@@ -164,6 +171,19 @@ export default function Financial() {
     return matchesSearch && matchesStatus && matchesType;
   });
 
+  // Buscar despesas
+  const { data: expenses = [], isLoading: expensesLoading } = useQuery({
+    queryKey: ['expenses'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('expenses')
+        .select('*')
+        .order('expense_date', { ascending: false });
+      
+      return data || [];
+    }
+  });
+
   // Filtrar parcelas a receber
   const filteredInstallments = installments.filter((i) => {
     const patientName = i.installment_plans?.financial_transactions?.patients?.full_name || "";
@@ -181,11 +201,37 @@ export default function Financial() {
     return matchesSearch && i.status === receivablesStatusFilter;
   });
 
+  // Filtrar despesas
+  const filteredExpenses = expenses.filter((e) => {
+    const matchesSearch = e.description.toLowerCase().includes(expensesSearchTerm.toLowerCase());
+    const matchesCategory = expensesCategoryFilter === "all" || e.category === expensesCategoryFilter;
+    const matchesStatus = expensesStatusFilter === "all" || e.status === expensesStatusFilter;
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
+
   // Dados para gráficos
   const revenueVsExpensesData = [
     { name: 'Receitas', value: stats?.totalRevenue || 0 },
     { name: 'Despesas', value: stats?.totalExpenses || 0 }
   ];
+
+  // Dados para gráfico de categorias de despesas
+  const expensesByCategoryData = expenses.reduce((acc: any[], expense) => {
+    const category = expense.category;
+    const existing = acc.find(item => item.name === category);
+    
+    if (existing) {
+      existing.value += Number(expense.amount);
+    } else {
+      acc.push({
+        name: getCategoryLabel(category),
+        value: Number(expense.amount),
+        category: category
+      });
+    }
+    
+    return acc;
+  }, []).sort((a, b) => b.value - a.value);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -219,6 +265,55 @@ export default function Financial() {
       bank_transfer: "Transferência",
     };
     return labels[method] || method;
+  };
+
+  const getCategoryLabel = (category: string) => {
+    const labels: Record<string, string> = {
+      supplies: "Material/Suprimentos",
+      rent: "Aluguel",
+      utilities: "Utilidades",
+      equipment: "Equipamentos",
+      maintenance: "Manutenção",
+      salary: "Salários",
+      marketing: "Marketing",
+      other: "Outros"
+    };
+    return labels[category] || category;
+  };
+
+  const getExpenseStatusBadge = (status: string) => {
+    const variants: Record<string, "default" | "secondary" | "outline"> = {
+      paid: "default",
+      pending: "secondary",
+    };
+    const labels: Record<string, string> = {
+      paid: "Pago",
+      pending: "Pendente",
+    };
+    return <Badge variant={variants[status] || "outline"}>{labels[status] || status}</Badge>;
+  };
+
+  const downloadReceipt = async (receiptUrl: string, description: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('medical-documents')
+        .download(receiptUrl);
+
+      if (error) throw error;
+
+      const url = window.URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `comprovante-${description.substring(0, 20)}.${receiptUrl.split('.').pop()}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success('Comprovante baixado com sucesso!');
+    } catch (error: any) {
+      toast.error('Erro ao baixar comprovante: ' + error.message);
+    }
   };
 
   const getTransactionTypeLabel = (type: string) => {
@@ -412,7 +507,11 @@ export default function Financial() {
                       <DollarSign className="mr-2 h-4 w-4" />
                       Registrar Pagamento
                     </Button>
-                    <Button className="w-full justify-start" variant="outline" onClick={() => {}}>
+                    <Button 
+                      className="w-full justify-start" 
+                      variant="outline" 
+                      onClick={() => setExpenseModalOpen(true)}
+                    >
                       <TrendingDown className="mr-2 h-4 w-4" />
                       Cadastrar Despesa
                     </Button>
@@ -697,15 +796,203 @@ export default function Financial() {
             </TabsContent>
 
             <TabsContent value="expenses">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                {/* Gráfico de Categorias */}
+                <Card className="bg-card/80 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle>Despesas por Categoria</CardTitle>
+                    <CardDescription>Distribuição dos gastos por categoria</CardDescription>
+                  </CardHeader>
+                  <CardContent className="h-[300px]">
+                    {expensesByCategoryData.length === 0 ? (
+                      <div className="flex items-center justify-center h-full text-muted-foreground">
+                        Nenhuma despesa registrada
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={expensesByCategoryData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {expensesByCategoryData.map((_, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Resumo das Despesas */}
+                <Card className="bg-card/80 backdrop-blur-sm">
+                  <CardHeader>
+                    <CardTitle>Resumo</CardTitle>
+                    <CardDescription>Estatísticas das despesas</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">Total Despesas</p>
+                        <p className="text-2xl font-bold">
+                          {formatCurrency(expenses.reduce((sum, e) => sum + Number(e.amount), 0))}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">Despesas Pagas</p>
+                        <p className="text-2xl font-bold text-success">
+                          {formatCurrency(expenses.filter(e => e.status === 'paid').reduce((sum, e) => sum + Number(e.amount), 0))}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">Despesas Pendentes</p>
+                        <p className="text-2xl font-bold text-warning">
+                          {formatCurrency(expenses.filter(e => e.status === 'pending').reduce((sum, e) => sum + Number(e.amount), 0))}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-muted-foreground">Total de Itens</p>
+                        <p className="text-2xl font-bold">{expenses.length}</p>
+                      </div>
+                    </div>
+                    <Button 
+                      className="w-full" 
+                      onClick={() => setExpenseModalOpen(true)}
+                    >
+                      <TrendingDown className="mr-2 h-4 w-4" />
+                      Cadastrar Nova Despesa
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+
               <Card className="bg-card/80 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle>Despesas</CardTitle>
                   <CardDescription>Gerenciamento de despesas da clínica</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-center py-12 text-muted-foreground">
-                    Em desenvolvimento...
+                <CardContent className="space-y-4">
+                  <div className="flex gap-4 flex-wrap">
+                    <div className="flex-1 min-w-[200px]">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Buscar por descrição..."
+                          value={expensesSearchTerm}
+                          onChange={(e) => setExpensesSearchTerm(e.target.value)}
+                          className="pl-8"
+                        />
+                      </div>
+                    </div>
+                    <Select value={expensesCategoryFilter} onValueChange={setExpensesCategoryFilter}>
+                      <SelectTrigger className="w-[200px]">
+                        <Filter className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="Categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas as categorias</SelectItem>
+                        <SelectItem value="supplies">Material/Suprimentos</SelectItem>
+                        <SelectItem value="rent">Aluguel</SelectItem>
+                        <SelectItem value="utilities">Utilidades</SelectItem>
+                        <SelectItem value="equipment">Equipamentos</SelectItem>
+                        <SelectItem value="maintenance">Manutenção</SelectItem>
+                        <SelectItem value="salary">Salários</SelectItem>
+                        <SelectItem value="marketing">Marketing</SelectItem>
+                        <SelectItem value="other">Outros</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={expensesStatusFilter} onValueChange={setExpensesStatusFilter}>
+                      <SelectTrigger className="w-[180px]">
+                        <Filter className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os status</SelectItem>
+                        <SelectItem value="pending">Pendente</SelectItem>
+                        <SelectItem value="paid">Pago</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
+
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Descrição</TableHead>
+                          <TableHead>Categoria</TableHead>
+                          <TableHead>Valor</TableHead>
+                          <TableHead>Forma Pagto.</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Comprovante</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {expensesLoading ? (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center text-muted-foreground">
+                              Carregando...
+                            </TableCell>
+                          </TableRow>
+                        ) : filteredExpenses.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center text-muted-foreground">
+                              Nenhuma despesa encontrada
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          filteredExpenses.map((expense) => (
+                            <TableRow key={expense.id}>
+                              <TableCell>
+                                {format(new Date(expense.expense_date), "dd/MM/yyyy", { locale: ptBR })}
+                              </TableCell>
+                              <TableCell className="max-w-[300px]">
+                                <div className="truncate" title={expense.description}>
+                                  {expense.description}
+                                </div>
+                              </TableCell>
+                              <TableCell>{getCategoryLabel(expense.category)}</TableCell>
+                              <TableCell className="font-medium">
+                                {formatCurrency(Number(expense.amount))}
+                              </TableCell>
+                              <TableCell>{getPaymentMethodLabel(expense.payment_method)}</TableCell>
+                              <TableCell>{getExpenseStatusBadge(expense.status)}</TableCell>
+                              <TableCell className="text-right">
+                                {expense.receipt_url ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => downloadReceipt(expense.receipt_url!, expense.description)}
+                                  >
+                                    <Download className="h-4 w-4 mr-1" />
+                                    Baixar
+                                  </Button>
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">Sem comprovante</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {filteredExpenses.length > 0 && (
+                    <div className="text-sm text-muted-foreground">
+                      Total: {filteredExpenses.length} despesa(s) | 
+                      Valor total: {formatCurrency(filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -714,6 +1001,7 @@ export default function Financial() {
       </main>
 
       <RegisterPaymentModal open={paymentModalOpen} onOpenChange={setPaymentModalOpen} />
+      <RegisterExpenseModal open={expenseModalOpen} onOpenChange={setExpenseModalOpen} />
     </div>
   );
 }
