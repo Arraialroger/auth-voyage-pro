@@ -18,25 +18,30 @@ import {
   ArrowLeft,
   FileText,
   Search,
-  Filter
+  Filter,
+  CheckCircle2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { RegisterPaymentModal } from '@/components/RegisterPaymentModal';
+import { toast } from 'sonner';
 
 const COLORS = ['hsl(282 100% 35%)', 'hsl(142 76% 36%)', 'hsl(38 92% 50%)', 'hsl(199 89% 48%)'];
 
 export default function Financial() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [selectedMonth] = useState(new Date());
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [receivablesSearchTerm, setReceivablesSearchTerm] = useState("");
+  const [receivablesStatusFilter, setReceivablesStatusFilter] = useState<string>("all");
 
   // Buscar estatísticas financeiras
   const { data: stats, isLoading } = useQuery({
@@ -102,12 +107,78 @@ export default function Financial() {
     }
   });
 
+  // Buscar parcelas a receber
+  const { data: installments = [], isLoading: installmentsLoading } = useQuery({
+    queryKey: ['installment-payments'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('installment_payments')
+        .select(`
+          *,
+          installment_plans (
+            transaction_id,
+            financial_transactions (
+              patient_id,
+              patients (full_name)
+            )
+          )
+        `)
+        .order('due_date', { ascending: true });
+      
+      return data || [];
+    }
+  });
+
+  // Mutation para marcar parcela como paga
+  const markAsPaidMutation = useMutation({
+    mutationFn: async ({ installmentId, paymentMethod }: { 
+      installmentId: string, 
+      paymentMethod: "cash" | "credit_card" | "debit_card" | "pix" | "bank_transfer" 
+    }) => {
+      const { error } = await supabase
+        .from('installment_payments')
+        .update({
+          status: 'paid',
+          payment_date: new Date().toISOString(),
+          payment_method: paymentMethod
+        })
+        .eq('id', installmentId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['installment-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-stats'] });
+      toast.success('Parcela marcada como paga com sucesso!');
+    },
+    onError: (error) => {
+      toast.error('Erro ao marcar parcela como paga: ' + error.message);
+    }
+  });
+
   // Filtrar transações
   const filteredTransactions = transactions.filter((t) => {
     const matchesSearch = t.patients?.full_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || t.status === statusFilter;
     const matchesType = typeFilter === "all" || t.transaction_type === typeFilter;
     return matchesSearch && matchesStatus && matchesType;
+  });
+
+  // Filtrar parcelas a receber
+  const filteredInstallments = installments.filter((i) => {
+    const patientName = i.installment_plans?.financial_transactions?.patients?.full_name || "";
+    const matchesSearch = patientName.toLowerCase().includes(receivablesSearchTerm.toLowerCase());
+    
+    if (receivablesStatusFilter === "all") return matchesSearch;
+    
+    // Verificar se está vencida
+    const isOverdue = isPast(new Date(i.due_date)) && i.status === 'pending';
+    
+    if (receivablesStatusFilter === "overdue") {
+      return matchesSearch && isOverdue;
+    }
+    
+    return matchesSearch && i.status === receivablesStatusFilter;
   });
 
   // Dados para gráficos
@@ -156,6 +227,47 @@ export default function Financial() {
       refund: "Reembolso",
     };
     return labels[type] || type;
+  };
+
+  const getInstallmentStatusBadge = (status: string, dueDate: string) => {
+    const isOverdue = isPast(new Date(dueDate)) && status === 'pending';
+    
+    if (isOverdue) {
+      return <Badge variant="destructive">Vencida</Badge>;
+    }
+    
+    const variants: Record<string, "default" | "secondary" | "outline"> = {
+      paid: "default",
+      pending: "secondary",
+      cancelled: "outline",
+    };
+    const labels: Record<string, string> = {
+      paid: "Paga",
+      pending: "Pendente",
+      cancelled: "Cancelada",
+    };
+    return <Badge variant={variants[status] || "outline"}>{labels[status] || status}</Badge>;
+  };
+
+  const handleMarkAsPaid = async (installmentId: string) => {
+    const paymentMethod = prompt("Qual foi a forma de pagamento?\n\n1 - Dinheiro\n2 - Cartão de Crédito\n3 - Cartão de Débito\n4 - PIX\n5 - Transferência");
+    
+    const methodMap: Record<string, "cash" | "credit_card" | "debit_card" | "pix" | "bank_transfer"> = {
+      "1": "cash",
+      "2": "credit_card",
+      "3": "debit_card",
+      "4": "pix",
+      "5": "bank_transfer"
+    };
+
+    const selectedMethod = methodMap[paymentMethod || ""];
+    
+    if (!selectedMethod) {
+      toast.error("Forma de pagamento inválida");
+      return;
+    }
+
+    markAsPaidMutation.mutate({ installmentId, paymentMethod: selectedMethod });
   };
 
   return (
@@ -464,12 +576,122 @@ export default function Financial() {
               <Card className="bg-card/80 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle>Contas a Receber</CardTitle>
-                  <CardDescription>Parcelas pendentes e vencidas</CardDescription>
+                  <CardDescription>Parcelas pendentes e vencidas - Gerenciamento de cobranças</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-center py-12 text-muted-foreground">
-                    Em desenvolvimento...
+                <CardContent className="space-y-4">
+                  <div className="flex gap-4 flex-wrap">
+                    <div className="flex-1 min-w-[200px]">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Buscar por paciente..."
+                          value={receivablesSearchTerm}
+                          onChange={(e) => setReceivablesSearchTerm(e.target.value)}
+                          className="pl-8"
+                        />
+                      </div>
+                    </div>
+                    <Select value={receivablesStatusFilter} onValueChange={setReceivablesStatusFilter}>
+                      <SelectTrigger className="w-[180px]">
+                        <Filter className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os status</SelectItem>
+                        <SelectItem value="pending">Pendente</SelectItem>
+                        <SelectItem value="overdue">Vencida</SelectItem>
+                        <SelectItem value="paid">Paga</SelectItem>
+                        <SelectItem value="cancelled">Cancelada</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
+
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Vencimento</TableHead>
+                          <TableHead>Paciente</TableHead>
+                          <TableHead>Parcela</TableHead>
+                          <TableHead>Valor</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Pagamento</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {installmentsLoading ? (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center text-muted-foreground">
+                              Carregando...
+                            </TableCell>
+                          </TableRow>
+                        ) : filteredInstallments.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center text-muted-foreground">
+                              Nenhuma parcela encontrada
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          filteredInstallments.map((installment) => {
+                            const isOverdue = isPast(new Date(installment.due_date)) && installment.status === 'pending';
+                            return (
+                              <TableRow key={installment.id} className={isOverdue ? 'bg-destructive/5' : ''}>
+                                <TableCell className={isOverdue ? 'font-medium text-destructive' : ''}>
+                                  {format(new Date(installment.due_date), "dd/MM/yyyy", { locale: ptBR })}
+                                </TableCell>
+                                <TableCell>
+                                  {installment.installment_plans?.financial_transactions?.patients?.full_name || "N/A"}
+                                </TableCell>
+                                <TableCell>{installment.installment_number}</TableCell>
+                                <TableCell className="font-medium">
+                                  {formatCurrency(Number(installment.amount))}
+                                </TableCell>
+                                <TableCell>
+                                  {getInstallmentStatusBadge(installment.status, installment.due_date)}
+                                </TableCell>
+                                <TableCell>
+                                  {installment.payment_date ? (
+                                    <div className="text-sm">
+                                      <div>{format(new Date(installment.payment_date), "dd/MM/yyyy", { locale: ptBR })}</div>
+                                      {installment.payment_method && (
+                                        <div className="text-muted-foreground">
+                                          {getPaymentMethodLabel(installment.payment_method)}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-foreground">-</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {installment.status === 'pending' && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleMarkAsPaid(installment.id)}
+                                      disabled={markAsPaidMutation.isPending}
+                                    >
+                                      <CheckCircle2 className="h-4 w-4 mr-1" />
+                                      Marcar como Paga
+                                    </Button>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {filteredInstallments.length > 0 && (
+                    <div className="text-sm text-muted-foreground">
+                      Total de parcelas: {filteredInstallments.length} | 
+                      Pendentes: {filteredInstallments.filter(i => i.status === 'pending').length} | 
+                      Vencidas: {filteredInstallments.filter(i => isPast(new Date(i.due_date)) && i.status === 'pending').length}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
