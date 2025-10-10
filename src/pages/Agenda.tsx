@@ -9,16 +9,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { useState } from 'react';
 import { startOfWeek, endOfWeek, format, addDays, addWeeks, subWeeks } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useEffect, useRef } from 'react';
 import { NewAppointmentModal } from '@/components/NewAppointmentModal';
 import { EditAppointmentModal } from '@/components/EditAppointmentModal';
 import { AddToWaitingListModal } from '@/components/AddToWaitingListModal';
 import { AppointmentReminderButton } from '@/components/AppointmentReminderButton';
+import { RegisterPaymentModal } from '@/components/RegisterPaymentModal';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { DollarSign } from 'lucide-react';
 type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'Completed' | 'Cancelled' | 'No-Show' | 'Pending Confirmation';
 interface Appointment {
   id: string;
@@ -82,6 +85,14 @@ export default function Agenda() {
     appointment_date?: Date;
     start_time?: string;
   }>({});
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentModalData, setPaymentModalData] = useState<{
+    patientId?: string;
+    appointmentId?: string;
+  }>({});
+  const [completeAfterPaymentDialog, setCompleteAfterPaymentDialog] = useState(false);
+  const [appointmentToComplete, setAppointmentToComplete] = useState<string>('');
+  const previousPaymentModalOpen = useRef(paymentModalOpen);
 
   // Configurações de horário de trabalho
   const WORK_START_HOUR = 9; // Início às 9h
@@ -140,6 +151,29 @@ export default function Agenda() {
         return data || [];
       } catch (error) {
         console.error('Erro ao buscar pacientes:', error);
+        return [];
+      }
+    }
+  });
+
+  // Fetch payment status for appointments
+  const {
+    data: paymentStatuses = []
+  } = useQuery({
+    queryKey: ['appointment-payment-statuses', weekStart.toISOString(), weekEnd.toISOString()],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from('financial_transactions')
+          .select('appointment_id, status, payment_date')
+          .not('appointment_id', 'is', null)
+          .gte('created_at', weekStart.toISOString())
+          .lte('created_at', weekEnd.toISOString());
+        
+        if (error) throw error;
+        return data || [];
+      } catch (error) {
+        console.error('Erro ao buscar status de pagamento:', error);
         return [];
       }
     }
@@ -314,6 +348,55 @@ export default function Agenda() {
         description: 'Erro ao atualizar status. Tente novamente.',
         variant: 'destructive'
       });
+    }
+  };
+
+  // Função para obter status de pagamento de um agendamento
+  const getPaymentStatus = (appointmentId: string): 'paid' | 'pending' | 'overdue' | null => {
+    const payment = paymentStatuses.find(p => p.appointment_id === appointmentId);
+    if (!payment) return null;
+    if (payment.status === 'completed') return 'paid';
+    return 'pending';
+  };
+
+  // Função para obter badge de status de pagamento
+  const getPaymentBadge = (appointmentId: string) => {
+    const status = getPaymentStatus(appointmentId);
+    if (!status) return null;
+    
+    if (status === 'paid') {
+      return <Badge variant="success" className="ml-2">Pago</Badge>;
+    }
+    return <Badge variant="warning" className="ml-2">Pendente</Badge>;
+  };
+
+  // Função para abrir modal de pagamento
+  const handleRegisterPayment = (appointmentId: string, patientId: string) => {
+    setPaymentModalData({
+      appointmentId,
+      patientId,
+    });
+    setPaymentModalOpen(true);
+  };
+
+  // Watch for payment modal close and ask about completing appointment
+  useEffect(() => {
+    // If modal was open and now closed, and there was an appointment ID
+    if (previousPaymentModalOpen.current && !paymentModalOpen && paymentModalData.appointmentId) {
+      setAppointmentToComplete(paymentModalData.appointmentId);
+      setCompleteAfterPaymentDialog(true);
+      queryClient.invalidateQueries({ queryKey: ['appointment-payment-statuses'] });
+      setPaymentModalData({});
+    }
+    previousPaymentModalOpen.current = paymentModalOpen;
+  }, [paymentModalOpen, paymentModalData.appointmentId, queryClient]);
+
+  // Função para marcar como concluído após pagamento
+  const handleCompleteAfterPayment = async () => {
+    if (appointmentToComplete) {
+      await updateAppointmentStatus(appointmentToComplete, 'Completed');
+      setCompleteAfterPaymentDialog(false);
+      setAppointmentToComplete('');
     }
   };
 
@@ -717,14 +800,15 @@ export default function Agenda() {
                                 return <div key={`apt-${appointment.id}`} className="relative bg-primary text-primary-foreground p-3 rounded-md shadow-sm group">
                                              <div className="flex justify-between items-start gap-2">
                                                <div className="flex-1 cursor-pointer" onClick={() => handleAppointmentClick(appointment)}>
-                                                 <div className="flex items-center gap-2 mb-1">
-                                                   <div className="font-medium text-sm">
-                                                     {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
-                                                   </div>
-                                                   <Badge variant={getStatusBadgeVariant(appointment.status)} className="text-[10px] px-1.5 py-0">
-                                                     {getStatusLabel(appointment.status)}
-                                                   </Badge>
-                                                 </div>
+                                                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                                    <div className="font-medium text-sm">
+                                                      {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
+                                                    </div>
+                                                    <Badge variant={getStatusBadgeVariant(appointment.status)} className="text-[10px] px-1.5 py-0">
+                                                      {getStatusLabel(appointment.status)}
+                                                    </Badge>
+                                                    {getPaymentBadge(appointment.id)}
+                                                  </div>
                                                  <div className="text-sm">
                                                    {appointment.patient?.full_name || 'Paciente não identificado'}
                                                  </div>
@@ -738,16 +822,22 @@ export default function Agenda() {
                                                      <MoreVertical className="h-4 w-4" />
                                                    </Button>
                                                  </DropdownMenuTrigger>
-                                                 <DropdownMenuContent align="end" className="w-48">
-                                                   <DropdownMenuItem onClick={() => handleEditAppointment(appointment.id)}>
-                                                     <Edit className="mr-2 h-4 w-4" />
-                                                     Editar Agendamento
-                                                   </DropdownMenuItem>
-                                                   <DropdownMenuItem onClick={() => handleAppointmentClick(appointment)}>
-                                                     <Eye className="mr-2 h-4 w-4" />
-                                                     Ver Paciente
-                                                   </DropdownMenuItem>
-                                                   <DropdownMenuSeparator />
+                                                  <DropdownMenuContent align="end" className="w-48">
+                                                    <DropdownMenuItem onClick={() => handleEditAppointment(appointment.id)}>
+                                                      <Edit className="mr-2 h-4 w-4" />
+                                                      Editar Agendamento
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleAppointmentClick(appointment)}>
+                                                      <Eye className="mr-2 h-4 w-4" />
+                                                      Ver Paciente
+                                                    </DropdownMenuItem>
+                                                    {appointment.patient_id && (
+                                                      <DropdownMenuItem onClick={() => handleRegisterPayment(appointment.id, appointment.patient_id!)}>
+                                                        <DollarSign className="mr-2 h-4 w-4" />
+                                                        Registrar Pagamento
+                                                      </DropdownMenuItem>
+                                                    )}
+                                                    <DropdownMenuSeparator />
                                                     <DropdownMenuSub>
                                                       <DropdownMenuSubTrigger>
                                                         Alterar Status
@@ -857,14 +947,15 @@ export default function Agenda() {
                             return <div key={`apt-${appointment.id}`} className="relative bg-primary text-primary-foreground p-2 rounded-md text-xs shadow-sm group">
                                            <div className="flex justify-between items-start gap-1">
                                              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleAppointmentClick(appointment)}>
-                                               <div className="flex items-center gap-1 mb-0.5">
-                                                 <div className="font-medium">
-                                                   {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
-                                                 </div>
-                                                 <Badge variant={getStatusBadgeVariant(appointment.status)} className="text-[9px] px-1 py-0">
-                                                   {getStatusLabel(appointment.status)}
-                                                 </Badge>
-                                               </div>
+                                                <div className="flex items-center gap-1 mb-0.5 flex-wrap">
+                                                  <div className="font-medium">
+                                                    {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
+                                                  </div>
+                                                  <Badge variant={getStatusBadgeVariant(appointment.status)} className="text-[9px] px-1 py-0">
+                                                    {getStatusLabel(appointment.status)}
+                                                  </Badge>
+                                                  {getPaymentBadge(appointment.id)}
+                                                </div>
                                                <div className="truncate">
                                                  {appointment.patient?.full_name || 'Paciente não identificado'}
                                                </div>
@@ -878,16 +969,22 @@ export default function Agenda() {
                                                    <MoreVertical className="h-3 w-3" />
                                                  </Button>
                                                </DropdownMenuTrigger>
-                                               <DropdownMenuContent align="end" className="w-48">
-                                                 <DropdownMenuItem onClick={() => handleEditAppointment(appointment.id)}>
-                                                   <Edit className="mr-2 h-4 w-4" />
-                                                   Editar
-                                                 </DropdownMenuItem>
-                                                  <DropdownMenuItem onClick={() => handleAppointmentClick(appointment)}>
-                                                    <Eye className="mr-2 h-4 w-4" />
-                                                    Ver Paciente
+                                                <DropdownMenuContent align="end" className="w-48">
+                                                  <DropdownMenuItem onClick={() => handleEditAppointment(appointment.id)}>
+                                                    <Edit className="mr-2 h-4 w-4" />
+                                                    Editar
                                                   </DropdownMenuItem>
-                                                  <DropdownMenuSeparator />
+                                                   <DropdownMenuItem onClick={() => handleAppointmentClick(appointment)}>
+                                                     <Eye className="mr-2 h-4 w-4" />
+                                                     Ver Paciente
+                                                   </DropdownMenuItem>
+                                                   {appointment.patient_id && (
+                                                     <DropdownMenuItem onClick={() => handleRegisterPayment(appointment.id, appointment.patient_id!)}>
+                                                       <DollarSign className="mr-2 h-4 w-4" />
+                                                       Registrar Pagamento
+                                                     </DropdownMenuItem>
+                                                   )}
+                                                   <DropdownMenuSeparator />
                                                   <DropdownMenuItem asChild>
                                                     <div className="w-full">
                                                       <AppointmentReminderButton appointmentId={appointment.id} patientPhone={appointment.patient?.contact_phone || ''} patientName={appointment.patient?.full_name || ''} appointmentDate={appointment.appointment_start_time} treatmentName={appointment.treatment?.treatment_name || ''} lastReminderSent={appointment.last_reminder_sent_at} />
@@ -1006,6 +1103,37 @@ export default function Agenda() {
             <AlertDialogCancel onClick={() => setStatusChangeData(null)}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => statusChangeData && updateAppointmentStatus(statusChangeData.appointmentId, statusChangeData.newStatus)} className="bg-primary text-primary-foreground hover:bg-primary/90">
               Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Payment Registration Modal */}
+      <RegisterPaymentModal 
+        open={paymentModalOpen} 
+        onOpenChange={setPaymentModalOpen}
+        defaultPatientId={paymentModalData.patientId}
+        defaultAppointmentId={paymentModalData.appointmentId}
+      />
+
+      {/* Complete After Payment Confirmation Dialog */}
+      <AlertDialog open={completeAfterPaymentDialog} onOpenChange={setCompleteAfterPaymentDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Pagamento Registrado!</AlertDialogTitle>
+            <AlertDialogDescription>
+              O pagamento foi registrado com sucesso. Deseja marcar a consulta como concluída?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setCompleteAfterPaymentDialog(false);
+              setAppointmentToComplete('');
+            }}>
+              Não, agora não
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleCompleteAfterPayment} className="bg-primary text-primary-foreground hover:bg-primary/90">
+              Sim, marcar como concluída
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
