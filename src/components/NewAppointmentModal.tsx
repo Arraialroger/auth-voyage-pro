@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, Search, Clock } from 'lucide-react';
+import { CalendarIcon, Search, Clock, DollarSign } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -47,6 +47,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 
 const appointmentSchema = z.object({
@@ -59,6 +60,14 @@ const appointmentSchema = z.object({
   start_time: z.string().min(1, 'Horário de início é obrigatório'),
   end_time: z.string().min(1, 'Horário de fim é obrigatório'),
   notes: z.string().optional(),
+  register_payment: z.boolean().default(false),
+  payment_amount: z.string().optional(),
+  payment_method: z.enum(["cash", "credit_card", "debit_card", "pix", "bank_transfer"]).optional(),
+  discount_amount: z.string().optional(),
+  is_installment: z.boolean().default(false),
+  installments: z.string().optional(),
+  first_due_date: z.string().optional(),
+  payment_notes: z.string().optional(),
 });
 
 type AppointmentFormData = z.infer<typeof appointmentSchema>;
@@ -79,6 +88,7 @@ interface NewAppointmentModalProps {
 export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, onOpenChange: externalOnOpenChange, initialValues }: NewAppointmentModalProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [patientSearchOpen, setPatientSearchOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
 
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
@@ -94,6 +104,14 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
       appointment_date: undefined,
       start_time: '',
       end_time: '',
+      register_payment: false,
+      payment_amount: '',
+      payment_method: 'pix',
+      discount_amount: '0',
+      is_installment: false,
+      installments: '1',
+      first_due_date: new Date().toISOString().split('T')[0],
+      payment_notes: '',
     },
   });
 
@@ -118,6 +136,8 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
   // Watch for changes in treatment and start time to auto-calculate end time
   const watchTreatmentId = form.watch('treatment_id');
   const watchStartTime = form.watch('start_time');
+  const watchRegisterPayment = form.watch('register_payment');
+  const watchIsInstallment = form.watch('is_installment');
 
   // Fetch patients
   const { data: patients = [] } = useQuery({
@@ -191,6 +211,7 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
   }, [watchTreatmentId, watchStartTime, treatments, form]);
 
   const onSubmit = async (data: AppointmentFormData) => {
+    setIsSubmitting(true);
     try {
       // Combine date and time for start and end timestamps
       const startDateTime = new Date(data.appointment_date);
@@ -217,10 +238,12 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
           description: 'Este horário já está ocupado.',
           variant: 'destructive',
         });
+        setIsSubmitting(false);
         return;
       }
 
-      const { error } = await supabase
+      // Create appointment
+      const { data: newAppointment, error: appointmentError } = await supabase
         .from('appointments')
         .insert([
           {
@@ -231,17 +254,108 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
             appointment_end_time: endDateTime.toISOString(),
             notes: data.notes || null,
           },
-        ]);
+        ])
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (appointmentError) throw appointmentError;
 
-      toast({
-        title: 'Agendamento criado',
-        description: 'O novo agendamento foi criado com sucesso.',
-      });
+      // If payment registration is requested, create the transaction
+      if (data.register_payment && data.payment_amount) {
+        try {
+          const amount = parseFloat(data.payment_amount);
+          const discountAmount = parseFloat(data.discount_amount || '0');
+          const finalAmount = amount - discountAmount;
 
-      // Invalidate and refetch appointments
+          const transactionData: any = {
+            patient_id: data.patient_id,
+            appointment_id: newAppointment.id,
+            amount,
+            discount_amount: discountAmount,
+            final_amount: finalAmount,
+            payment_method: data.payment_method || 'pix',
+            transaction_type: 'payment',
+            status: data.is_installment ? 'pending' : 'paid',
+          };
+
+          if (!data.is_installment) {
+            transactionData.payment_date = new Date().toISOString();
+          }
+
+          if (data.payment_notes) {
+            transactionData.notes = data.payment_notes;
+          }
+
+          const { data: transaction, error: transactionError } = await supabase
+            .from('financial_transactions')
+            .insert(transactionData)
+            .select()
+            .single();
+
+          if (transactionError) throw transactionError;
+
+          // Create installment plan if needed
+          if (data.is_installment && transaction) {
+            const totalInstallments = parseInt(data.installments || '1');
+            const installmentValue = finalAmount / totalInstallments;
+
+            const { data: plan, error: planError } = await supabase
+              .from('installment_plans')
+              .insert({
+                transaction_id: transaction.id,
+                total_installments: totalInstallments,
+                installment_value: installmentValue,
+                first_due_date: data.first_due_date,
+                status: 'active',
+              })
+              .select()
+              .single();
+
+            if (planError) throw planError;
+
+            // Create individual installments
+            const installments = Array.from({ length: totalInstallments }, (_, i) => {
+              const dueDate = new Date(data.first_due_date!);
+              dueDate.setMonth(dueDate.getMonth() + i);
+
+              return {
+                installment_plan_id: plan.id,
+                installment_number: i + 1,
+                amount: installmentValue,
+                due_date: dueDate.toISOString().split('T')[0],
+                status: 'pending' as const,
+              };
+            });
+
+            const { error: installmentsError } = await supabase
+              .from('installment_payments')
+              .insert(installments);
+
+            if (installmentsError) throw installmentsError;
+          }
+
+          toast({
+            title: 'Sucesso!',
+            description: data.is_installment 
+              ? `Agendamento criado e pagamento parcelado em ${data.installments}x registrado!`
+              : 'Agendamento criado e pagamento registrado com sucesso!',
+          });
+        } catch (paymentError) {
+          // Rollback: delete the appointment if payment fails
+          await supabase.from('appointments').delete().eq('id', newAppointment.id);
+          throw new Error('Erro ao processar pagamento. Agendamento cancelado.');
+        }
+      } else {
+        toast({
+          title: 'Agendamento criado',
+          description: 'O novo agendamento foi criado com sucesso.',
+        });
+      }
+
+      // Invalidate and refetch queries
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-stats'] });
       
       form.reset();
       setOpen(false);
@@ -250,9 +364,11 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
       console.error('Error creating appointment:', error);
       toast({
         title: 'Erro',
-        description: 'Erro ao criar agendamento. Tente novamente.',
+        description: error instanceof Error ? error.message : 'Erro ao criar agendamento. Tente novamente.',
         variant: 'destructive',
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -483,12 +599,153 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
               )}
             />
 
-            <div className="flex justify-end space-x-2">
+            {/* Register Payment Checkbox */}
+            <FormField
+              control={form.control}
+              name="register_payment"
+              render={({ field }) => (
+                <FormItem className="flex items-center space-x-2 border-t pt-4">
+                  <FormControl>
+                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                  <FormLabel className="!mt-0 flex items-center gap-2 cursor-pointer">
+                    <DollarSign className="h-4 w-4" />
+                    Registrar Pagamento Agora
+                  </FormLabel>
+                </FormItem>
+              )}
+            />
+
+            {/* Payment Fields - Show when register_payment is true */}
+            {watchRegisterPayment && (
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Detalhes do Pagamento
+                </h3>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="payment_amount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Valor Total *</FormLabel>
+                        <FormControl>
+                          <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="discount_amount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Desconto</FormLabel>
+                        <FormControl>
+                          <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="payment_method"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Forma de Pagamento *</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="cash">Dinheiro</SelectItem>
+                          <SelectItem value="credit_card">Cartão de Crédito</SelectItem>
+                          <SelectItem value="debit_card">Cartão de Débito</SelectItem>
+                          <SelectItem value="pix">PIX</SelectItem>
+                          <SelectItem value="bank_transfer">Transferência Bancária</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="is_installment"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center space-x-2">
+                      <FormControl>
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                      <FormLabel className="!mt-0">Parcelar pagamento</FormLabel>
+                    </FormItem>
+                  )}
+                />
+
+                {watchIsInstallment && (
+                  <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-background">
+                    <FormField
+                      control={form.control}
+                      name="installments"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Número de Parcelas</FormLabel>
+                          <FormControl>
+                            <Input type="number" min="2" max="24" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="first_due_date"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Data do 1º Vencimento</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                <FormField
+                  control={form.control}
+                  name="payment_notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Observações do Pagamento</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Informações adicionais sobre o pagamento..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">
-                Criar Agendamento
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Salvando...' : watchRegisterPayment ? 'Criar Agendamento e Registrar Pagamento' : 'Criar Agendamento'}
               </Button>
             </div>
           </form>
