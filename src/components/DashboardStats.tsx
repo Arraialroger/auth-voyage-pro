@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, Calendar, Clock, TrendingUp, CheckCircle, AlertCircle } from 'lucide-react';
+import { Users, Calendar, Clock, TrendingUp, CheckCircle, AlertCircle, DollarSign, TrendingDown, Wallet, PiggyBank } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { startOfWeek, endOfWeek, startOfDay, endOfDay, addWeeks, format } from 'date-fns';
+import { startOfWeek, endOfWeek, startOfDay, endOfDay, addWeeks, format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface Stats {
   totalPatients: number;
@@ -13,6 +14,16 @@ interface Stats {
   appointmentsNextWeek: number;
   waitingList: number;
   completedRate: number;
+  monthlyRevenue: number;
+  accountsReceivable: number;
+  monthlyExpenses: number;
+  netProfit: number;
+}
+
+interface CashFlowData {
+  month: string;
+  receitas: number;
+  despesas: number;
 }
 
 interface TreatmentStat {
@@ -23,6 +34,7 @@ interface TreatmentStat {
 export function DashboardStats() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [topTreatments, setTopTreatments] = useState<TreatmentStat[]>([]);
+  const [cashFlowData, setCashFlowData] = useState<CashFlowData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -112,6 +124,87 @@ export function DashboardStats() {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
+      // **NOVAS MÉTRICAS FINANCEIRAS**
+      const monthStart = startOfMonth(now);
+      const monthEnd = endOfMonth(now);
+
+      // Receita do Mês (pagamentos completados no mês atual)
+      const { data: monthlyPayments } = await supabase
+        .from('financial_transactions')
+        .select('final_amount')
+        .eq('status', 'completed')
+        .gte('payment_date', monthStart.toISOString())
+        .lte('payment_date', monthEnd.toISOString());
+
+      const monthlyRevenue = monthlyPayments?.reduce((sum, payment) => 
+        sum + (Number(payment.final_amount) || 0), 0) || 0;
+
+      // Contas a Receber (parcelas pendentes + transações pendentes)
+      const { data: pendingInstallments } = await supabase
+        .from('installment_payments')
+        .select('amount')
+        .eq('status', 'pending');
+
+      const { data: pendingTransactions } = await supabase
+        .from('financial_transactions')
+        .select('final_amount')
+        .eq('status', 'pending');
+
+      const accountsReceivable = 
+        (pendingInstallments?.reduce((sum, inst) => sum + (Number(inst.amount) || 0), 0) || 0) +
+        (pendingTransactions?.reduce((sum, trans) => sum + (Number(trans.final_amount) || 0), 0) || 0);
+
+      // Despesas do Mês (despesas pagas no mês atual)
+      const { data: monthlyExpensesData } = await supabase
+        .from('expenses')
+        .select('amount')
+        .eq('status', 'paid')
+        .gte('expense_date', format(monthStart, 'yyyy-MM-dd'))
+        .lte('expense_date', format(monthEnd, 'yyyy-MM-dd'));
+
+      const monthlyExpenses = monthlyExpensesData?.reduce((sum, expense) => 
+        sum + (Number(expense.amount) || 0), 0) || 0;
+
+      // Lucro Líquido (Receitas - Despesas)
+      const netProfit = monthlyRevenue - monthlyExpenses;
+
+      // **FLUXO DE CAIXA MENSAL (últimos 6 meses)**
+      const cashFlow: CashFlowData[] = [];
+      for (let i = 5; i >= 0; i--) {
+        const targetMonth = subMonths(now, i);
+        const monthStartDate = startOfMonth(targetMonth);
+        const monthEndDate = endOfMonth(targetMonth);
+        const monthLabel = format(targetMonth, 'MMM/yy', { locale: ptBR });
+
+        // Receitas do mês
+        const { data: revenueData } = await supabase
+          .from('financial_transactions')
+          .select('final_amount')
+          .eq('status', 'completed')
+          .gte('payment_date', monthStartDate.toISOString())
+          .lte('payment_date', monthEndDate.toISOString());
+
+        const revenue = revenueData?.reduce((sum, payment) => 
+          sum + (Number(payment.final_amount) || 0), 0) || 0;
+
+        // Despesas do mês
+        const { data: expensesData } = await supabase
+          .from('expenses')
+          .select('amount')
+          .eq('status', 'paid')
+          .gte('expense_date', format(monthStartDate, 'yyyy-MM-dd'))
+          .lte('expense_date', format(monthEndDate, 'yyyy-MM-dd'));
+
+        const expenses = expensesData?.reduce((sum, expense) => 
+          sum + (Number(expense.amount) || 0), 0) || 0;
+
+        cashFlow.push({
+          month: monthLabel,
+          receitas: revenue,
+          despesas: expenses,
+        });
+      }
+
       setStats({
         totalPatients: totalPatients || 0,
         appointmentsToday: appointmentsToday || 0,
@@ -119,9 +212,14 @@ export function DashboardStats() {
         appointmentsNextWeek: appointmentsNextWeek || 0,
         waitingList: waitingList || 0,
         completedRate,
+        monthlyRevenue,
+        accountsReceivable,
+        monthlyExpenses,
+        netProfit,
       });
 
       setTopTreatments(topTreatments);
+      setCashFlowData(cashFlow);
     } catch (error) {
       console.error('Erro ao buscar estatísticas:', error);
     } finally {
@@ -131,19 +229,29 @@ export function DashboardStats() {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Card key={i} className="bg-card/80 backdrop-blur-sm border-border/50">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-4 rounded" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-8 w-16 mb-2" />
-              <Skeleton className="h-3 w-32" />
-            </CardContent>
-          </Card>
-        ))}
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <Card key={i} className="bg-card/80 backdrop-blur-sm border-border/50">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-4 rounded" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-3 w-32" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+          <CardHeader>
+            <Skeleton className="h-6 w-48" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-64 w-full" />
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -197,12 +305,44 @@ export function DashboardStats() {
       gradient: 'from-success/10 to-success/5',
       iconColor: 'text-success',
     },
+    {
+      title: 'Receita do Mês',
+      value: `R$ ${(stats?.monthlyRevenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      icon: DollarSign,
+      description: format(new Date(), "MMMM 'de' yyyy", { locale: ptBR }),
+      gradient: 'from-success/10 to-success/5',
+      iconColor: 'text-success',
+    },
+    {
+      title: 'Contas a Receber',
+      value: `R$ ${(stats?.accountsReceivable || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      icon: Wallet,
+      description: 'Pagamentos pendentes',
+      gradient: 'from-warning/10 to-warning/5',
+      iconColor: 'text-warning',
+    },
+    {
+      title: 'Despesas do Mês',
+      value: `R$ ${(stats?.monthlyExpenses || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      icon: TrendingDown,
+      description: format(new Date(), "MMMM 'de' yyyy", { locale: ptBR }),
+      gradient: 'from-destructive/10 to-destructive/5',
+      iconColor: 'text-destructive',
+    },
+    {
+      title: 'Lucro Líquido',
+      value: `R$ ${(stats?.netProfit || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      icon: PiggyBank,
+      description: 'Receitas - Despesas',
+      gradient: stats && stats.netProfit >= 0 ? 'from-success/10 to-success/5' : 'from-destructive/10 to-destructive/5',
+      iconColor: stats && stats.netProfit >= 0 ? 'text-success' : 'text-destructive',
+    },
   ];
 
   return (
     <div className="space-y-6">
       {/* Cards de estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
         {statCards.map((card) => {
           const IconComponent = card.icon;
           return (
@@ -219,13 +359,71 @@ export function DashboardStats() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-foreground">{card.value}</div>
+                <div className={`${typeof card.value === 'string' && card.value.startsWith('R$') ? 'text-2xl' : 'text-3xl'} font-bold text-foreground break-words`}>
+                  {card.value}
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">{card.description}</p>
               </CardContent>
             </Card>
           );
         })}
       </div>
+
+      {/* Gráfico de Fluxo de Caixa */}
+      {cashFlowData.length > 0 && (
+        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+          <CardHeader>
+            <CardTitle className="text-lg">Fluxo de Caixa Mensal</CardTitle>
+            <p className="text-sm text-muted-foreground">Receitas vs Despesas (últimos 6 meses)</p>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={cashFlowData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis 
+                  dataKey="month" 
+                  className="text-xs" 
+                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                />
+                <YAxis 
+                  className="text-xs"
+                  tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                  tickFormatter={(value) => `R$ ${value.toLocaleString('pt-BR')}`}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                  }}
+                  formatter={(value: number) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                  labelStyle={{ color: 'hsl(var(--foreground))' }}
+                />
+                <Legend 
+                  wrapperStyle={{ color: 'hsl(var(--foreground))' }}
+                  formatter={(value) => value.charAt(0).toUpperCase() + value.slice(1)}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="receitas" 
+                  stroke="hsl(var(--success))" 
+                  strokeWidth={2}
+                  dot={{ fill: 'hsl(var(--success))' }}
+                  activeDot={{ r: 6 }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="despesas" 
+                  stroke="hsl(var(--destructive))" 
+                  strokeWidth={2}
+                  dot={{ fill: 'hsl(var(--destructive))' }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tratamentos mais realizados */}
       {topTreatments.length > 0 && (
