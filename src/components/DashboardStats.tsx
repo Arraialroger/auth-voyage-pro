@@ -119,7 +119,7 @@ export function DashboardStats() {
         }
       });
 
-      const topTreatments = Object.entries(treatmentCounts)
+      const topTreatmentsData = Object.entries(treatmentCounts)
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
@@ -218,7 +218,7 @@ export function DashboardStats() {
         netProfit,
       });
 
-      setTopTreatments(topTreatments);
+      setTopTreatments(topTreatmentsData);
       setCashFlowData(cashFlow);
     } catch (error) {
       console.error('Erro ao buscar estatísticas:', error);
