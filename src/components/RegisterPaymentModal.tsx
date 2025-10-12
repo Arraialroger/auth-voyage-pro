@@ -11,7 +11,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Search, Calendar } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const paymentSchema = z.object({
   patient_id: z.string().uuid("Selecione um paciente válido"),
@@ -41,7 +47,58 @@ export function RegisterPaymentModal({
   defaultAppointmentId,
 }: RegisterPaymentModalProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [patientSearchOpen, setPatientSearchOpen] = useState(false);
+  const [appointmentSearchOpen, setAppointmentSearchOpen] = useState(false);
   const queryClient = useQueryClient();
+
+  // Fetch patients for select
+  const { data: patients = [] } = useQuery({
+    queryKey: ['patients'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('patients')
+        .select('id, full_name, contact_phone')
+        .order('full_name');
+      
+      if (error) throw error;
+      return data as Array<{
+        id: string;
+        full_name: string;
+        contact_phone: string;
+      }>;
+    },
+  });
+
+  // Fetch recent appointments without payment
+  const { data: appointments = [] } = useQuery({
+    queryKey: ['appointments-for-payment'],
+    queryFn: async () => {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const { data, error } = await supabase
+        .from('appointments')
+        .select(`
+          id,
+          appointment_start_time,
+          patient_id,
+          patients(full_name),
+          treatments(treatment_name)
+        `)
+        .gte('appointment_start_time', thirtyDaysAgo.toISOString())
+        .order('appointment_start_time', { ascending: false })
+        .limit(50);
+      
+      if (error) throw error;
+      return data as Array<{
+        id: string;
+        appointment_start_time: string;
+        patient_id: string;
+        patients: { full_name: string } | null;
+        treatments: { treatment_name: string } | null;
+      }>;
+    },
+  });
 
   const form = useForm<PaymentFormData>({
     resolver: zodResolver(paymentSchema),
@@ -167,11 +224,54 @@ export function RegisterPaymentModal({
               control={form.control}
               name="patient_id"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel>Paciente *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="ID do paciente" {...field} />
-                  </FormControl>
+                  <Popover open={patientSearchOpen} onOpenChange={setPatientSearchOpen}>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className={cn(
+                            "justify-between",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value
+                            ? patients.find((patient) => patient.id === field.value)?.full_name
+                            : "Selecione um paciente"}
+                          <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-0">
+                      <Command>
+                        <CommandInput placeholder="Buscar paciente..." />
+                        <CommandList>
+                          <CommandEmpty>Nenhum paciente encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            {patients.map((patient) => (
+                              <CommandItem
+                                key={patient.id}
+                                value={patient.full_name}
+                                onSelect={() => {
+                                  field.onChange(patient.id);
+                                  setPatientSearchOpen(false);
+                                }}
+                              >
+                                <div className="flex flex-col">
+                                  <span>{patient.full_name}</span>
+                                  <span className="text-sm text-muted-foreground">
+                                    {patient.contact_phone}
+                                  </span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}
@@ -181,11 +281,62 @@ export function RegisterPaymentModal({
               control={form.control}
               name="appointment_id"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel>Agendamento (Opcional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="ID do agendamento" {...field} />
-                  </FormControl>
+                  <Popover open={appointmentSearchOpen} onOpenChange={setAppointmentSearchOpen}>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className={cn(
+                            "justify-between",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value
+                            ? (() => {
+                                const apt = appointments.find((a) => a.id === field.value);
+                                return apt ? `${format(new Date(apt.appointment_start_time), "dd/MM/yy HH:mm", { locale: ptBR })} - ${apt.patients?.full_name}` : "Selecione um agendamento";
+                              })()
+                            : "Selecione um agendamento"}
+                          <Calendar className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[450px] p-0">
+                      <Command>
+                        <CommandInput placeholder="Buscar agendamento..." />
+                        <CommandList>
+                          <CommandEmpty>Nenhum agendamento encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            {appointments.map((appointment) => (
+                              <CommandItem
+                                key={appointment.id}
+                                value={`${appointment.patients?.full_name} ${format(new Date(appointment.appointment_start_time), "dd/MM/yy", { locale: ptBR })}`}
+                                onSelect={() => {
+                                  field.onChange(appointment.id);
+                                  setAppointmentSearchOpen(false);
+                                }}
+                              >
+                                <div className="flex flex-col w-full">
+                                  <div className="flex justify-between items-center">
+                                    <span className="font-medium">{appointment.patients?.full_name}</span>
+                                    <span className="text-sm text-muted-foreground">
+                                      {format(new Date(appointment.appointment_start_time), "dd/MM/yy HH:mm", { locale: ptBR })}
+                                    </span>
+                                  </div>
+                                  <span className="text-sm text-muted-foreground">
+                                    {appointment.treatments?.treatment_name}
+                                  </span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}

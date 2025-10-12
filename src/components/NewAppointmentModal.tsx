@@ -275,7 +275,7 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
             final_amount: finalAmount,
             payment_method: data.payment_method || 'pix',
             transaction_type: 'payment',
-            status: data.is_installment ? 'pending' : 'paid',
+            status: data.is_installment ? 'pending' : 'completed',
           };
 
           if (!data.is_installment) {

@@ -18,6 +18,7 @@ interface Stats {
   accountsReceivable: number;
   monthlyExpenses: number;
   netProfit: number;
+  pendingExpenses: number;
 }
 
 interface CashFlowData {
@@ -165,6 +166,15 @@ export function DashboardStats() {
       const monthlyExpenses = monthlyExpensesData?.reduce((sum, expense) => 
         sum + (Number(expense.amount) || 0), 0) || 0;
 
+      // Despesas Pendentes (todas despesas com status 'pending')
+      const { data: pendingExpensesData } = await supabase
+        .from('expenses')
+        .select('amount')
+        .eq('status', 'pending');
+
+      const pendingExpenses = pendingExpensesData?.reduce((sum, expense) => 
+        sum + (Number(expense.amount) || 0), 0) || 0;
+
       // Lucro Líquido (Receitas - Despesas)
       const netProfit = monthlyRevenue - monthlyExpenses;
 
@@ -216,6 +226,7 @@ export function DashboardStats() {
         accountsReceivable,
         monthlyExpenses,
         netProfit,
+        pendingExpenses,
       });
 
       setTopTreatments(topTreatmentsData);
@@ -336,6 +347,14 @@ export function DashboardStats() {
       description: 'Receitas - Despesas',
       gradient: stats && stats.netProfit >= 0 ? 'from-success/10 to-success/5' : 'from-destructive/10 to-destructive/5',
       iconColor: stats && stats.netProfit >= 0 ? 'text-success' : 'text-destructive',
+    },
+    {
+      title: 'Despesas Pendentes',
+      value: `R$ ${(stats?.pendingExpenses || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      icon: AlertCircle,
+      description: 'Aguardando aprovação',
+      gradient: 'from-warning/10 to-warning/5',
+      iconColor: 'text-warning',
     },
   ];
 
