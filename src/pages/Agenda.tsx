@@ -370,7 +370,7 @@ export default function Agenda() {
     return <Badge variant="warning" className="ml-2">Pendente</Badge>;
   };
 
-  // Função para abrir modal de pagamento
+  // Função para abrir modal de pagamento com dados pré-preenchidos
   const handleRegisterPayment = (appointmentId: string, patientId: string) => {
     setPaymentModalData({
       appointmentId,
@@ -1112,8 +1112,8 @@ export default function Agenda() {
       <RegisterPaymentModal 
         open={paymentModalOpen} 
         onOpenChange={setPaymentModalOpen}
-        defaultPatientId={paymentModalData.patientId}
-        defaultAppointmentId={paymentModalData.appointmentId}
+        prefilledPatientId={paymentModalData.patientId}
+        prefilledAppointmentId={paymentModalData.appointmentId}
       />
 
       {/* Complete After Payment Confirmation Dialog */}

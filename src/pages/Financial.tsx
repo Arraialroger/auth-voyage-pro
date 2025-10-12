@@ -29,7 +29,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { format, startOfMonth, endOfMonth, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { RegisterPaymentModal } from '@/components/RegisterPaymentModal';
+
 import { RegisterExpenseModal } from '@/components/RegisterExpenseModal';
 import { toast } from 'sonner';
 
@@ -39,7 +39,7 @@ export default function Financial() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedMonth] = useState(new Date());
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -503,14 +503,6 @@ export default function Financial() {
                     <Button 
                       className="w-full justify-start" 
                       variant="outline" 
-                      onClick={() => setPaymentModalOpen(true)}
-                    >
-                      <DollarSign className="mr-2 h-4 w-4" />
-                      Registrar Pagamento
-                    </Button>
-                    <Button 
-                      className="w-full justify-start" 
-                      variant="outline" 
                       onClick={() => setExpenseModalOpen(true)}
                     >
                       <TrendingDown className="mr-2 h-4 w-4" />
@@ -543,13 +535,6 @@ export default function Financial() {
                     <div className="text-center py-8 text-muted-foreground">
                       <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
                       <p>Nenhuma transação registrada ainda</p>
-                      <Button 
-                        variant="outline" 
-                        className="mt-4"
-                        onClick={() => setPaymentModalOpen(true)}
-                      >
-                        Registrar Primeira Transação
-                      </Button>
                     </div>
                   ) : (
                     <Table>
@@ -1001,7 +986,6 @@ export default function Financial() {
         </div>
       </main>
 
-      <RegisterPaymentModal open={paymentModalOpen} onOpenChange={setPaymentModalOpen} />
       <RegisterExpenseModal open={expenseModalOpen} onOpenChange={setExpenseModalOpen} />
     </div>
   );

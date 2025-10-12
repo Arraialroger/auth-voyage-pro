@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -38,6 +38,8 @@ interface RegisterPaymentModalProps {
   onOpenChange: (open: boolean) => void;
   defaultPatientId?: string;
   defaultAppointmentId?: string;
+  prefilledPatientId?: string;
+  prefilledAppointmentId?: string;
 }
 
 export function RegisterPaymentModal({
@@ -45,6 +47,8 @@ export function RegisterPaymentModal({
   onOpenChange,
   defaultPatientId,
   defaultAppointmentId,
+  prefilledPatientId,
+  prefilledAppointmentId
 }: RegisterPaymentModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [patientSearchOpen, setPatientSearchOpen] = useState(false);
@@ -116,6 +120,16 @@ export function RegisterPaymentModal({
   });
 
   const isInstallment = form.watch("is_installment");
+
+  // Pre-fill form when modal opens with prefilled values
+  useEffect(() => {
+    if (open && prefilledPatientId) {
+      form.setValue('patient_id', prefilledPatientId);
+    }
+    if (open && prefilledAppointmentId) {
+      form.setValue('appointment_id', prefilledAppointmentId);
+    }
+  }, [open, prefilledPatientId, prefilledAppointmentId, form]);
 
   const onSubmit = async (data: PaymentFormData) => {
     setIsLoading(true);
@@ -232,6 +246,7 @@ export function RegisterPaymentModal({
                         <Button
                           variant="outline"
                           role="combobox"
+                          disabled={!!prefilledPatientId}
                           className={cn(
                             "justify-between",
                             !field.value && "text-muted-foreground"
@@ -289,6 +304,7 @@ export function RegisterPaymentModal({
                         <Button
                           variant="outline"
                           role="combobox"
+                          disabled={!!prefilledAppointmentId}
                           className={cn(
                             "justify-between",
                             !field.value && "text-muted-foreground"
