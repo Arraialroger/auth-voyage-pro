@@ -209,30 +209,7 @@ export default function Financial() {
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  // Dados para gráficos
-  const revenueVsExpensesData = [
-    { name: 'Receitas', value: stats?.totalRevenue || 0 },
-    { name: 'Despesas', value: stats?.totalExpenses || 0 }
-  ];
-
-  // Dados para gráfico de categorias de despesas
-  const expensesByCategoryData = expenses.reduce((acc: any[], expense) => {
-    const category = expense.category;
-    const existing = acc.find(item => item.name === category);
-    
-    if (existing) {
-      existing.value += Number(expense.amount);
-    } else {
-      acc.push({
-        name: getCategoryLabel(category),
-        value: Number(expense.amount),
-        category: category
-      });
-    }
-    
-    return acc;
-  }, []).sort((a, b) => b.value - a.value);
-
+  // Helper functions - must be declared before use
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -280,6 +257,30 @@ export default function Financial() {
     };
     return labels[category] || category;
   };
+
+  // Dados para gráficos
+  const revenueVsExpensesData = [
+    { name: 'Receitas', value: stats?.totalRevenue || 0 },
+    { name: 'Despesas', value: stats?.totalExpenses || 0 }
+  ];
+
+  // Dados para gráfico de categorias de despesas
+  const expensesByCategoryData = expenses.reduce((acc: any[], expense) => {
+    const category = expense.category;
+    const existing = acc.find(item => item.name === category);
+    
+    if (existing) {
+      existing.value += Number(expense.amount);
+    } else {
+      acc.push({
+        name: getCategoryLabel(category),
+        value: Number(expense.amount),
+        category: category
+      });
+    }
+    
+    return acc;
+  }, []).sort((a, b) => b.value - a.value);
 
   const getExpenseStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "outline"> = {
