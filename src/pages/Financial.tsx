@@ -453,10 +453,11 @@ export default function Financial() {
 
           {/* Gráficos e Tabelas */}
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
+            <TabsList className="grid w-full grid-cols-5 lg:w-[750px]">
               <TabsTrigger value="overview">Visão Geral</TabsTrigger>
               <TabsTrigger value="transactions">Transações</TabsTrigger>
               <TabsTrigger value="receivables">A Receber</TabsTrigger>
+              <TabsTrigger value="payables">A Pagar</TabsTrigger>
               <TabsTrigger value="expenses">Despesas</TabsTrigger>
             </TabsList>
 
@@ -777,6 +778,40 @@ export default function Financial() {
                       Vencidas: {filteredInstallments.filter(i => isPast(new Date(i.due_date)) && i.status === 'pending').length}
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Contas a Pagar */}
+            <TabsContent value="payables">
+              <Card className="bg-card/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle>Contas a Pagar</CardTitle>
+                  <CardDescription>Parcelas de despesas pendentes e próximos vencimentos</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Vencimento</TableHead>
+                          <TableHead>Despesa</TableHead>
+                          <TableHead>Parcela</TableHead>
+                          <TableHead>Valor</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                            <AlertCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                            <p>Funcionalidade de contas a pagar disponível em breve</p>
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import { CalendarIcon, Upload, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -23,8 +24,11 @@ const expenseSchema = z.object({
   amount: z.string().min(1, 'Valor é obrigatório'),
   expense_date: z.date({ required_error: 'Data é obrigatória' }),
   category: z.string().min(1, 'Categoria é obrigatória'),
-  payment_method: z.string().min(1, 'Forma de pagamento é obrigatória'),
+  payment_method: z.string().optional(),
   status: z.string().default('pending'),
+  is_installment: z.boolean().default(false),
+  installment_count: z.number().min(1).optional(),
+  first_due_date: z.date().optional(),
 });
 
 type ExpenseFormData = z.infer<typeof expenseSchema>;
@@ -39,6 +43,7 @@ export function RegisterExpenseModal({ open, onOpenChange }: RegisterExpenseModa
   const [loading, setLoading] = useState(false);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [isInstallment, setIsInstallment] = useState(false);
 
   const {
     register,
@@ -50,7 +55,9 @@ export function RegisterExpenseModal({ open, onOpenChange }: RegisterExpenseModa
   } = useForm<ExpenseFormData>({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
-      status: 'pending'
+      status: 'pending',
+      is_installment: false,
+      installment_count: 2,
     }
   });
 
@@ -58,17 +65,16 @@ export function RegisterExpenseModal({ open, onOpenChange }: RegisterExpenseModa
   const category = watch('category');
   const paymentMethod = watch('payment_method');
   const status = watch('status');
+  const firstDueDate = watch('first_due_date');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validar tamanho (máximo 5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast.error('Arquivo muito grande. Máximo 5MB.');
         return;
       }
       
-      // Validar tipo
       const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
       if (!validTypes.includes(file.type)) {
         toast.error('Tipo de arquivo inválido. Use JPG, PNG ou PDF.');
@@ -111,7 +117,6 @@ export function RegisterExpenseModal({ open, onOpenChange }: RegisterExpenseModa
       if (receiptFile) {
         receiptUrl = await uploadReceipt(receiptFile);
         if (!receiptUrl && receiptFile) {
-          // Se havia arquivo mas o upload falhou, não prosseguir
           setLoading(false);
           return;
         }
@@ -122,25 +127,58 @@ export function RegisterExpenseModal({ open, onOpenChange }: RegisterExpenseModa
         amount: parseFloat(data.amount),
         expense_date: format(data.expense_date, 'yyyy-MM-dd'),
         category: data.category as "supplies" | "rent" | "utilities" | "equipment" | "maintenance" | "salary" | "marketing" | "other",
-        payment_method: data.payment_method as "cash" | "credit_card" | "debit_card" | "pix" | "bank_transfer",
-        status: data.status as "pending" | "paid",
+        payment_method: isInstallment ? null : (data.payment_method as "cash" | "credit_card" | "debit_card" | "pix" | "bank_transfer" | null),
+        status: isInstallment ? 'pending' as const : (data.status as "pending" | "paid"),
         created_by: user.id,
-        receipt_url: receiptUrl
+        receipt_url: receiptUrl,
+        is_installment: isInstallment,
       };
 
-      const { error } = await supabase
+      const { data: expenseData, error } = await supabase
         .from('expenses')
-        .insert([insertData]);
+        .insert([insertData])
+        .select()
+        .single();
 
       if (error) throw error;
 
-      toast.success('Despesa registrada com sucesso!');
+      // Se for parcelado, criar as parcelas
+      if (isInstallment && data.installment_count && data.first_due_date && expenseData) {
+        const installmentAmount = parseFloat(data.amount) / data.installment_count;
+        const installments = [];
+        
+        for (let i = 0; i < data.installment_count; i++) {
+          const dueDate = new Date(data.first_due_date);
+          dueDate.setDate(dueDate.getDate() + (i * 30)); // 30 dias entre parcelas
+          
+          installments.push({
+            expense_id: expenseData.id,
+            installment_number: i + 1,
+            amount: installmentAmount,
+            due_date: format(dueDate, 'yyyy-MM-dd'),
+            status: 'pending',
+          });
+        }
+
+        const { error: installmentsError } = await supabase
+          .from('expense_installments')
+          .insert(installments);
+
+        if (installmentsError) throw installmentsError;
+        
+        toast.success(`Despesa parcelada em ${data.installment_count}x registrada com sucesso!`);
+      } else {
+        toast.success('Despesa registrada com sucesso!');
+      }
+
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       queryClient.invalidateQueries({ queryKey: ['financial-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['expense-installments'] });
       
       reset();
       setReceiptFile(null);
       setUploadProgress(0);
+      setIsInstallment(false);
       onOpenChange(false);
     } catch (error: any) {
       toast.error('Erro ao registrar despesa: ' + error.message);
@@ -153,6 +191,7 @@ export function RegisterExpenseModal({ open, onOpenChange }: RegisterExpenseModa
     reset();
     setReceiptFile(null);
     setUploadProgress(0);
+    setIsInstallment(false);
     onOpenChange(false);
   };
 
@@ -184,7 +223,7 @@ export function RegisterExpenseModal({ open, onOpenChange }: RegisterExpenseModa
 
             {/* Valor */}
             <div>
-              <Label htmlFor="amount">Valor (R$) *</Label>
+              <Label htmlFor="amount">Valor Total (R$) *</Label>
               <Input
                 id="amount"
                 type="number"
@@ -252,39 +291,111 @@ export function RegisterExpenseModal({ open, onOpenChange }: RegisterExpenseModa
               )}
             </div>
 
-            {/* Forma de Pagamento */}
-            <div>
-              <Label htmlFor="payment_method">Forma de Pagamento *</Label>
-              <Select value={paymentMethod} onValueChange={(value) => setValue('payment_method', value)}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">Dinheiro</SelectItem>
-                  <SelectItem value="credit_card">Cartão de Crédito</SelectItem>
-                  <SelectItem value="debit_card">Cartão de Débito</SelectItem>
-                  <SelectItem value="pix">PIX</SelectItem>
-                  <SelectItem value="bank_transfer">Transferência Bancária</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.payment_method && (
-                <p className="text-sm text-destructive mt-1">{errors.payment_method.message}</p>
-              )}
+            {/* Checkbox Parcelar */}
+            <div className="md:col-span-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="is_installment"
+                  checked={isInstallment}
+                  onCheckedChange={(checked) => {
+                    setIsInstallment(checked as boolean);
+                    setValue('is_installment', checked as boolean);
+                  }}
+                />
+                <label
+                  htmlFor="is_installment"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                >
+                  Parcelar esta despesa
+                </label>
+              </div>
             </div>
 
-            {/* Status */}
-            <div>
-              <Label htmlFor="status">Status *</Label>
-              <Select value={status} onValueChange={(value) => setValue('status', value)}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Selecione o status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pendente</SelectItem>
-                  <SelectItem value="paid">Pago</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Campos de Parcelamento */}
+            {isInstallment ? (
+              <>
+                <div>
+                  <Label htmlFor="installment_count">Número de Parcelas *</Label>
+                  <Input
+                    id="installment_count"
+                    type="number"
+                    min="1"
+                    {...register('installment_count', { valueAsNumber: true })}
+                    placeholder="Ex: 2, 3, 6..."
+                    className="mt-1"
+                  />
+                  {errors.installment_count && (
+                    <p className="text-sm text-destructive mt-1">{errors.installment_count.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label>Vencimento da 1ª Parcela *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal mt-1",
+                          !firstDueDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {firstDueDate ? format(firstDueDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecione a data"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={firstDueDate}
+                        onSelect={(date) => date && setValue('first_due_date', date)}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {errors.first_due_date && (
+                    <p className="text-sm text-destructive mt-1">{errors.first_due_date.message}</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Forma de Pagamento */}
+                <div>
+                  <Label htmlFor="payment_method">Forma de Pagamento *</Label>
+                  <Select value={paymentMethod} onValueChange={(value) => setValue('payment_method', value)}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Dinheiro</SelectItem>
+                      <SelectItem value="credit_card">Cartão de Crédito</SelectItem>
+                      <SelectItem value="debit_card">Cartão de Débito</SelectItem>
+                      <SelectItem value="pix">PIX</SelectItem>
+                      <SelectItem value="bank_transfer">Transferência Bancária</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.payment_method && (
+                    <p className="text-sm text-destructive mt-1">{errors.payment_method.message}</p>
+                  )}
+                </div>
+
+                {/* Status */}
+                <div>
+                  <Label htmlFor="status">Status *</Label>
+                  <Select value={status} onValueChange={(value) => setValue('status', value)}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Selecione o status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pendente</SelectItem>
+                      <SelectItem value="paid">Pago</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
 
             {/* Upload de Comprovante */}
             <div className="md:col-span-2">
