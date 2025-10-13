@@ -120,6 +120,53 @@ export type Database = {
           },
         ]
       }
+      expense_installments: {
+        Row: {
+          amount: number
+          created_at: string
+          due_date: string
+          expense_id: string
+          id: string
+          installment_number: number
+          notes: string | null
+          payment_date: string | null
+          payment_method: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          due_date: string
+          expense_id: string
+          id?: string
+          installment_number: number
+          notes?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_date?: string
+          expense_id?: string
+          id?: string
+          installment_number?: number
+          notes?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_installments_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expenses: {
         Row: {
           amount: number
@@ -129,6 +176,7 @@ export type Database = {
           description: string
           expense_date: string
           id: string
+          is_installment: boolean
           payment_method: Database["public"]["Enums"]["payment_method_enum"]
           receipt_url: string | null
           status: Database["public"]["Enums"]["expense_status_enum"]
@@ -142,6 +190,7 @@ export type Database = {
           description: string
           expense_date: string
           id?: string
+          is_installment?: boolean
           payment_method: Database["public"]["Enums"]["payment_method_enum"]
           receipt_url?: string | null
           status?: Database["public"]["Enums"]["expense_status_enum"]
@@ -155,6 +204,7 @@ export type Database = {
           description?: string
           expense_date?: string
           id?: string
+          is_installment?: boolean
           payment_method?: Database["public"]["Enums"]["payment_method_enum"]
           receipt_url?: string | null
           status?: Database["public"]["Enums"]["expense_status_enum"]
