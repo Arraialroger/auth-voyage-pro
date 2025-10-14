@@ -148,12 +148,19 @@ export function DashboardStats() {
 
       const { data: pendingTransactions } = await supabase
         .from('financial_transactions')
-        .select('final_amount')
+        .select(`
+          final_amount,
+          installment_plans!left(id)
+        `)
         .eq('status', 'pending');
+
+      const accountsReceivableTransactions = pendingTransactions
+        ?.filter((t: any) => !t.installment_plans || t.installment_plans.length === 0)
+        .reduce((sum, trans: any) => sum + (Number(trans.final_amount) || 0), 0) || 0;
 
       const accountsReceivable = 
         (pendingInstallments?.reduce((sum, inst) => sum + (Number(inst.amount) || 0), 0) || 0) +
-        (pendingTransactions?.reduce((sum, trans) => sum + (Number(trans.final_amount) || 0), 0) || 0);
+        accountsReceivableTransactions;
 
       // Despesas do Mês (despesas pagas no mês atual)
       const { data: monthlyExpensesData } = await supabase

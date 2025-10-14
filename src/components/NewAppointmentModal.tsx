@@ -82,6 +82,7 @@ interface NewAppointmentModalProps {
     appointment_date?: Date;
     start_time?: string;
     patient_id?: string;
+    treatment_id?: string;
   };
 }
 
@@ -398,6 +399,7 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
                         <Button
                           variant="outline"
                           role="combobox"
+                          disabled={!!initialValues?.patient_id}
                           className={cn(
                             "justify-between",
                             !field.value && "text-muted-foreground"
@@ -448,9 +450,9 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
               control={form.control}
               name="treatment_id"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tratamento</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormItem>
+                    <FormLabel>Tratamento</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!initialValues?.treatment_id}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione um tratamento" />
@@ -479,9 +481,9 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
               control={form.control}
               name="professional_id"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Profissional</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormItem>
+                    <FormLabel>Profissional</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!initialValues?.professional_id}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione um profissional" />

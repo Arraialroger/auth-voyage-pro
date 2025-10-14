@@ -591,6 +591,7 @@ export type Database = {
           notes: string | null
           patient_id: string
           professional_id: string
+          treatment_id: string | null
         }
         Insert: {
           created_at?: string
@@ -598,6 +599,7 @@ export type Database = {
           notes?: string | null
           patient_id: string
           professional_id: string
+          treatment_id?: string | null
         }
         Update: {
           created_at?: string
@@ -605,6 +607,7 @@ export type Database = {
           notes?: string | null
           patient_id?: string
           professional_id?: string
+          treatment_id?: string | null
         }
         Relationships: [
           {
@@ -619,6 +622,13 @@ export type Database = {
             columns: ["professional_id"]
             isOneToOne: false
             referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waiting_list_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
             referencedColumns: ["id"]
           },
         ]

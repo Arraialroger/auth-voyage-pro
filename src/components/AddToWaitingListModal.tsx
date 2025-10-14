@@ -49,6 +49,7 @@ import { cn } from '@/lib/utils';
 const waitingListSchema = z.object({
   patient_id: z.string().min(1, 'Paciente é obrigatório'),
   professional_id: z.string().min(1, 'Profissional é obrigatório'),
+  treatment_id: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -109,6 +110,23 @@ export function AddToWaitingListModal({ trigger, onSuccess }: AddToWaitingListMo
     },
   });
 
+  const { data: treatments = [] } = useQuery({
+    queryKey: ['treatments'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('treatments')
+        .select('id, treatment_name, cost')
+        .order('treatment_name');
+      
+      if (error) throw error;
+      return data as Array<{
+        id: string;
+        treatment_name: string;
+        cost: number | null;
+      }>;
+    },
+  });
+
   const onSubmit = async (data: WaitingListFormData) => {
     try {
       // Check for duplicates
@@ -134,6 +152,7 @@ export function AddToWaitingListModal({ trigger, onSuccess }: AddToWaitingListMo
           {
             patient_id: data.patient_id,
             professional_id: data.professional_id,
+            treatment_id: data.treatment_id || null,
             notes: data.notes || null,
           },
         ]);
@@ -254,6 +273,33 @@ export function AddToWaitingListModal({ trigger, onSuccess }: AddToWaitingListMo
                               {professional.specialization}
                             </span>
                           </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Treatment Field */}
+            <FormField
+              control={form.control}
+              name="treatment_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tratamento Desejado (Opcional)</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um tratamento" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {treatments.map((treatment) => (
+                        <SelectItem key={treatment.id} value={treatment.id}>
+                          {treatment.treatment_name}
+                          {treatment.cost && ` - R$ ${treatment.cost.toFixed(2)}`}
                         </SelectItem>
                       ))}
                     </SelectContent>

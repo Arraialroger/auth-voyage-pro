@@ -24,7 +24,7 @@ const expenseSchema = z.object({
   amount: z.string().min(1, 'Valor é obrigatório'),
   expense_date: z.date({ required_error: 'Data é obrigatória' }),
   category: z.string().min(1, 'Categoria é obrigatória'),
-  payment_method: z.string().optional(),
+  payment_method: z.string().min(1, 'Forma de pagamento é obrigatória'),
   status: z.string().default('pending'),
   is_installment: z.boolean().default(false),
   installment_count: z.number().min(1).optional(),
@@ -127,7 +127,7 @@ export function RegisterExpenseModal({ open, onOpenChange }: RegisterExpenseModa
         amount: parseFloat(data.amount),
         expense_date: format(data.expense_date, 'yyyy-MM-dd'),
         category: data.category as "supplies" | "rent" | "utilities" | "equipment" | "maintenance" | "salary" | "marketing" | "other",
-        payment_method: isInstallment ? null : (data.payment_method as "cash" | "credit_card" | "debit_card" | "pix" | "bank_transfer" | null),
+        payment_method: data.payment_method as "cash" | "credit_card" | "debit_card" | "pix" | "bank_transfer",
         status: isInstallment ? 'pending' as const : (data.status as "pending" | "paid"),
         created_by: user.id,
         receipt_url: receiptUrl,
@@ -157,6 +157,7 @@ export function RegisterExpenseModal({ open, onOpenChange }: RegisterExpenseModa
             amount: installmentAmount,
             due_date: format(dueDate, 'yyyy-MM-dd'),
             status: 'pending',
+            payment_method: data.payment_method,
           });
         }
 
@@ -311,8 +312,44 @@ export function RegisterExpenseModal({ open, onOpenChange }: RegisterExpenseModa
               </div>
             </div>
 
+            {/* Forma de Pagamento - sempre visível */}
+            <div>
+              <Label htmlFor="payment_method">Forma de Pagamento *</Label>
+              <Select value={paymentMethod} onValueChange={(value) => setValue('payment_method', value)}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Dinheiro</SelectItem>
+                  <SelectItem value="credit_card">Cartão de Crédito</SelectItem>
+                  <SelectItem value="debit_card">Cartão de Débito</SelectItem>
+                  <SelectItem value="pix">PIX</SelectItem>
+                  <SelectItem value="bank_transfer">Transferência Bancária</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.payment_method && (
+                <p className="text-sm text-destructive mt-1">{errors.payment_method.message}</p>
+              )}
+            </div>
+
+            {/* Status - apenas se NÃO for parcelado */}
+            {!isInstallment && (
+              <div>
+                <Label htmlFor="status">Status *</Label>
+                <Select value={status} onValueChange={(value) => setValue('status', value)}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Selecione o status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pendente</SelectItem>
+                    <SelectItem value="paid">Pago</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Campos de Parcelamento */}
-            {isInstallment ? (
+            {isInstallment && (
               <>
                 <div>
                   <Label htmlFor="installment_count">Número de Parcelas *</Label>
@@ -357,42 +394,6 @@ export function RegisterExpenseModal({ open, onOpenChange }: RegisterExpenseModa
                   {errors.first_due_date && (
                     <p className="text-sm text-destructive mt-1">{errors.first_due_date.message}</p>
                   )}
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Forma de Pagamento */}
-                <div>
-                  <Label htmlFor="payment_method">Forma de Pagamento *</Label>
-                  <Select value={paymentMethod} onValueChange={(value) => setValue('payment_method', value)}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">Dinheiro</SelectItem>
-                      <SelectItem value="credit_card">Cartão de Crédito</SelectItem>
-                      <SelectItem value="debit_card">Cartão de Débito</SelectItem>
-                      <SelectItem value="pix">PIX</SelectItem>
-                      <SelectItem value="bank_transfer">Transferência Bancária</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.payment_method && (
-                    <p className="text-sm text-destructive mt-1">{errors.payment_method.message}</p>
-                  )}
-                </div>
-
-                {/* Status */}
-                <div>
-                  <Label htmlFor="status">Status *</Label>
-                  <Select value={status} onValueChange={(value) => setValue('status', value)}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Selecione o status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pendente</SelectItem>
-                      <SelectItem value="paid">Pago</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </>
             )}

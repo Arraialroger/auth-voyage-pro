@@ -34,6 +34,7 @@ interface WaitingListEntry {
   id: string;
   patient_id: string;
   professional_id: string;
+  treatment_id: string | null;
   notes: string | null;
   created_at: string;
   patients: {
@@ -42,6 +43,9 @@ interface WaitingListEntry {
   };
   professionals: {
     full_name: string;
+  };
+  treatments?: {
+    treatment_name: string;
   };
 }
 
@@ -76,10 +80,12 @@ export default function ManageWaitingList() {
           id,
           patient_id,
           professional_id,
+          treatment_id,
           notes,
           created_at,
           patients (full_name, contact_phone),
-          professionals (full_name)
+          professionals (full_name),
+          treatments (treatment_name)
         `)
         .order('created_at', { ascending: false });
       
@@ -192,14 +198,15 @@ export default function ManageWaitingList() {
               ) : (
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Paciente</TableHead>
-                      <TableHead>Telefone</TableHead>
-                      <TableHead>Profissional Desejado</TableHead>
-                      <TableHead>Observações</TableHead>
-                      <TableHead>Data de Entrada</TableHead>
-                      <TableHead className="text-right">Ações</TableHead>
-                    </TableRow>
+          <TableRow>
+            <TableHead>Paciente</TableHead>
+            <TableHead>Telefone</TableHead>
+            <TableHead>Profissional Desejado</TableHead>
+            <TableHead>Tratamento</TableHead>
+            <TableHead>Observações</TableHead>
+            <TableHead>Data de Entrada</TableHead>
+            <TableHead className="text-right">Ações</TableHead>
+          </TableRow>
                   </TableHeader>
                   <TableBody>
                     {waitingList.map((entry) => (
@@ -287,17 +294,19 @@ export default function ManageWaitingList() {
       </main>
 
       {/* Schedule Appointment Modal */}
-      {schedulingEntry && (
-        <NewAppointmentModal
-          trigger={<div />}
-          open={!!schedulingEntry}
-          onOpenChange={(open) => !open && setSchedulingEntry(null)}
-          onSuccess={handleAppointmentSuccess}
-          initialValues={{
-            professional_id: schedulingEntry.professional_id,
-          }}
-        />
-      )}
+        {schedulingEntry && (
+          <NewAppointmentModal
+            trigger={<div />}
+            open={!!schedulingEntry}
+            onOpenChange={(open) => !open && setSchedulingEntry(null)}
+            onSuccess={handleAppointmentSuccess}
+            initialValues={{
+              patient_id: schedulingEntry.patient_id,
+              professional_id: schedulingEntry.professional_id,
+              treatment_id: schedulingEntry.treatment_id || undefined,
+            }}
+          />
+        )}
     </div>
   );
 }
