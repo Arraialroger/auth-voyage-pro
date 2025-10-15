@@ -131,6 +131,9 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
       if (initialValues.patient_id) {
         form.setValue('patient_id', initialValues.patient_id);
       }
+      if (initialValues.treatment_id) {
+        form.setValue('treatment_id', initialValues.treatment_id);
+      }
     }
   }, [initialValues, form]);
 

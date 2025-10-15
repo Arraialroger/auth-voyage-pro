@@ -234,9 +234,9 @@ export default function ManageWaitingList() {
                         <TableCell>
                           {entry.professionals.full_name}
                         </TableCell>
-                        <TableCell>
-                          {entry.notes || '-'}
-                        </TableCell>
+                  <TableCell>
+                    {entry.treatments?.treatment_name || '-'}
+                  </TableCell>
                         <TableCell>
                           {format(new Date(entry.created_at), 'dd/MM/yyyy HH:mm')}
                         </TableCell>
