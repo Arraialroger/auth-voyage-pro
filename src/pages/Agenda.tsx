@@ -165,7 +165,7 @@ export default function Agenda() {
       try {
         const { data, error } = await supabase
           .from('financial_transactions')
-          .select('appointment_id, status, payment_date')
+          .select('id, appointment_id, status, payment_date')
           .not('appointment_id', 'is', null)
           .gte('created_at', weekStart.toISOString())
           .lte('created_at', weekEnd.toISOString());
@@ -179,18 +179,22 @@ export default function Agenda() {
     }
   });
 
-  // Fetch installment plans for the week
+  // Fetch installment plans based on transaction IDs
+  const transactionIds = paymentStatuses.map(p => p.id).filter(Boolean);
+  
   const {
     data: installmentPlans = []
   } = useQuery({
-    queryKey: ['installment-plans', weekStart.toISOString(), weekEnd.toISOString()],
+    queryKey: ['installment-plans-by-tx', transactionIds],
+    enabled: transactionIds.length > 0,
     queryFn: async () => {
+      if (transactionIds.length === 0) return [];
+      
       try {
         const { data, error } = await supabase
           .from('installment_plans')
           .select('transaction_id, status')
-          .gte('created_at', weekStart.toISOString())
-          .lte('created_at', weekEnd.toISOString());
+          .in('transaction_id', transactionIds);
         
         if (error) throw error;
         return data || [];
@@ -375,15 +379,15 @@ export default function Agenda() {
 
   // Função para obter status de pagamento de um agendamento
   const getPaymentStatus = (appointmentId: string): 'paid' | 'pending' | 'overdue' | null => {
-    const payment = paymentStatuses.find(p => p.appointment_id === appointmentId);
-    if (!payment) return null;
+    const payments = paymentStatuses.filter(p => p.appointment_id === appointmentId);
+    if (payments.length === 0) return null;
     
-    // Se o status é completed, mostrar como pago
-    if (payment.status === 'completed') return 'paid';
+    // Se alguma transação está completed, mostrar como pago
+    if (payments.some(p => p.status === 'completed')) return 'paid';
     
-    // Se existe um plano de parcelamento ativo vinculado à transação, considerar como pago
-    const hasActiveInstallmentPlan = installmentPlans.some(
-      plan => plan.transaction_id === payment.appointment_id && plan.status === 'active'
+    // Se existe um plano de parcelamento ativo vinculado a qualquer transação, considerar como pago
+    const hasActiveInstallmentPlan = payments.some(payment =>
+      installmentPlans.some(plan => plan.transaction_id === payment.id && plan.status === 'active')
     );
     
     if (hasActiveInstallmentPlan) return 'paid';
