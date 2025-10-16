@@ -146,7 +146,7 @@ export function RegisterPaymentModal({
         final_amount: finalAmount,
         payment_method: data.payment_method,
         transaction_type: "payment",
-        status: data.is_installment ? "pending" : "paid",
+        status: data.is_installment ? "pending" : "completed",
       };
 
       if (data.appointment_id) {
