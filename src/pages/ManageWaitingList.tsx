@@ -237,6 +237,9 @@ export default function ManageWaitingList() {
                   <TableCell>
                     {entry.treatments?.treatment_name || '-'}
                   </TableCell>
+                        <TableCell className="max-w-[200px] truncate">
+                          {entry.notes || '-'}
+                        </TableCell>
                         <TableCell>
                           {format(new Date(entry.created_at), 'dd/MM/yyyy HH:mm')}
                         </TableCell>
