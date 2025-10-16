@@ -178,6 +178,28 @@ export default function Agenda() {
       }
     }
   });
+
+  // Fetch installment plans for the week
+  const {
+    data: installmentPlans = []
+  } = useQuery({
+    queryKey: ['installment-plans', weekStart.toISOString(), weekEnd.toISOString()],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from('installment_plans')
+          .select('transaction_id, status')
+          .gte('created_at', weekStart.toISOString())
+          .lte('created_at', weekEnd.toISOString());
+        
+        if (error) throw error;
+        return data || [];
+      } catch (error) {
+        console.error('Erro ao buscar planos de parcelamento:', error);
+        return [];
+      }
+    }
+  });
   const {
     data: appointments = [],
     isLoading
@@ -355,7 +377,17 @@ export default function Agenda() {
   const getPaymentStatus = (appointmentId: string): 'paid' | 'pending' | 'overdue' | null => {
     const payment = paymentStatuses.find(p => p.appointment_id === appointmentId);
     if (!payment) return null;
+    
+    // Se o status é completed, mostrar como pago
     if (payment.status === 'completed') return 'paid';
+    
+    // Se existe um plano de parcelamento ativo vinculado à transação, considerar como pago
+    const hasActiveInstallmentPlan = installmentPlans.some(
+      plan => plan.transaction_id === payment.appointment_id && plan.status === 'active'
+    );
+    
+    if (hasActiveInstallmentPlan) return 'paid';
+    
     return 'pending';
   };
 
