@@ -16,6 +16,8 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PatientAppointmentHistory } from '@/components/PatientAppointmentHistory';
+import { logger } from '@/lib/logger';
+import { validateCPF, validatePhone, formatCPF, formatPhone } from '@/lib/validators';
 interface Patient {
   id: string;
   full_name: string;
@@ -132,14 +134,14 @@ export default function ManagePatients() {
       });
       return;
     }
-    console.log('🔵 Iniciando upload de documentos:', {
+    logger.debug('🔵 Iniciando upload de documentos:', {
       totalFiles: selectedFiles.length,
       patientId: editingPatient.id
     });
     setIsUploading(true);
     try {
       for (const file of selectedFiles) {
-        console.log('📄 Processando arquivo:', {
+        logger.debug('📄 Processando arquivo:', {
           name: file.name,
           size: file.size,
           type: file.type
@@ -147,7 +149,7 @@ export default function ManagePatients() {
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}_${file.name}`;
         const filePath = `${editingPatient.id}/${fileName}`;
-        console.log('⬆️ Fazendo upload para storage:', filePath);
+        logger.debug('⬆️ Fazendo upload para storage:', filePath);
         const {
           data: uploadData,
           error: uploadError
@@ -155,11 +157,11 @@ export default function ManagePatients() {
           contentType: file.type
         });
         if (uploadError) {
-          console.error('❌ Erro no upload do storage:', uploadError);
+          logger.error('❌ Erro no upload do storage:', uploadError);
           throw uploadError;
         }
-        console.log('✅ Upload storage bem-sucedido:', uploadData);
-        console.log('💾 Salvando registro no banco de dados...');
+        logger.debug('✅ Upload storage bem-sucedido:', uploadData);
+        logger.debug('💾 Salvando registro no banco de dados...');
         const {
           error: dbError
         } = await supabase.from('patient_documents').insert({
@@ -171,10 +173,10 @@ export default function ManagePatients() {
           uploaded_by: user?.id || null
         });
         if (dbError) {
-          console.error('❌ Erro ao salvar no banco:', dbError);
+          logger.error('❌ Erro ao salvar no banco:', dbError);
           throw dbError;
         }
-        console.log('✅ Registro salvo no banco de dados');
+        logger.debug('✅ Registro salvo no banco de dados');
       }
       toast({
         title: "Documentos enviados com sucesso",
@@ -182,13 +184,13 @@ export default function ManagePatients() {
       });
       setSelectedFiles(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
-      console.log('🔄 Revalidando queries de documentos...');
+      logger.debug('🔄 Revalidando queries de documentos...');
       await queryClient.invalidateQueries({
         queryKey: ['patient-documents', editingPatient.id]
       });
-      console.log('✅ Upload completo!');
+      logger.debug('✅ Upload completo!');
     } catch (error: any) {
-      console.error('❌ Erro ao fazer upload:', error);
+      logger.error('❌ Erro ao fazer upload:', error);
       const rawMessage = error?.message as string || '';
       let errorMessage = rawMessage || 'Ocorreu um erro ao fazer upload dos arquivos.';
       // Mensagens mais claras para casos comuns
@@ -219,7 +221,7 @@ export default function ManagePatients() {
       setViewingDocument(doc);
       setIsDocumentPreviewOpen(true);
     } catch (error) {
-      console.error('Erro ao visualizar documento:', error);
+      logger.error('Erro ao visualizar documento:', error);
       toast({
         title: "Erro ao visualizar documento",
         description: "Não foi possível carregar o documento.",
@@ -243,7 +245,7 @@ export default function ManagePatients() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Erro ao baixar documento:', error);
+      logger.error('Erro ao baixar documento:', error);
       toast({
         title: "Erro ao baixar documento",
         description: "Não foi possível baixar o arquivo.",
@@ -269,7 +271,7 @@ export default function ManagePatients() {
         queryKey: ['patient-documents', doc.patient_id]
       });
     } catch (error) {
-      console.error('Erro ao excluir documento:', error);
+      logger.error('Erro ao excluir documento:', error);
       toast({
         title: "Erro ao excluir documento",
         description: "Não foi possível remover o arquivo.",
@@ -303,6 +305,26 @@ export default function ManagePatients() {
       });
       return;
     }
+    
+    // Validate phone
+    if (!validatePhone(formData.contact_phone)) {
+      toast({
+        title: "Telefone inválido",
+        description: "Digite um telefone válido com DDD (mínimo 10 dígitos).",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Validate CPF if provided
+    if (formData.cpf && !validateCPF(formData.cpf)) {
+      toast({
+        title: "CPF inválido",
+        description: "Digite um CPF válido no formato XXX.XXX.XXX-XX.",
+        variant: "destructive"
+      });
+      return;
+    }
     try {
       const {
         error
@@ -330,7 +352,7 @@ export default function ManagePatients() {
         queryKey: ['patients']
       });
     } catch (error) {
-      console.error('Erro ao criar paciente:', error);
+      logger.error('Erro ao criar paciente:', error);
       toast({
         title: "Erro ao criar paciente",
         description: "Ocorreu um erro ao salvar os dados.",
@@ -343,6 +365,26 @@ export default function ManagePatients() {
       toast({
         title: "Campos obrigatórios",
         description: "Nome e telefone são obrigatórios.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Validate phone
+    if (!validatePhone(formData.contact_phone)) {
+      toast({
+        title: "Telefone inválido",
+        description: "Digite um telefone válido com DDD (mínimo 10 dígitos).",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Validate CPF if provided
+    if (formData.cpf && !validateCPF(formData.cpf)) {
+      toast({
+        title: "CPF inválido",
+        description: "Digite um CPF válido no formato XXX.XXX.XXX-XX.",
         variant: "destructive"
       });
       return;
@@ -368,7 +410,7 @@ export default function ManagePatients() {
         queryKey: ['patients']
       });
     } catch (error) {
-      console.error('Erro ao editar paciente:', error);
+      logger.error('Erro ao editar paciente:', error);
       toast({
         title: "Erro ao editar paciente",
         description: "Ocorreu um erro ao salvar as alterações.",
@@ -390,7 +432,7 @@ export default function ManagePatients() {
         queryKey: ['patients']
       });
     } catch (error) {
-      console.error('Erro ao excluir paciente:', error);
+      logger.error('Erro ao excluir paciente:', error);
       toast({
         title: "Erro ao excluir paciente",
         description: "Ocorreu um erro ao remover o paciente.",

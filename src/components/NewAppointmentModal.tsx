@@ -365,7 +365,7 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
       setOpen(false);
       onSuccess?.();
     } catch (error) {
-      console.error('Error creating appointment:', error);
+      // Error is already shown in toast, no need to log in production
       toast({
         title: 'Erro',
         description: error instanceof Error ? error.message : 'Erro ao criar agendamento. Tente novamente.',
