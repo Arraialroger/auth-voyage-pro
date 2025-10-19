@@ -142,7 +142,7 @@ export default function Financial() {
   const markAsPaidMutation = useMutation({
     mutationFn: async ({ installmentId, paymentMethod }: { 
       installmentId: string, 
-      paymentMethod: "cash" | "credit_card" | "debit_card" | "pix" | "bank_transfer" 
+      paymentMethod: "cash" | "credit_card" | "debit_card" | "pix" | "bank_transfer" | "boleto"
     }) => {
       const { error } = await supabase
         .from('installment_payments')
@@ -278,6 +278,7 @@ export default function Financial() {
       debit_card: "Cartão de Débito",
       pix: "PIX",
       bank_transfer: "Transferência",
+      boleto: "Boleto Bancário",
     };
     return labels[method] || method;
   };
@@ -386,13 +387,13 @@ export default function Financial() {
   const handleMarkAsPaid = async (installmentId: string) => {
     const paymentMethod = prompt("Qual foi a forma de pagamento?\n\n1 - Dinheiro\n2 - Cartão de Crédito\n3 - Cartão de Débito\n4 - PIX\n5 - Transferência Bancária\n6 - Boleto");
     
-    const methodMap: Record<string, "Dinheiro" | "Cartão de Crédito" | "Cartão de Débito" | "PIX" | "Transferência Bancária" | "Boleto"> = {
-      "1": "Dinheiro",
-      "2": "Cartão de Crédito",
-      "3": "Cartão de Débito",
-      "4": "PIX",
-      "5": "Transferência Bancária",
-      "6": "Boleto"
+    const methodMap: Record<string, "cash" | "credit_card" | "debit_card" | "pix" | "bank_transfer" | "boleto"> = {
+      "1": "cash",
+      "2": "credit_card",
+      "3": "debit_card",
+      "4": "pix",
+      "5": "bank_transfer",
+      "6": "boleto"
     };
 
     const selectedMethod = methodMap[paymentMethod || ""];
@@ -409,7 +410,7 @@ export default function Financial() {
   const markExpenseAsPaidMutation = useMutation({
     mutationFn: async ({ installmentId, paymentMethod }: { 
       installmentId: string, 
-      paymentMethod: "Dinheiro" | "Cartão de Crédito" | "Cartão de Débito" | "PIX" | "Transferência Bancária" | "Boleto"
+      paymentMethod: "cash" | "credit_card" | "debit_card" | "pix" | "bank_transfer" | "boleto"
     }) => {
       const { error } = await supabase
         .from('expense_installments')
@@ -435,13 +436,13 @@ export default function Financial() {
   const handleMarkExpenseAsPaid = async (installmentId: string) => {
     const paymentMethod = prompt("Qual foi a forma de pagamento?\n\n1 - Dinheiro\n2 - Cartão de Crédito\n3 - Cartão de Débito\n4 - PIX\n5 - Transferência Bancária\n6 - Boleto");
     
-    const methodMap: Record<string, "Dinheiro" | "Cartão de Crédito" | "Cartão de Débito" | "PIX" | "Transferência Bancária" | "Boleto"> = {
-      "1": "Dinheiro",
-      "2": "Cartão de Crédito",
-      "3": "Cartão de Débito",
-      "4": "PIX",
-      "5": "Transferência Bancária",
-      "6": "Boleto"
+    const methodMap: Record<string, "cash" | "credit_card" | "debit_card" | "pix" | "bank_transfer" | "boleto"> = {
+      "1": "cash",
+      "2": "credit_card",
+      "3": "debit_card",
+      "4": "pix",
+      "5": "bank_transfer",
+      "6": "boleto"
     };
 
     const selectedMethod = methodMap[paymentMethod || ""];

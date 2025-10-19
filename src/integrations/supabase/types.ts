@@ -683,6 +683,7 @@ export type Database = {
         | "pix"
         | "bank_transfer"
         | "insurance"
+        | "boleto"
       payment_status_enum: "pending" | "completed" | "cancelled" | "refunded"
       specialization_enum: "Cirurgião-Dentista" | "Ortodontista"
       transaction_type_enum: "payment" | "refund" | "discount"
@@ -842,6 +843,7 @@ export const Constants = {
         "pix",
         "bank_transfer",
         "insurance",
+        "boleto",
       ],
       payment_status_enum: ["pending", "completed", "cancelled", "refunded"],
       specialization_enum: ["Cirurgião-Dentista", "Ortodontista"],

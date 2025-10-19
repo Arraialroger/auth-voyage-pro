@@ -127,7 +127,7 @@ export function RegisterExpenseModal({ open, onOpenChange }: RegisterExpenseModa
         amount: parseFloat(data.amount),
         expense_date: format(data.expense_date, 'yyyy-MM-dd'),
         category: data.category as "supplies" | "rent" | "utilities" | "equipment" | "maintenance" | "salary" | "marketing" | "other",
-        payment_method: data.payment_method as "Dinheiro" | "Cartão de Crédito" | "Cartão de Débito" | "PIX" | "Transferência Bancária" | "Boleto",
+        payment_method: data.payment_method as "cash" | "credit_card" | "debit_card" | "pix" | "bank_transfer" | "boleto",
         status: isInstallment ? 'pending' as const : (data.status as "pending" | "paid"),
         created_by: user.id,
         receipt_url: receiptUrl,
@@ -320,12 +320,12 @@ export function RegisterExpenseModal({ open, onOpenChange }: RegisterExpenseModa
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Dinheiro">Dinheiro</SelectItem>
-                  <SelectItem value="Cartão de Crédito">Cartão de Crédito</SelectItem>
-                  <SelectItem value="Cartão de Débito">Cartão de Débito</SelectItem>
-                  <SelectItem value="PIX">PIX</SelectItem>
-                  <SelectItem value="Transferência Bancária">Transferência Bancária</SelectItem>
-                  <SelectItem value="Boleto">Boleto Bancário</SelectItem>
+                  <SelectItem value="cash">Dinheiro</SelectItem>
+                  <SelectItem value="credit_card">Cartão de Crédito</SelectItem>
+                  <SelectItem value="debit_card">Cartão de Débito</SelectItem>
+                  <SelectItem value="pix">PIX</SelectItem>
+                  <SelectItem value="bank_transfer">Transferência Bancária</SelectItem>
+                  <SelectItem value="boleto">Boleto Bancário</SelectItem>
                 </SelectContent>
               </Select>
               {errors.payment_method && (
