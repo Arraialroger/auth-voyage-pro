@@ -35,13 +35,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         setLoading(false);
         
-        if (event === 'SIGNED_IN') {
-          toast({
-            title: "Login realizado com sucesso!",
-            description: "Bem-vindo de volta.",
-          });
-        }
-        
         if (event === 'SIGNED_OUT') {
           toast({
             title: "Logout realizado",
@@ -81,6 +74,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         title: "Erro no login",
         description: errorMessage,
         variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Login realizado com sucesso!",
+        description: "Bem-vindo de volta.",
       });
     }
 
