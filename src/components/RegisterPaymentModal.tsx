@@ -25,6 +25,8 @@ const paymentSchema = z.object({
   amount: z.string().min(1, "Informe o valor"),
   payment_method: z.enum(["cash", "credit_card", "debit_card", "pix", "bank_transfer"]),
   discount_amount: z.string().optional(),
+  transaction_fee_percentage: z.string().optional(),
+  expected_receipt_date: z.string().optional(),
   notes: z.string().optional(),
   is_installment: z.boolean().default(false),
   installments: z.string().optional(),
@@ -53,6 +55,7 @@ export function RegisterPaymentModal({
   const [isLoading, setIsLoading] = useState(false);
   const [patientSearchOpen, setPatientSearchOpen] = useState(false);
   const [appointmentSearchOpen, setAppointmentSearchOpen] = useState(false);
+  const [calculatedNetAmount, setCalculatedNetAmount] = useState(0);
   const queryClient = useQueryClient();
 
   // Fetch patients for select
@@ -112,6 +115,8 @@ export function RegisterPaymentModal({
       amount: "",
       payment_method: "pix",
       discount_amount: "0",
+      transaction_fee_percentage: "0",
+      expected_receipt_date: new Date().toISOString().split("T")[0],
       notes: "",
       is_installment: false,
       installments: "1",
@@ -120,6 +125,41 @@ export function RegisterPaymentModal({
   });
 
   const isInstallment = form.watch("is_installment");
+  const paymentMethod = form.watch("payment_method");
+  const amount = form.watch("amount");
+  const discountAmount = form.watch("discount_amount");
+  const feePercentage = form.watch("transaction_fee_percentage");
+
+  // Sugerir taxa e data de recebimento baseado no método
+  useEffect(() => {
+    if (paymentMethod === "credit_card") {
+      form.setValue("transaction_fee_percentage", "2.5");
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 30);
+      form.setValue("expected_receipt_date", futureDate.toISOString().split("T")[0]);
+    } else if (paymentMethod === "debit_card") {
+      form.setValue("transaction_fee_percentage", "1.5");
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      form.setValue("expected_receipt_date", tomorrow.toISOString().split("T")[0]);
+    } else {
+      form.setValue("transaction_fee_percentage", "0");
+      form.setValue("expected_receipt_date", new Date().toISOString().split("T")[0]);
+    }
+  }, [paymentMethod, form]);
+
+  // Calcular valor líquido
+  useEffect(() => {
+    const amt = parseFloat(amount || "0");
+    const disc = parseFloat(discountAmount || "0");
+    const fee = parseFloat(feePercentage || "0");
+    
+    const finalAmt = amt - disc;
+    const feeAmount = (finalAmt * fee) / 100;
+    const netAmt = finalAmt - feeAmount;
+    
+    setCalculatedNetAmount(netAmt);
+  }, [amount, discountAmount, feePercentage]);
 
   // Pre-fill form when modal opens with prefilled values
   useEffect(() => {
@@ -136,7 +176,10 @@ export function RegisterPaymentModal({
     try {
       const amount = parseFloat(data.amount);
       const discountAmount = parseFloat(data.discount_amount || "0");
+      const feePercentage = parseFloat(data.transaction_fee_percentage || "0");
       const finalAmount = amount - discountAmount;
+      const feeAmount = (finalAmount * feePercentage) / 100;
+      const netAmount = finalAmount - feeAmount;
 
       // Create transaction
       const insertData: any = {
@@ -144,6 +187,10 @@ export function RegisterPaymentModal({
         amount,
         discount_amount: discountAmount,
         final_amount: finalAmount,
+        transaction_fee_percentage: feePercentage,
+        transaction_fee_amount: feeAmount,
+        net_amount: netAmount,
+        expected_receipt_date: data.expected_receipt_date,
         payment_method: data.payment_method,
         transaction_type: "payment",
         status: data.is_installment ? "pending" : "completed",
@@ -412,6 +459,64 @@ export function RegisterPaymentModal({
                 </FormItem>
               )}
             />
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="transaction_fee_percentage"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Taxa da Operadora (%)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        step="0.01" 
+                        placeholder="0.00" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="expected_receipt_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Data de Recebimento</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Valor Total:</span>
+                  <p className="font-semibold">
+                    R$ {(parseFloat(amount || "0") - parseFloat(discountAmount || "0")).toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Taxa:</span>
+                  <p className="font-semibold text-red-600">
+                    - R$ {((parseFloat(amount || "0") - parseFloat(discountAmount || "0")) * parseFloat(feePercentage || "0") / 100).toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Valor Líquido:</span>
+                  <p className="font-semibold text-green-600">
+                    R$ {calculatedNetAmount.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            </div>
 
             <FormField
               control={form.control}

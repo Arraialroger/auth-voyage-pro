@@ -255,13 +255,17 @@ export type Database = {
           created_at: string
           created_by: string | null
           discount_amount: number | null
+          expected_receipt_date: string | null
           final_amount: number
           id: string
+          net_amount: number | null
           notes: string | null
           patient_id: string
           payment_date: string | null
           payment_method: Database["public"]["Enums"]["payment_method_enum"]
           status: Database["public"]["Enums"]["payment_status_enum"]
+          transaction_fee_amount: number | null
+          transaction_fee_percentage: number | null
           transaction_type: Database["public"]["Enums"]["transaction_type_enum"]
           updated_at: string
         }
@@ -271,13 +275,17 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           discount_amount?: number | null
+          expected_receipt_date?: string | null
           final_amount: number
           id?: string
+          net_amount?: number | null
           notes?: string | null
           patient_id: string
           payment_date?: string | null
           payment_method: Database["public"]["Enums"]["payment_method_enum"]
           status?: Database["public"]["Enums"]["payment_status_enum"]
+          transaction_fee_amount?: number | null
+          transaction_fee_percentage?: number | null
           transaction_type?: Database["public"]["Enums"]["transaction_type_enum"]
           updated_at?: string
         }
@@ -287,13 +295,17 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           discount_amount?: number | null
+          expected_receipt_date?: string | null
           final_amount?: number
           id?: string
+          net_amount?: number | null
           notes?: string | null
           patient_id?: string
           payment_date?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method_enum"]
           status?: Database["public"]["Enums"]["payment_status_enum"]
+          transaction_fee_amount?: number | null
+          transaction_fee_percentage?: number | null
           transaction_type?: Database["public"]["Enums"]["transaction_type_enum"]
           updated_at?: string
         }

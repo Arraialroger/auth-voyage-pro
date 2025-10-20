@@ -80,8 +80,15 @@ export default function Financial() {
         .select('amount, status, due_date')
         .in('status', ['pending', 'overdue']);
 
-      // Calcular totais
-      const totalRevenue = revenues?.reduce((sum, r) => sum + (r.status === 'completed' ? Number(r.final_amount) : 0), 0) || 0;
+      // Calcular totais usando net_amount quando disponível
+      const totalRevenue = revenues?.reduce((sum, r) => {
+        if (r.status === 'completed') {
+          // Usar net_amount se existir, senão usar final_amount
+          const amount = (r as any).net_amount !== undefined ? Number((r as any).net_amount) : Number(r.final_amount);
+          return sum + amount;
+        }
+        return sum;
+      }, 0) || 0;
       const totalExpenses = expenses?.reduce((sum, e) => sum + (e.status === 'paid' ? Number(e.amount) : 0), 0) || 0;
       const totalPending = pendingInstallments?.reduce((sum, i) => sum + Number(i.amount), 0) || 0;
       const overdueCount = pendingInstallments?.filter(i => i.status === 'overdue').length || 0;
@@ -727,9 +734,10 @@ export default function Financial() {
                           <TableHead>Data</TableHead>
                           <TableHead>Paciente</TableHead>
                           <TableHead>Tipo</TableHead>
-                          <TableHead>Valor</TableHead>
-                          <TableHead>Desconto</TableHead>
-                          <TableHead>Total</TableHead>
+                          <TableHead>Valor Bruto</TableHead>
+                          <TableHead>Taxa</TableHead>
+                          <TableHead>Valor Líquido</TableHead>
+                          <TableHead>Recebimento</TableHead>
                           <TableHead>Forma Pagto.</TableHead>
                           <TableHead>Status</TableHead>
                         </TableRow>
@@ -737,7 +745,7 @@ export default function Financial() {
                       <TableBody>
                         {filteredTransactions.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={8} className="text-center text-muted-foreground">
+                            <TableCell colSpan={9} className="text-center text-muted-foreground">
                               Nenhuma transação encontrada
                             </TableCell>
                           </TableRow>
@@ -749,10 +757,19 @@ export default function Financial() {
                               </TableCell>
                               <TableCell>{transaction.patients?.full_name || "N/A"}</TableCell>
                               <TableCell>{getTransactionTypeLabel(transaction.transaction_type)}</TableCell>
-                              <TableCell>{formatCurrency(Number(transaction.amount))}</TableCell>
-                              <TableCell>{formatCurrency(Number(transaction.discount_amount || 0))}</TableCell>
-                              <TableCell className="font-medium">
-                                {formatCurrency(Number(transaction.final_amount))}
+                              <TableCell>{formatCurrency(Number(transaction.final_amount))}</TableCell>
+                              <TableCell>
+                                {(transaction as any).transaction_fee_amount > 0 
+                                  ? formatCurrency(Number((transaction as any).transaction_fee_amount))
+                                  : "-"}
+                              </TableCell>
+                              <TableCell className="font-medium text-green-600">
+                                {formatCurrency(Number((transaction as any).net_amount || transaction.final_amount))}
+                              </TableCell>
+                              <TableCell>
+                                {(transaction as any).expected_receipt_date 
+                                  ? format(new Date((transaction as any).expected_receipt_date), "dd/MM/yyyy", { locale: ptBR })
+                                  : format(new Date(transaction.payment_date || transaction.created_at), "dd/MM/yyyy", { locale: ptBR })}
                               </TableCell>
                               <TableCell>{getPaymentMethodLabel(transaction.payment_method)}</TableCell>
                               <TableCell>{getStatusBadge(transaction.status)}</TableCell>
