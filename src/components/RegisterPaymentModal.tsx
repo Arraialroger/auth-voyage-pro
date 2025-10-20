@@ -181,6 +181,14 @@ export function RegisterPaymentModal({
       const feeAmount = (finalAmount * feePercentage) / 100;
       const netAmount = finalAmount - feeAmount;
 
+      // Determinar status baseado na data de recebimento
+      const today = new Date().toISOString().split("T")[0];
+      const isReceiptToday = data.expected_receipt_date === today;
+
+      // Se for parcelado OU se não recebe hoje = pending
+      // Se recebe hoje (PIX, Dinheiro) = completed
+      const initialStatus = data.is_installment || !isReceiptToday ? "pending" : "completed";
+
       // Create transaction
       const insertData: any = {
         patient_id: data.patient_id,
@@ -193,14 +201,15 @@ export function RegisterPaymentModal({
         expected_receipt_date: data.expected_receipt_date,
         payment_method: data.payment_method,
         transaction_type: "payment",
-        status: data.is_installment ? "pending" : "completed",
+        status: initialStatus,
       };
 
       if (data.appointment_id) {
         insertData.appointment_id = data.appointment_id;
       }
 
-      if (!data.is_installment) {
+      // Só registra payment_date se efetivamente recebeu (status completed)
+      if (initialStatus === "completed") {
         insertData.payment_date = new Date().toISOString();
       }
 

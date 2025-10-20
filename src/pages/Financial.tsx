@@ -80,9 +80,9 @@ export default function Financial() {
         .select('amount, status, due_date')
         .in('status', ['pending', 'overdue']);
 
-      // Calcular totais usando net_amount quando disponível
+      // Calcular totais - apenas pagamentos que foram efetivamente recebidos
       const totalRevenue = revenues?.reduce((sum, r) => {
-        if (r.status === 'completed') {
+        if (r.status === 'completed' && (r as any).payment_date) {
           // Usar net_amount se existir, senão usar final_amount
           const amount = (r as any).net_amount !== undefined ? Number((r as any).net_amount) : Number(r.final_amount);
           return sum + amount;
@@ -122,6 +122,38 @@ export default function Financial() {
       return data || [];
     }
   });
+
+  // Calcular valor a receber (pendente de operadoras de cartão)
+  const totalPendingReceipts = transactions
+    .filter(t => t.transaction_type === "payment" && t.status === "pending")
+    .reduce((sum, t) => sum + (t.net_amount || t.final_amount), 0);
+
+  // Mutation para marcar pagamento de cartão como recebido
+  const markCardPaymentAsReceivedMutation = useMutation({
+    mutationFn: async (transactionId: string) => {
+      const { error } = await supabase
+        .from("financial_transactions")
+        .update({
+          status: "completed",
+          payment_date: new Date().toISOString(),
+        })
+        .eq("id", transactionId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["financial-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["financial-stats"] });
+      toast.success("Pagamento marcado como recebido!");
+    },
+    onError: (error) => {
+      toast.error("Erro ao marcar pagamento: " + error.message);
+    },
+  });
+
+  const handleMarkCardPaymentAsReceived = (transactionId: string) => {
+    markCardPaymentAsReceivedMutation.mutate(transactionId);
+  };
 
   // Buscar parcelas a receber
   const { data: installments = [], isLoading: installmentsLoading } = useQuery({
@@ -564,6 +596,18 @@ export default function Financial() {
                 )}
               </CardHeader>
             </Card>
+
+            <Card className="bg-gradient-secondary border-none text-secondary-foreground animate-scale-in">
+              <CardHeader className="pb-3">
+                <CardDescription className="text-secondary-foreground/80 flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  A Receber (Operadoras)
+                </CardDescription>
+                <CardTitle className="text-3xl">
+                  {formatCurrency(totalPendingReceipts)}
+                </CardTitle>
+              </CardHeader>
+            </Card>
           </div>
 
           {/* Gráficos e Tabelas */}
@@ -837,60 +881,107 @@ export default function Financial() {
                               Carregando...
                             </TableCell>
                           </TableRow>
-                        ) : filteredInstallments.length === 0 ? (
+                        ) : filteredInstallments.length === 0 && transactions.filter(t => t.status === "pending" && t.transaction_type === "payment").length === 0 ? (
                           <TableRow>
                             <TableCell colSpan={7} className="text-center text-muted-foreground">
-                              Nenhuma parcela encontrada
+                              Nenhuma parcela ou pagamento pendente encontrado
                             </TableCell>
                           </TableRow>
                         ) : (
-                          filteredInstallments.map((installment) => {
-                            const isOverdue = isPast(new Date(installment.due_date)) && installment.status === 'pending';
-                            return (
-                              <TableRow key={installment.id} className={isOverdue ? 'bg-destructive/5' : ''}>
-                                <TableCell className={isOverdue ? 'font-medium text-destructive' : ''}>
-                                  {format(new Date(installment.due_date), "dd/MM/yyyy", { locale: ptBR })}
-                                </TableCell>
-                                <TableCell>
-                                  {installment.installment_plans?.financial_transactions?.patients?.full_name || "N/A"}
-                                </TableCell>
-                                <TableCell>{installment.installment_number}</TableCell>
-                                <TableCell className="font-medium">
-                                  {formatCurrency(Number(installment.amount))}
-                                </TableCell>
-                                <TableCell>
-                                  {getInstallmentStatusBadge(installment.status, installment.due_date)}
-                                </TableCell>
-                                <TableCell>
-                                  {installment.payment_date ? (
-                                    <div className="text-sm">
-                                      <div>{format(new Date(installment.payment_date), "dd/MM/yyyy", { locale: ptBR })}</div>
-                                      {installment.payment_method && (
-                                        <div className="text-muted-foreground">
-                                          {getPaymentMethodLabel(installment.payment_method)}
-                                        </div>
+                          <>
+                            {/* Parcelas de planos existentes */}
+                            {filteredInstallments.map((installment) => {
+                              const isOverdue = isPast(new Date(installment.due_date)) && installment.status === 'pending';
+                              return (
+                                <TableRow key={installment.id} className={isOverdue ? 'bg-destructive/5' : ''}>
+                                  <TableCell className={isOverdue ? 'font-medium text-destructive' : ''}>
+                                    {format(new Date(installment.due_date), "dd/MM/yyyy", { locale: ptBR })}
+                                  </TableCell>
+                                  <TableCell>
+                                    {installment.installment_plans?.financial_transactions?.patients?.full_name || "N/A"}
+                                  </TableCell>
+                                  <TableCell>{installment.installment_number}</TableCell>
+                                  <TableCell className="font-medium">
+                                    {formatCurrency(Number(installment.amount))}
+                                  </TableCell>
+                                  <TableCell>
+                                    {getInstallmentStatusBadge(installment.status, installment.due_date)}
+                                  </TableCell>
+                                  <TableCell>
+                                    {installment.payment_date ? (
+                                      <div className="text-sm">
+                                        <div>{format(new Date(installment.payment_date), "dd/MM/yyyy", { locale: ptBR })}</div>
+                                        {installment.payment_method && (
+                                          <div className="text-muted-foreground">
+                                            {getPaymentMethodLabel(installment.payment_method)}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span className="text-muted-foreground">-</span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    {installment.status === 'pending' && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleMarkAsPaid(installment.id)}
+                                        disabled={markAsPaidMutation.isPending}
+                                      >
+                                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                                        Marcar como Paga
+                                      </Button>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+
+                            {/* NOVO: Pagamentos de cartão pendentes */}
+                            {transactions
+                              .filter(t => t.transaction_type === "payment" && t.status === "pending")
+                              .map((transaction) => {
+                                const isOverdue = transaction.expected_receipt_date && isPast(new Date(transaction.expected_receipt_date));
+                                return (
+                                  <TableRow key={transaction.id} className={isOverdue ? 'bg-destructive/5' : ''}>
+                                    <TableCell className={isOverdue ? 'font-medium text-destructive' : ''}>
+                                      {transaction.expected_receipt_date
+                                        ? format(new Date(transaction.expected_receipt_date), "dd/MM/yyyy", { locale: ptBR })
+                                        : format(new Date(transaction.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                                    </TableCell>
+                                    <TableCell>{transaction.patients?.full_name || "N/A"}</TableCell>
+                                    <TableCell>
+                                      <Badge variant="outline">Pagamento {getPaymentMethodLabel(transaction.payment_method)}</Badge>
+                                    </TableCell>
+                                    <TableCell className="font-medium">
+                                      {formatCurrency(Number(transaction.net_amount || transaction.final_amount))}
+                                    </TableCell>
+                                    <TableCell>
+                                      {isOverdue ? (
+                                        <Badge variant="destructive">Vencida</Badge>
+                                      ) : (
+                                        <Badge variant="secondary">Aguardando Operadora</Badge>
                                       )}
-                                    </div>
-                                  ) : (
-                                    <span className="text-muted-foreground">-</span>
-                                  )}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {installment.status === 'pending' && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleMarkAsPaid(installment.id)}
-                                      disabled={markAsPaidMutation.isPending}
-                                    >
-                                      <CheckCircle2 className="h-4 w-4 mr-1" />
-                                      Marcar como Paga
-                                    </Button>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })
+                                    </TableCell>
+                                    <TableCell>
+                                      <span className="text-muted-foreground">-</span>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleMarkCardPaymentAsReceived(transaction.id)}
+                                        disabled={markCardPaymentAsReceivedMutation.isPending}
+                                      >
+                                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                                        Marcar como Recebido
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                          </>
                         )}
                       </TableBody>
                     </Table>
