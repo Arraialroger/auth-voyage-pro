@@ -59,13 +59,14 @@ export default function Financial() {
       const startDate = startOfMonth(selectedMonth).toISOString();
       const endDate = endOfMonth(selectedMonth).toISOString();
 
-      // Receitas do mês
-      const { data: revenues } = await supabase
+      // Receitas do mês - buscar transações completadas
+      const { data: completedRevenues } = await supabase
         .from('financial_transactions')
-        .select('final_amount, status')
+        .select('final_amount, net_amount, payment_date')
+        .eq('transaction_type', 'payment')
+        .eq('status', 'completed')
         .gte('payment_date', startDate)
-        .lte('payment_date', endDate)
-        .eq('transaction_type', 'payment');
+        .lte('payment_date', endDate);
 
       // Despesas do mês
       const { data: expenses } = await supabase
@@ -80,17 +81,39 @@ export default function Financial() {
         .select('amount, status, due_date')
         .in('status', ['pending', 'overdue']);
 
+      // Buscar transações pendentes (sem parcelamento)
+      const { data: pendingTransactions } = await supabase
+        .from('financial_transactions')
+        .select('final_amount, id')
+        .eq('status', 'pending')
+        .eq('transaction_type', 'payment');
+
+      // Buscar planos de parcelamento para filtrar transações que já têm parcelas
+      const { data: installmentPlans } = await supabase
+        .from('installment_plans')
+        .select('transaction_id');
+
+      const installmentTransactionIds = new Set(installmentPlans?.map(ip => ip.transaction_id) || []);
+      const pendingWithoutInstallment = pendingTransactions?.filter(
+        t => !installmentTransactionIds.has(t.id)
+      ) || [];
+
       // Calcular totais - apenas pagamentos que foram efetivamente recebidos
-      const totalRevenue = revenues?.reduce((sum, r) => {
-        if (r.status === 'completed' && (r as any).payment_date) {
-          // Usar net_amount se existir, senão usar final_amount
-          const amount = (r as any).net_amount !== undefined ? Number((r as any).net_amount) : Number(r.final_amount);
-          return sum + amount;
-        }
-        return sum;
+      const totalRevenue = completedRevenues?.reduce((sum, r) => {
+        const amount = r.net_amount !== undefined && r.net_amount !== null 
+          ? Number(r.net_amount) 
+          : Number(r.final_amount);
+        return sum + amount;
       }, 0) || 0;
+      
       const totalExpenses = expenses?.reduce((sum, e) => sum + (e.status === 'paid' ? Number(e.amount) : 0), 0) || 0;
-      const totalPending = pendingInstallments?.reduce((sum, i) => sum + Number(i.amount), 0) || 0;
+      
+      // Total pendente = parcelas pendentes + transações pendentes sem parcelamento
+      const totalPending = (
+        (pendingInstallments?.reduce((sum, i) => sum + Number(i.amount), 0) || 0) +
+        (pendingWithoutInstallment.reduce((sum, t) => sum + Number(t.final_amount), 0))
+      );
+      
       const overdueCount = pendingInstallments?.filter(i => i.status === 'overdue').length || 0;
 
       return {
@@ -99,7 +122,7 @@ export default function Financial() {
         netProfit: totalRevenue - totalExpenses,
         totalPending,
         overdueCount,
-        revenues: revenues || [],
+        revenues: completedRevenues || [],
         expenses: expenses || []
       };
     }
