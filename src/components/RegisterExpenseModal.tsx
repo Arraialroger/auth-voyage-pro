@@ -127,7 +127,7 @@ export function RegisterExpenseModal({ open, onOpenChange }: RegisterExpenseModa
         amount: parseFloat(data.amount),
         expense_date: format(data.expense_date, 'yyyy-MM-dd'),
         category: data.category as "supplies" | "rent" | "utilities" | "equipment" | "maintenance" | "salary" | "marketing" | "other",
-        payment_method: data.payment_method as "cash" | "credit_card" | "debit_card" | "pix" | "bank_transfer" | "boleto",
+        payment_method: data.payment_method as "cash" | "credit_card" | "debit_card" | "pix" | "bank_transfer" | "boleto" | "insurance",
         status: isInstallment ? 'pending' as const : (data.status as "pending" | "paid"),
         created_by: user.id,
         receipt_url: receiptUrl,

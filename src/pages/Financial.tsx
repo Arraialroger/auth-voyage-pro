@@ -277,8 +277,9 @@ export default function Financial() {
       credit_card: "Cartão de Crédito",
       debit_card: "Cartão de Débito",
       pix: "PIX",
-      bank_transfer: "Transferência",
+      bank_transfer: "Transferência Bancária",
       boleto: "Boleto Bancário",
+      insurance: "Convênio"
     };
     return labels[method] || method;
   };
