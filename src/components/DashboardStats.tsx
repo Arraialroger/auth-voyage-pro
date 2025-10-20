@@ -62,21 +62,24 @@ export function DashboardStats() {
         .from('appointments')
         .select('*', { count: 'exact', head: true })
         .gte('appointment_start_time', todayStart.toISOString())
-        .lte('appointment_start_time', todayEnd.toISOString());
+        .lte('appointment_start_time', todayEnd.toISOString())
+        .neq('status', 'Cancelled');
 
       // Agendamentos esta semana
       const { count: appointmentsThisWeek } = await supabase
         .from('appointments')
         .select('*', { count: 'exact', head: true })
         .gte('appointment_start_time', weekStart.toISOString())
-        .lte('appointment_start_time', weekEnd.toISOString());
+        .lte('appointment_start_time', weekEnd.toISOString())
+        .neq('status', 'Cancelled');
 
       // Agendamentos próxima semana
       const { count: appointmentsNextWeek } = await supabase
         .from('appointments')
         .select('*', { count: 'exact', head: true })
         .gte('appointment_start_time', nextWeekStart.toISOString())
-        .lte('appointment_start_time', nextWeekEnd.toISOString());
+        .lte('appointment_start_time', nextWeekEnd.toISOString())
+        .neq('status', 'Cancelled');
 
       // Lista de espera
       const { count: waitingList } = await supabase
@@ -91,7 +94,8 @@ export function DashboardStats() {
         .from('appointments')
         .select('*', { count: 'exact', head: true })
         .gte('appointment_start_time', thirtyDaysAgo.toISOString())
-        .lte('appointment_start_time', now.toISOString());
+        .lte('appointment_start_time', now.toISOString())
+        .neq('status', 'Cancelled');
 
       const { count: completedAppointments } = await supabase
         .from('appointments')
