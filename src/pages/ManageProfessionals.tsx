@@ -24,14 +24,21 @@ import ProfessionalScheduleForm, { type DaySchedule } from '@/components/Profess
 type Professional = Database['public']['Tables']['professionals']['Row'];
 type ProfessionalInsert = Database['public']['Tables']['professionals']['Insert'];
 
-// CORREÇÃO 1: Schema de validação com as especializações corretas.
-const professionalFormSchema = z.object({
+// Schema de validação para criar profissional
+const professionalCreateSchema = z.object({
   full_name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres.'),
   specialization: z.enum(['Cirurgião-Dentista', 'Ortodontista']),
   email: z.string().min(1, 'Email é obrigatório.'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres.')
 });
-type ProfessionalFormData = z.infer<typeof professionalFormSchema>;
+type ProfessionalCreateData = z.infer<typeof professionalCreateSchema>;
+
+// Schema de validação para editar profissional (sem email e password)
+const professionalEditSchema = z.object({
+  full_name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres.'),
+  specialization: z.enum(['Cirurgião-Dentista', 'Ortodontista'])
+});
+type ProfessionalEditData = z.infer<typeof professionalEditSchema>;
 export default function ManageProfessionals() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -45,14 +52,24 @@ export default function ManageProfessionals() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedProfessional, setSelectedProfessional] = useState<Professional | null>(null);
   const [currentSchedules, setCurrentSchedules] = useState<DaySchedule[]>([]);
-  const form = useForm<ProfessionalFormData>({
-    resolver: zodResolver(professionalFormSchema),
-    // CORREÇÃO 2: Valor padrão corrigido para uma opção válida.
+  
+  // Form para criar profissional
+  const createForm = useForm<ProfessionalCreateData>({
+    resolver: zodResolver(professionalCreateSchema),
     defaultValues: {
       full_name: '',
       specialization: 'Cirurgião-Dentista',
       email: '',
       password: ''
+    }
+  });
+
+  // Form para editar profissional
+  const editForm = useForm<ProfessionalEditData>({
+    resolver: zodResolver(professionalEditSchema),
+    defaultValues: {
+      full_name: '',
+      specialization: 'Cirurgião-Dentista'
     }
   });
   const fetchProfessionals = async () => {
@@ -77,7 +94,7 @@ export default function ManageProfessionals() {
   useEffect(() => {
     fetchProfessionals();
   }, []);
-  const handleCreate = async (data: ProfessionalFormData) => {
+  const handleCreate = async (data: ProfessionalCreateData) => {
     try {
       console.log('Criando profissional:', data.email);
       
@@ -130,7 +147,7 @@ export default function ManageProfessionals() {
         description: 'Profissional criado com sucesso!'
       });
       setIsCreateDialogOpen(false);
-      form.reset();
+      createForm.reset();
       setCurrentSchedules([]);
       fetchProfessionals();
     } catch (error) {
@@ -142,7 +159,7 @@ export default function ManageProfessionals() {
       });
     }
   };
-  const handleEdit = async (data: Pick<ProfessionalFormData, 'full_name' | 'specialization'>) => {
+  const handleEdit = async (data: ProfessionalEditData) => {
     if (!selectedProfessional) return;
     try {
       console.log('Atualizando profissional:', selectedProfessional.id);
@@ -173,7 +190,7 @@ export default function ManageProfessionals() {
       });
       setIsEditDialogOpen(false);
       setSelectedProfessional(null);
-      form.reset();
+      editForm.reset();
       setCurrentSchedules([]);
       fetchProfessionals();
     } catch (error) {
@@ -242,7 +259,7 @@ export default function ManageProfessionals() {
   };
   const openEditDialog = (professional: Professional) => {
     setSelectedProfessional(professional);
-    form.reset({
+    editForm.reset({
       full_name: professional.full_name,
       specialization: professional.specialization
     });
@@ -295,8 +312,8 @@ export default function ManageProfessionals() {
                     <DialogTitle>Criar Novo Profissional</DialogTitle>
                     <DialogDescription>Preencha os dados do novo profissional</DialogDescription>
                   </DialogHeader>
-                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit(handleCreate)} className="space-y-6">
+                  <Form {...createForm}>
+                    <form onSubmit={createForm.handleSubmit(handleCreate)} className="space-y-6">
                       <Tabs defaultValue="dados" className="w-full">
                         <TabsList className="grid w-full grid-cols-2">
                           <TabsTrigger value="dados">Dados Básicos</TabsTrigger>
@@ -304,10 +321,10 @@ export default function ManageProfessionals() {
                         </TabsList>
                         
                         <TabsContent value="dados" className="space-y-4 mt-4">
-                          <FormField control={form.control} name="full_name" render={({
+                          <FormField control={createForm.control} name="full_name" render={({
                           field
                         }) => <FormItem><FormLabel>Nome Completo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
-                          <FormField control={form.control} name="specialization" render={({
+                          <FormField control={createForm.control} name="specialization" render={({
                           field
                         }) => <FormItem>
                               <FormLabel>Especialização</FormLabel>
@@ -320,10 +337,10 @@ export default function ManageProfessionals() {
                               </Select>
                               <FormMessage />
                             </FormItem>} />
-                          <FormField control={form.control} name="email" render={({
+                          <FormField control={createForm.control} name="email" render={({
                           field
                         }) => <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>} />
-                          <FormField control={form.control} name="password" render={({
+                          <FormField control={createForm.control} name="password" render={({
                           field
                         }) => <FormItem><FormLabel>Senha</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>} />
                         </TabsContent>
@@ -485,8 +502,8 @@ export default function ManageProfessionals() {
             <DialogTitle>Editar Profissional</DialogTitle>
             <DialogDescription>Atualize os dados do profissional</DialogDescription>
           </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleEdit)} className="space-y-6">
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(handleEdit)} className="space-y-6">
               <Tabs defaultValue="dados" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="dados">Dados Básicos</TabsTrigger>
@@ -494,10 +511,10 @@ export default function ManageProfessionals() {
                 </TabsList>
                 
                 <TabsContent value="dados" className="space-y-4 mt-4">
-                  <FormField control={form.control} name="full_name" render={({
+                  <FormField control={editForm.control} name="full_name" render={({
                   field
                 }) => <FormItem><FormLabel>Nome Completo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
-                  <FormField control={form.control} name="specialization" render={({
+                  <FormField control={editForm.control} name="specialization" render={({
                   field
                 }) => <FormItem>
                       <FormLabel>Especialização</FormLabel>
