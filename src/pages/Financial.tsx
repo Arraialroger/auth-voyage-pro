@@ -642,14 +642,6 @@ export default function Financial() {
 
           {/* Gráficos e Tabelas */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5 lg:w-[750px]">
-              <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-              <TabsTrigger value="transactions">Transações</TabsTrigger>
-              <TabsTrigger value="receivables">A Receber</TabsTrigger>
-              <TabsTrigger value="payables">A Pagar</TabsTrigger>
-              <TabsTrigger value="expenses">Despesas</TabsTrigger>
-            </TabsList>
-
             {/* Visão Geral */}
             <TabsContent value="overview" className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
