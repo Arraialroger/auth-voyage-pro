@@ -100,7 +100,9 @@ export default function Agenda() {
   const [blockTimeInitialData, setBlockTimeInitialData] = useState<{
     professional_id?: string;
     date?: Date;
+    editingBlockId?: string;
   }>({});
+  const [blockToDelete, setBlockToDelete] = useState<string | null>(null);
 
   // Configuração mínima de intervalo para considerar slot disponível
   const MIN_GAP_MINUTES = 30;
@@ -108,6 +110,43 @@ export default function Agenda() {
   // Helper para identificar bloqueios
   const isBlockedTime = (appointment: Appointment): boolean => {
     return appointment.patient_id === BLOCK_PATIENT_ID;
+  };
+
+  // Função para deletar bloqueio
+  const handleDeleteBlock = async (blockId: string) => {
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .delete()
+        .eq('id', blockId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Bloqueio removido',
+        description: 'O horário foi desbloqueado com sucesso.',
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+    } catch (error) {
+      console.error('Error deleting block:', error);
+      toast({
+        title: 'Erro ao remover bloqueio',
+        description: 'Não foi possível desbloquear o horário.',
+        variant: 'destructive',
+      });
+    }
+    setBlockToDelete(null);
+  };
+
+  // Função para editar bloqueio
+  const handleEditBlock = (appointment: Appointment) => {
+    setBlockTimeInitialData({
+      professional_id: appointment.professional?.id,
+      date: new Date(appointment.appointment_start_time),
+      editingBlockId: appointment.id,
+    });
+    setBlockTimeModalOpen(true);
   };
 
   // Função auxiliar para converter "HH:MM:SS" para minutos desde meia-noite
@@ -650,13 +689,9 @@ export default function Agenda() {
       <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-3 lg:py-4">
           <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-2 lg:space-x-3">
-              <img src="/assets/new-logo.png" alt="Arraial Odonto" className="h-14 w-14 lg:h-18 lg:w-18 object-contain" />
-              <h1 className="text-lg lg:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                <span className="lg:hidden">Arraial</span>
-                <span className="hidden lg:inline">Arraial Odonto</span>
-              </h1>
-            </div>
+        <div className="flex items-center">
+          <img src="/assets/new-logo.png" alt="Arraial Odonto" className="h-16 w-16 lg:h-20 lg:w-20 object-contain" />
+        </div>
             
             <div className="flex items-center space-x-2 lg:space-x-4">
               <Button variant="outline" onClick={() => navigate('/admin')} className="hidden lg:flex border-border/50 hover:bg-muted">
@@ -937,29 +972,46 @@ export default function Agenda() {
                                 const isBlocked = isBlockedTime(appointment);
                                 
                                 if (isBlocked) {
-                                  return <div key={`apt-${appointment.id}`} className="relative bg-destructive/20 border-2 border-destructive/50 text-destructive-foreground p-3 rounded-md shadow-sm">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <Ban className="h-4 w-4" />
-                                      <div className="font-medium text-sm">
-                                        {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
+                                  return <div key={`apt-${appointment.id}`} className="relative group bg-destructive/20 border-2 border-destructive/50 hover:border-destructive/70 text-destructive-foreground p-3 rounded-md shadow-sm transition-colors cursor-pointer">
+                                    <div className="flex items-center justify-between gap-2 mb-1">
+                                      <div className="flex items-center gap-2">
+                                        <Ban className="h-4 w-4" />
+                                        <div className="font-medium text-sm">
+                                          {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
+                                        </div>
                                       </div>
+                                      {userProfile.type === 'receptionist' && (
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                              <MoreVertical className="h-4 w-4" />
+                                            </Button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="end" className="w-48">
+                                            <DropdownMenuItem onClick={() => handleEditBlock(appointment)}>
+                                              <Edit className="mr-2 h-4 w-4" />
+                                              Editar Bloqueio
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem 
+                                              onClick={() => setBlockToDelete(appointment.id)}
+                                              className="text-destructive focus:text-destructive"
+                                            >
+                                              <Trash2 className="mr-2 h-4 w-4" />
+                                              Remover Bloqueio
+                                            </DropdownMenuItem>
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                      )}
                                     </div>
                                     <div className="text-sm font-medium">🚫 Horário Bloqueado</div>
                                     {appointment.notes && (
                                       <div className="text-xs mt-1 opacity-80">
                                         {appointment.notes}
                                       </div>
-                                    )}
-                                    {userProfile.type === 'receptionist' && (
-                                      <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="mt-2 w-full text-xs h-7"
-                                        onClick={() => handleCancelDialogOpen(appointment.id)}
-                                      >
-                                        <Trash2 className="h-3 w-3 mr-1" />
-                                        Remover Bloqueio
-                                      </Button>
                                     )}
                                   </div>;
                                 }
@@ -1114,12 +1166,40 @@ export default function Agenda() {
                             const isBlocked = isBlockedTime(appointment);
                             
                             if (isBlocked) {
-                              return <div key={`apt-${appointment.id}`} className="relative bg-destructive/20 border-2 border-destructive/50 text-destructive-foreground p-2 rounded-md text-xs">
-                                <div className="flex items-center gap-1 mb-0.5">
-                                  <Ban className="h-3 w-3" />
-                                  <div className="font-medium">
-                                    {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
+                              return <div key={`apt-${appointment.id}`} className="relative group bg-destructive/20 border-2 border-destructive/50 hover:border-destructive/70 text-destructive-foreground p-2 rounded-md text-xs transition-colors cursor-pointer">
+                                <div className="flex items-center justify-between gap-1 mb-0.5">
+                                  <div className="flex items-center gap-1">
+                                    <Ban className="h-3 w-3" />
+                                    <div className="font-medium">
+                                      {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
+                                    </div>
                                   </div>
+                                  {userProfile.type === 'receptionist' && (
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                          <MoreVertical className="h-3 w-3" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end" className="w-48">
+                                        <DropdownMenuItem onClick={() => handleEditBlock(appointment)}>
+                                          <Edit className="mr-2 h-4 w-4" />
+                                          Editar Bloqueio
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem 
+                                          onClick={() => setBlockToDelete(appointment.id)}
+                                          className="text-destructive focus:text-destructive"
+                                        >
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                          Remover Bloqueio
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  )}
                                 </div>
                                 <div className="font-medium text-[10px]">🚫 Bloqueado</div>
                                 {appointment.notes && (
@@ -1335,5 +1415,26 @@ export default function Agenda() {
         }}
         initialData={blockTimeInitialData}
       />
+
+      {/* Delete Block Confirmation Dialog */}
+      <AlertDialog open={!!blockToDelete} onOpenChange={(open) => !open && setBlockToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover bloqueio de horário?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação irá desbloquear este horário na agenda. O horário ficará disponível para novos agendamentos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => blockToDelete && handleDeleteBlock(blockToDelete)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Confirmar Remoção
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>;
 }

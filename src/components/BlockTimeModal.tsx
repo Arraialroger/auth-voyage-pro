@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
@@ -24,6 +24,7 @@ interface BlockTimeModalProps {
   initialData?: {
     professional_id?: string;
     date?: Date;
+    editingBlockId?: string;
   };
 }
 
@@ -35,6 +36,38 @@ export function BlockTimeModal({ open, onOpenChange, professionals, onSuccess, i
   const [endTime, setEndTime] = useState('09:00');
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isEditing = !!initialData?.editingBlockId;
+
+  // Load block data when editing
+  useEffect(() => {
+    if (initialData?.editingBlockId && open) {
+      const loadBlockData = async () => {
+        const { data, error } = await supabase
+          .from('appointments')
+          .select('*')
+          .eq('id', initialData.editingBlockId)
+          .single();
+        
+        if (data && !error) {
+          const start = new Date(data.appointment_start_time);
+          const end = new Date(data.appointment_end_time);
+          setStartTime(format(start, 'HH:mm'));
+          setEndTime(format(end, 'HH:mm'));
+          setReason(data.notes || '');
+          setProfessionalId(data.professional_id || '');
+          setSelectedDate(start);
+        }
+      };
+      loadBlockData();
+    } else if (!open) {
+      // Reset form when closing
+      setProfessionalId(initialData?.professional_id || '');
+      setSelectedDate(initialData?.date || new Date());
+      setStartTime('08:00');
+      setEndTime('09:00');
+      setReason('');
+    }
+  }, [open, initialData?.editingBlockId, initialData?.professional_id, initialData?.date]);
 
   const handleQuickBlock = (type: 'full' | 'morning' | 'afternoon') => {
     if (type === 'full') {
@@ -80,37 +113,53 @@ export function BlockTimeModal({ open, onOpenChange, professionals, onSuccess, i
         return;
       }
 
-      const { error } = await supabase.from('appointments').insert({
-        professional_id: professionalId,
-        patient_id: BLOCK_PATIENT_ID,
-        treatment_id: BLOCK_TREATMENT_ID,
-        appointment_start_time: startDateTime.toISOString(),
-        appointment_end_time: endDateTime.toISOString(),
-        status: 'Confirmed',
-        notes: reason || 'Horário bloqueado',
-      });
+      if (isEditing && initialData?.editingBlockId) {
+        // Update existing block
+        const { error } = await supabase
+          .from('appointments')
+          .update({
+            professional_id: professionalId,
+            appointment_start_time: startDateTime.toISOString(),
+            appointment_end_time: endDateTime.toISOString(),
+            notes: reason || 'Horário bloqueado',
+          })
+          .eq('id', initialData.editingBlockId);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      toast({
-        title: 'Horário bloqueado',
-        description: 'O horário foi bloqueado com sucesso.',
-      });
+        toast({
+          title: 'Bloqueio atualizado',
+          description: 'O bloqueio foi atualizado com sucesso.',
+        });
+      } else {
+        // Create new block
+        const { error } = await supabase.from('appointments').insert({
+          professional_id: professionalId,
+          patient_id: BLOCK_PATIENT_ID,
+          treatment_id: BLOCK_TREATMENT_ID,
+          appointment_start_time: startDateTime.toISOString(),
+          appointment_end_time: endDateTime.toISOString(),
+          status: 'Confirmed',
+          notes: reason || 'Horário bloqueado',
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: 'Horário bloqueado',
+          description: 'O horário foi bloqueado com sucesso.',
+        });
+      }
 
       onSuccess();
       onOpenChange(false);
-      
-      // Reset form
-      setProfessionalId('');
-      setSelectedDate(new Date());
-      setStartTime('08:00');
-      setEndTime('09:00');
-      setReason('');
     } catch (error) {
       console.error('Error blocking time:', error);
       toast({
-        title: 'Erro',
-        description: 'Erro ao bloquear horário. Tente novamente.',
+        title: isEditing ? 'Erro ao atualizar' : 'Erro ao bloquear',
+        description: isEditing 
+          ? 'Erro ao atualizar o bloqueio. Tente novamente.' 
+          : 'Erro ao bloquear horário. Tente novamente.',
         variant: 'destructive',
       });
     } finally {
@@ -131,9 +180,12 @@ export function BlockTimeModal({ open, onOpenChange, professionals, onSuccess, i
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Bloquear Horário</DialogTitle>
+          <DialogTitle>{isEditing ? 'Editar Bloqueio de Horário' : 'Bloquear Horário'}</DialogTitle>
           <DialogDescription>
-            Bloqueie horários na agenda para férias, reuniões, compromissos pessoais, etc.
+            {isEditing 
+              ? 'Edite os detalhes do bloqueio de horário.' 
+              : 'Bloqueie horários na agenda para férias, reuniões, compromissos pessoais, etc.'
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -248,7 +300,10 @@ export function BlockTimeModal({ open, onOpenChange, professionals, onSuccess, i
             Cancelar
           </Button>
           <Button type="button" onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? 'Bloqueando...' : 'Bloquear Horário'}
+            {isSubmitting 
+              ? (isEditing ? 'Atualizando...' : 'Bloqueando...') 
+              : (isEditing ? 'Atualizar Bloqueio' : 'Bloquear Horário')
+            }
           </Button>
         </DialogFooter>
       </DialogContent>
