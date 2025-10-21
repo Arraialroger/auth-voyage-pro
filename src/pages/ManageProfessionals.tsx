@@ -79,6 +79,8 @@ export default function ManageProfessionals() {
   }, []);
   const handleCreate = async (data: ProfessionalFormData) => {
     try {
+      console.log('Criando profissional:', data.email);
+      
       const {
         data: authData,
         error: authError
@@ -86,21 +88,40 @@ export default function ManageProfessionals() {
         email: data.email,
         password: data.password
       });
-      if (authError) throw authError;
+      
+      if (authError) {
+        console.error('Erro no Auth:', authError);
+        throw authError;
+      }
       if (!authData.user) throw new Error('Usuário não foi criado');
+
+      console.log('Usuário Auth criado:', authData.user.id);
+
+      // Delay para garantir que a foreign key esteja pronta
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       const insertData: ProfessionalInsert = {
         full_name: data.full_name,
         specialization: data.specialization,
         user_id: authData.user.id
       };
+      
+      console.log('Inserindo profissional...');
       const {
         data: professionalData,
         error
       } = await supabase.from('professionals').insert([insertData]).select().single();
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Erro ao inserir:', error);
+        throw error;
+      }
+
+      console.log('Profissional criado:', professionalData.id);
 
       // Salvar horários de trabalho
       if (professionalData && currentSchedules.length > 0) {
+        console.log('Salvando horários...');
         await saveSchedules(professionalData.id, currentSchedules);
       }
 
@@ -113,8 +134,9 @@ export default function ManageProfessionals() {
       setCurrentSchedules([]);
       fetchProfessionals();
     } catch (error) {
+      console.error('Erro completo:', error);
       toast({
-        title: 'Erro',
+        title: 'Erro ao criar profissional',
         description: error instanceof Error ? error.message : 'Não foi possível criar o profissional.',
         variant: 'destructive'
       });
@@ -123,16 +145,25 @@ export default function ManageProfessionals() {
   const handleEdit = async (data: Pick<ProfessionalFormData, 'full_name' | 'specialization'>) => {
     if (!selectedProfessional) return;
     try {
+      console.log('Atualizando profissional:', selectedProfessional.id);
+      
       const {
         error
       } = await supabase.from('professionals').update({
         full_name: data.full_name,
         specialization: data.specialization
       }).eq('id', selectedProfessional.id);
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Erro ao atualizar:', error);
+        throw error;
+      }
+
+      console.log('Profissional atualizado');
 
       // Atualizar horários de trabalho
       if (currentSchedules.length > 0) {
+        console.log('Salvando horários...');
         await saveSchedules(selectedProfessional.id, currentSchedules);
       }
 
@@ -146,9 +177,10 @@ export default function ManageProfessionals() {
       setCurrentSchedules([]);
       fetchProfessionals();
     } catch (error) {
+      console.error('Erro completo:', error);
       toast({
-        title: 'Erro',
-        description: 'Não foi possível atualizar o profissional.',
+        title: 'Erro ao atualizar profissional',
+        description: error instanceof Error ? error.message : 'Não foi possível atualizar o profissional.',
         variant: 'destructive'
       });
     }

@@ -83,8 +83,10 @@ export default function ProfessionalScheduleForm({ professionalId, onScheduleCha
 
   // Notifica mudanças ao componente pai
   useEffect(() => {
-    onScheduleChange?.(schedules);
-  }, [schedules, onScheduleChange]);
+    if (onScheduleChange) {
+      onScheduleChange(schedules);
+    }
+  }, [schedules]);
 
   const toggleWorkingDay = (dayIndex: number) => {
     setSchedules(prev => {
