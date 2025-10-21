@@ -84,7 +84,7 @@ export default function Financial() {
       // Buscar transações pendentes (sem parcelamento)
       const { data: pendingTransactions } = await supabase
         .from('financial_transactions')
-        .select('final_amount, id')
+        .select('final_amount, net_amount, id')
         .eq('status', 'pending')
         .eq('transaction_type', 'payment');
 
@@ -111,7 +111,13 @@ export default function Financial() {
       // Total pendente = parcelas pendentes + transações pendentes sem parcelamento
       const totalPending = (
         (pendingInstallments?.reduce((sum, i) => sum + Number(i.amount), 0) || 0) +
-        (pendingWithoutInstallment.reduce((sum, t) => sum + Number(t.final_amount), 0))
+        (pendingWithoutInstallment.reduce((sum, t) => {
+          // Usar net_amount se disponível (valor após taxas), senão usar final_amount
+          const amount = t.net_amount !== undefined && t.net_amount !== null 
+            ? Number(t.net_amount) 
+            : Number(t.final_amount);
+          return sum + amount;
+        }, 0))
       );
       
       const overdueCount = pendingInstallments?.filter(i => i.status === 'overdue').length || 0;
