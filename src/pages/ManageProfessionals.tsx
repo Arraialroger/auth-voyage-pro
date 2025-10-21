@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -18,6 +19,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { Database } from '@/integrations/supabase/types';
+import ProfessionalScheduleForm, { type DaySchedule } from '@/components/ProfessionalScheduleForm';
+
 type Professional = Database['public']['Tables']['professionals']['Row'];
 type ProfessionalInsert = Database['public']['Tables']['professionals']['Insert'];
 
@@ -41,6 +44,7 @@ export default function ManageProfessionals() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedProfessional, setSelectedProfessional] = useState<Professional | null>(null);
+  const [currentSchedules, setCurrentSchedules] = useState<DaySchedule[]>([]);
   const form = useForm<ProfessionalFormData>({
     resolver: zodResolver(professionalFormSchema),
     // CORREÇÃO 2: Valor padrão corrigido para uma opção válida.
@@ -90,15 +94,23 @@ export default function ManageProfessionals() {
         user_id: authData.user.id
       };
       const {
+        data: professionalData,
         error
-      } = await supabase.from('professionals').insert([insertData]);
+      } = await supabase.from('professionals').insert([insertData]).select().single();
       if (error) throw error;
+
+      // Salvar horários de trabalho
+      if (professionalData && currentSchedules.length > 0) {
+        await saveSchedules(professionalData.id, currentSchedules);
+      }
+
       toast({
         title: 'Sucesso',
         description: 'Profissional criado com sucesso!'
       });
       setIsCreateDialogOpen(false);
       form.reset();
+      setCurrentSchedules([]);
       fetchProfessionals();
     } catch (error) {
       toast({
@@ -118,6 +130,12 @@ export default function ManageProfessionals() {
         specialization: data.specialization
       }).eq('id', selectedProfessional.id);
       if (error) throw error;
+
+      // Atualizar horários de trabalho
+      if (currentSchedules.length > 0) {
+        await saveSchedules(selectedProfessional.id, currentSchedules);
+      }
+
       toast({
         title: 'Sucesso',
         description: 'Profissional atualizado com sucesso!'
@@ -125,6 +143,7 @@ export default function ManageProfessionals() {
       setIsEditDialogOpen(false);
       setSelectedProfessional(null);
       form.reset();
+      setCurrentSchedules([]);
       fetchProfessionals();
     } catch (error) {
       toast({
@@ -132,6 +151,39 @@ export default function ManageProfessionals() {
         description: 'Não foi possível atualizar o profissional.',
         variant: 'destructive'
       });
+    }
+  };
+
+  const saveSchedules = async (professionalId: string, schedules: DaySchedule[]) => {
+    try {
+      // Deletar horários antigos
+      await supabase
+        .from('professional_schedules')
+        .delete()
+        .eq('professional_id', professionalId);
+
+      // Inserir novos horários
+      const schedulesToInsert = schedules
+        .filter(s => s.is_working && s.time_slots.length > 0)
+        .flatMap(s => 
+          s.time_slots.map(slot => ({
+            professional_id: professionalId,
+            day_of_week: s.day_of_week,
+            start_time: slot.start_time,
+            end_time: slot.end_time
+          }))
+        );
+
+      if (schedulesToInsert.length > 0) {
+        const { error } = await supabase
+          .from('professional_schedules')
+          .insert(schedulesToInsert);
+
+        if (error) throw error;
+      }
+    } catch (error) {
+      console.error('Erro ao salvar horários:', error);
+      throw error;
     }
   };
   const handleDelete = async (professional: Professional) => {
@@ -206,37 +258,52 @@ export default function ManageProfessionals() {
                 <DialogTrigger asChild>
                   <Button className="gap-2"><Plus className="h-4 w-4" /> Novo Profissional</Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Criar Novo Profissional</DialogTitle>
                     <DialogDescription>Preencha os dados do novo profissional</DialogDescription>
                   </DialogHeader>
                   <Form {...form}>
-                    <form onSubmit={form.handleSubmit(handleCreate)} className="space-y-4">
-                      {/* Campos do formulário de CRIAR */}
-                      <FormField control={form.control} name="full_name" render={({
-                      field
-                    }) => <FormItem><FormLabel>Nome Completo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
-                      <FormField control={form.control} name="specialization" render={({
-                      field
-                    }) => <FormItem>
-                          <FormLabel>Especialização</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                            {/* CORREÇÃO 4: Opções corretas no seletor de CRIAR */}
-                            <SelectContent>
-                              <SelectItem value="Cirurgião-Dentista">Cirurgião-Dentista</SelectItem>
-                              <SelectItem value="Ortodontista">Ortodontista</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>} />
-                      <FormField control={form.control} name="email" render={({
-                      field
-                    }) => <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>} />
-                      <FormField control={form.control} name="password" render={({
-                      field
-                    }) => <FormItem><FormLabel>Senha</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>} />
+                    <form onSubmit={form.handleSubmit(handleCreate)} className="space-y-6">
+                      <Tabs defaultValue="dados" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2">
+                          <TabsTrigger value="dados">Dados Básicos</TabsTrigger>
+                          <TabsTrigger value="horarios">Horários de Trabalho</TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="dados" className="space-y-4 mt-4">
+                          <FormField control={form.control} name="full_name" render={({
+                          field
+                        }) => <FormItem><FormLabel>Nome Completo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
+                          <FormField control={form.control} name="specialization" render={({
+                          field
+                        }) => <FormItem>
+                              <FormLabel>Especialização</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                  <SelectItem value="Cirurgião-Dentista">Cirurgião-Dentista</SelectItem>
+                                  <SelectItem value="Ortodontista">Ortodontista</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>} />
+                          <FormField control={form.control} name="email" render={({
+                          field
+                        }) => <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>} />
+                          <FormField control={form.control} name="password" render={({
+                          field
+                        }) => <FormItem><FormLabel>Senha</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>} />
+                        </TabsContent>
+                        
+                        <TabsContent value="horarios" className="mt-4">
+                          <ProfessionalScheduleForm 
+                            professionalId={null}
+                            onScheduleChange={setCurrentSchedules}
+                          />
+                        </TabsContent>
+                      </Tabs>
+                      
                       <DialogFooter>
                         <Button type="submit">Criar Profissional</Button>
                       </DialogFooter>
@@ -381,30 +448,46 @@ export default function ManageProfessionals() {
 
       {/* Formulário de Edição */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Profissional</DialogTitle>
             <DialogDescription>Atualize os dados do profissional</DialogDescription>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleEdit)} className="space-y-4">
-              <FormField control={form.control} name="full_name" render={({
-              field
-            }) => <FormItem><FormLabel>Nome Completo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
-              <FormField control={form.control} name="specialization" render={({
-              field
-            }) => <FormItem>
-                  <FormLabel>Especialização</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                    {/* CORREÇÃO 5: Opções corretas no seletor de EDITAR */}
-                    <SelectContent>
-                      <SelectItem value="Cirurgião-Dentista">Cirurgião-Dentista</SelectItem>
-                      <SelectItem value="Ortodontista">Ortodontista</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>} />
+            <form onSubmit={form.handleSubmit(handleEdit)} className="space-y-6">
+              <Tabs defaultValue="dados" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="dados">Dados Básicos</TabsTrigger>
+                  <TabsTrigger value="horarios">Horários de Trabalho</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="dados" className="space-y-4 mt-4">
+                  <FormField control={form.control} name="full_name" render={({
+                  field
+                }) => <FormItem><FormLabel>Nome Completo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
+                  <FormField control={form.control} name="specialization" render={({
+                  field
+                }) => <FormItem>
+                      <FormLabel>Especialização</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="Cirurgião-Dentista">Cirurgião-Dentista</SelectItem>
+                          <SelectItem value="Ortodontista">Ortodontista</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>} />
+                </TabsContent>
+                
+                <TabsContent value="horarios" className="mt-4">
+                  <ProfessionalScheduleForm 
+                    professionalId={selectedProfessional?.id}
+                    onScheduleChange={setCurrentSchedules}
+                  />
+                </TabsContent>
+              </Tabs>
+              
               <DialogFooter>
                 <Button type="submit">Atualizar Profissional</Button>
               </DialogFooter>
