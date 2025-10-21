@@ -375,7 +375,7 @@ export default function Financial() {
   // Dados para gráfico de categorias de despesas
   const expensesByCategoryData = expenses.reduce((acc: any[], expense) => {
     const category = expense.category;
-    const existing = acc.find(item => item.name === category);
+    const existing = acc.find(item => item.category === category);
     
     if (existing) {
       existing.value += Number(expense.amount);
