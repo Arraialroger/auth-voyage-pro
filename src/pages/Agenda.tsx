@@ -94,22 +94,39 @@ export default function Agenda() {
   const [appointmentToComplete, setAppointmentToComplete] = useState<string>('');
   const previousPaymentModalOpen = useRef(paymentModalOpen);
 
-  // Configurações de horário de trabalho
-  const WORK_START_HOUR = 9; // Início às 9h
-  const WORK_END_HOUR = 18; // Fim padrão às 18h (seg-sex)
-  const SATURDAY_END_HOUR = 12; // Sábado até 12h
+  // Configuração mínima de intervalo para considerar slot disponível
   const MIN_GAP_MINUTES = 30;
 
-  // Função para obter horário de fim baseado no dia da semana
-  const getWorkEndHour = (date: Date): number => {
-    const dayOfWeek = date.getDay();
-    if (dayOfWeek === 0) return 0; // Domingo - clínica fechada
-    if (dayOfWeek === 6) return SATURDAY_END_HOUR; // Sábado até 12h
-    return WORK_END_HOUR; // Segunda a sexta até 18h
+  // Função auxiliar para converter "HH:MM:SS" para minutos desde meia-noite
+  const timeToMinutes = (timeStr: string): number => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
   };
 
-  // Verifica se é domingo
-  const isSunday = (date: Date): boolean => date.getDay() === 0;
+  // Função para obter os períodos de trabalho de um profissional em um dia específico
+  const getProfessionalWorkPeriods = (professionalId: string, date: Date): Array<{ start: Date; end: Date }> => {
+    const dayOfWeek = date.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
+    
+    const schedules = professionalSchedules.filter(
+      s => s.professional_id === professionalId && s.day_of_week === dayOfWeek
+    );
+
+    if (schedules.length === 0) {
+      return []; // Sem horário cadastrado = profissional não trabalha neste dia
+    }
+
+    return schedules.map(schedule => {
+      const start = new Date(date);
+      const [startHour, startMinute] = schedule.start_time.split(':').map(Number);
+      start.setHours(startHour, startMinute, 0, 0);
+
+      const end = new Date(date);
+      const [endHour, endMinute] = schedule.end_time.split(':').map(Number);
+      end.setHours(endHour, endMinute, 0, 0);
+
+      return { start, end };
+    });
+  };
   const weekStart = startOfWeek(currentWeek, {
     weekStartsOn: 1
   });
@@ -151,6 +168,28 @@ export default function Agenda() {
         return data || [];
       } catch (error) {
         console.error('Erro ao buscar pacientes:', error);
+        return [];
+      }
+    }
+  });
+
+  // Fetch professional schedules
+  const {
+    data: professionalSchedules = []
+  } = useQuery({
+    queryKey: ['professional-schedules'],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from('professional_schedules')
+          .select('professional_id, day_of_week, start_time, end_time')
+          .order('day_of_week')
+          .order('start_time');
+        
+        if (error) throw error;
+        return data || [];
+      } catch (error) {
+        console.error('Erro ao buscar horários dos profissionais:', error);
         return [];
       }
     }
@@ -436,51 +475,74 @@ export default function Agenda() {
     }
   };
 
-  // Função para calcular horários vagos
+  // Função para calcular horários vagos baseado nos horários cadastrados
   const calculateAvailableSlots = (appointments: Appointment[], date: Date, professionalId: string, professionalName: string): AvailableSlot[] => {
-    // Não mostrar slots para domingos
-    if (isSunday(date)) return [];
+    // Buscar períodos de trabalho do profissional para este dia
+    const workPeriods = getProfessionalWorkPeriods(professionalId, date);
+    
+    // Se não há períodos de trabalho, retorna vazio (profissional não trabalha neste dia)
+    if (workPeriods.length === 0) {
+      return [];
+    }
+
     const dayKey = format(date, 'yyyy-MM-dd');
     const dayAppointments = appointments.filter(apt => {
       const aptDate = format(new Date(apt.appointment_start_time), 'yyyy-MM-dd');
       return aptDate === dayKey && apt.professional?.id === professionalId;
     }).sort((a, b) => new Date(a.appointment_start_time).getTime() - new Date(b.appointment_start_time).getTime());
+
     const gaps: AvailableSlot[] = [];
-    let currentTime = new Date(date);
-    currentTime.setHours(WORK_START_HOUR, 0, 0, 0);
-    const workEndHour = getWorkEndHour(date);
-    const endTime = new Date(date);
-    endTime.setHours(workEndHour, 0, 0, 0);
-    for (const apt of dayAppointments) {
-      const aptStart = new Date(apt.appointment_start_time);
-      if (aptStart.getTime() > currentTime.getTime()) {
-        const gapMinutes = (aptStart.getTime() - currentTime.getTime()) / 60000;
+
+    // Processar cada período de trabalho
+    for (const period of workPeriods) {
+      let currentTime = new Date(period.start);
+      const periodEnd = new Date(period.end);
+
+      // Processar agendamentos dentro deste período
+      for (const apt of dayAppointments) {
+        const aptStart = new Date(apt.appointment_start_time);
+        const aptEnd = new Date(apt.appointment_end_time);
+
+        // Ignorar agendamentos fora deste período
+        if (aptEnd <= period.start || aptStart >= period.end) {
+          continue;
+        }
+
+        // Gap antes do agendamento
+        if (aptStart.getTime() > currentTime.getTime()) {
+          const gapMinutes = (aptStart.getTime() - currentTime.getTime()) / 60000;
+          if (gapMinutes >= MIN_GAP_MINUTES) {
+            gaps.push({
+              start: new Date(currentTime),
+              end: new Date(aptStart),
+              duration: gapMinutes,
+              professionalId,
+              professionalName
+            });
+          }
+        }
+        
+        // Avançar currentTime para o fim do agendamento
+        if (aptEnd > currentTime) {
+          currentTime = new Date(aptEnd);
+        }
+      }
+
+      // Gap após último agendamento até o fim do período
+      if (currentTime.getTime() < periodEnd.getTime()) {
+        const gapMinutes = (periodEnd.getTime() - currentTime.getTime()) / 60000;
         if (gapMinutes >= MIN_GAP_MINUTES) {
           gaps.push({
             start: new Date(currentTime),
-            end: new Date(aptStart),
+            end: new Date(periodEnd),
             duration: gapMinutes,
             professionalId,
             professionalName
           });
         }
       }
-      currentTime = new Date(apt.appointment_end_time);
     }
 
-    // Gap após último agendamento
-    if (currentTime.getTime() < endTime.getTime()) {
-      const gapMinutes = (endTime.getTime() - currentTime.getTime()) / 60000;
-      if (gapMinutes >= MIN_GAP_MINUTES) {
-        gaps.push({
-          start: new Date(currentTime),
-          end: new Date(endTime),
-          duration: gapMinutes,
-          professionalId,
-          professionalName
-        });
-      }
-    }
     return gaps;
   };
 
