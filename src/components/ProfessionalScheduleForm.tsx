@@ -213,23 +213,23 @@ export default function ProfessionalScheduleForm({ professionalId, onScheduleCha
                     <div className="flex-1 grid grid-cols-2 gap-2">
                       <div>
                         <Label className="text-xs text-muted-foreground">Início</Label>
-                        <Input
-                          type="time"
-                          value={slot.start_time}
-                          onChange={(e) => updateTimeSlot(dayIndex, slotIndex, 'start_time', e.target.value)}
-                          onBlur={() => validateTimeSlot(dayIndex, slotIndex)}
-                          className="text-sm"
-                        />
+                  <Input
+                    type="time"
+                    value={slot.start_time || ''}
+                    onChange={(e) => updateTimeSlot(dayIndex, slotIndex, 'start_time', e.target.value)}
+                    onBlur={() => validateTimeSlot(dayIndex, slotIndex)}
+                    className="text-sm"
+                  />
                       </div>
                       <div>
                         <Label className="text-xs text-muted-foreground">Término</Label>
-                        <Input
-                          type="time"
-                          value={slot.end_time}
-                          onChange={(e) => updateTimeSlot(dayIndex, slotIndex, 'end_time', e.target.value)}
-                          onBlur={() => validateTimeSlot(dayIndex, slotIndex)}
-                          className="text-sm"
-                        />
+                  <Input
+                    type="time"
+                    value={slot.end_time || ''}
+                    onChange={(e) => updateTimeSlot(dayIndex, slotIndex, 'end_time', e.target.value)}
+                    onBlur={() => validateTimeSlot(dayIndex, slotIndex)}
+                    className="text-sm"
+                  />
                       </div>
                     </div>
                     
