@@ -39,6 +39,7 @@ export default function Financial() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [selectedMonth] = useState(new Date());
+  const [activeTab, setActiveTab] = useState("overview");
   
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -640,7 +641,7 @@ export default function Financial() {
           </div>
 
           {/* Gráficos e Tabelas */}
-          <Tabs defaultValue="overview" className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-5 lg:w-[750px]">
               <TabsTrigger value="overview">Visão Geral</TabsTrigger>
               <TabsTrigger value="transactions">Transações</TabsTrigger>
@@ -691,23 +692,51 @@ export default function Financial() {
                   <CardContent className="space-y-3">
                     <Button 
                       className="w-full justify-start" 
+                      variant={activeTab === "overview" ? "default" : "outline"}
+                      onClick={() => setActiveTab("overview")}
+                    >
+                      <DollarSign className="mr-2 h-4 w-4" />
+                      Visão Geral
+                    </Button>
+                    <Button 
+                      className="w-full justify-start" 
+                      variant={activeTab === "transactions" ? "default" : "outline"}
+                      onClick={() => setActiveTab("transactions")}
+                    >
+                      <CreditCard className="mr-2 h-4 w-4" />
+                      Transações
+                    </Button>
+                    <Button 
+                      className="w-full justify-start" 
+                      variant={activeTab === "receivables" ? "default" : "outline"}
+                      onClick={() => setActiveTab("receivables")}
+                    >
+                      <TrendingUp className="mr-2 h-4 w-4" />
+                      A Receber
+                    </Button>
+                    <Button 
+                      className="w-full justify-start" 
+                      variant={activeTab === "payables" ? "default" : "outline"}
+                      onClick={() => setActiveTab("payables")}
+                    >
+                      <Wallet className="mr-2 h-4 w-4" />
+                      A Pagar
+                    </Button>
+                    <Button 
+                      className="w-full justify-start" 
+                      variant={activeTab === "expenses" ? "default" : "outline"}
+                      onClick={() => setActiveTab("expenses")}
+                    >
+                      <TrendingDown className="mr-2 h-4 w-4" />
+                      Despesas
+                    </Button>
+                    <Button 
+                      className="w-full justify-start" 
                       variant="outline" 
                       onClick={() => setExpenseModalOpen(true)}
                     >
                       <TrendingDown className="mr-2 h-4 w-4" />
                       Cadastrar Despesa
-                    </Button>
-                    <Button className="w-full justify-start" variant="outline" onClick={() => {}}>
-                      <Calendar className="mr-2 h-4 w-4" />
-                      Gerar Parcelamento
-                    </Button>
-                    <Button className="w-full justify-start" variant="outline" onClick={() => {}}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Relatórios
-                    </Button>
-                    <Button className="w-full justify-start" variant="outline" onClick={() => {}}>
-                      <Target className="mr-2 h-4 w-4" />
-                      Metas Financeiras
                     </Button>
                   </CardContent>
                 </Card>
