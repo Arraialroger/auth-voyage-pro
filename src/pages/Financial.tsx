@@ -568,8 +568,7 @@ export default function Financial() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-7xl mx-auto space-y-8">
+      <main className="container mx-auto px-4 py-8 max-w-7xl space-y-8">
           
           {/* Cards de Estatísticas */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -640,99 +639,42 @@ export default function Financial() {
             </Card>
           </div>
 
-          {/* Gráficos e Tabelas */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            {/* Visão Geral */}
-            <TabsContent value="overview" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
-                {/* Gráfico de Pizza - Receitas vs Despesas */}
-                <Card className="bg-card/80 backdrop-blur-sm">
-                  <CardHeader>
-                    <CardTitle>Receitas vs Despesas</CardTitle>
-                    <CardDescription>Distribuição financeira do mês</CardDescription>
-                  </CardHeader>
-                  <CardContent className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={revenueVsExpensesData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                        >
-                          {revenueVsExpensesData.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-
-                {/* Ações Rápidas */}
-                <Card className="bg-card/80 backdrop-blur-sm">
-                  <CardHeader>
-                    <CardTitle>Ações Rápidas</CardTitle>
-                    <CardDescription>Acesso rápido às funções principais</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <Button 
-                      className="w-full justify-start" 
-                      variant={activeTab === "overview" ? "default" : "outline"}
-                      onClick={() => setActiveTab("overview")}
-                    >
-                      <DollarSign className="mr-2 h-4 w-4" />
-                      Visão Geral
-                    </Button>
-                    <Button 
-                      className="w-full justify-start" 
-                      variant={activeTab === "transactions" ? "default" : "outline"}
-                      onClick={() => setActiveTab("transactions")}
-                    >
-                      <CreditCard className="mr-2 h-4 w-4" />
-                      Transações
-                    </Button>
-                    <Button 
-                      className="w-full justify-start" 
-                      variant={activeTab === "receivables" ? "default" : "outline"}
-                      onClick={() => setActiveTab("receivables")}
-                    >
-                      <TrendingUp className="mr-2 h-4 w-4" />
-                      A Receber
-                    </Button>
-                    <Button 
-                      className="w-full justify-start" 
-                      variant={activeTab === "payables" ? "default" : "outline"}
-                      onClick={() => setActiveTab("payables")}
-                    >
-                      <Wallet className="mr-2 h-4 w-4" />
-                      A Pagar
-                    </Button>
-                    <Button 
-                      className="w-full justify-start" 
-                      variant={activeTab === "expenses" ? "default" : "outline"}
-                      onClick={() => setActiveTab("expenses")}
-                    >
-                      <TrendingDown className="mr-2 h-4 w-4" />
-                      Despesas
-                    </Button>
-                    <Button 
-                      className="w-full justify-start" 
-                      variant="outline" 
-                      onClick={() => setExpenseModalOpen(true)}
-                    >
-                      <TrendingDown className="mr-2 h-4 w-4" />
-                      Cadastrar Despesa
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
+          {/* Layout Responsivo: Ações Rápidas + Conteúdo */}
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr,350px] gap-6">
+            
+            {/* Área de Conteúdo Principal */}
+            <div className="space-y-6 order-2 lg:order-1">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+                {/* Visão Geral */}
+                <TabsContent value="overview" className="space-y-6">
+                  {/* Gráfico de Pizza - Receitas vs Despesas */}
+                  <Card className="bg-card/80 backdrop-blur-sm">
+                    <CardHeader>
+                      <CardTitle>Receitas vs Despesas</CardTitle>
+                      <CardDescription>Distribuição financeira do mês</CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={revenueVsExpensesData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {revenueVsExpensesData.map((_, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
 
               {/* Transações Recentes */}
               <Card className="bg-card/80 backdrop-blur-sm">
@@ -1378,6 +1320,68 @@ export default function Financial() {
             </TabsContent>
           </Tabs>
         </div>
+
+        {/* Ações Rápidas - Sempre Visível */}
+        <div className="order-1 lg:order-2">
+          <Card className="bg-card/80 backdrop-blur-sm lg:sticky lg:top-6">
+            <CardHeader>
+              <CardTitle>Ações Rápidas</CardTitle>
+              <CardDescription>Acesso rápido às funções principais</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button 
+                className="w-full justify-start" 
+                variant={activeTab === "overview" ? "default" : "outline"}
+                onClick={() => setActiveTab("overview")}
+              >
+                <DollarSign className="mr-2 h-4 w-4" />
+                Visão Geral
+              </Button>
+              <Button 
+                className="w-full justify-start" 
+                variant={activeTab === "transactions" ? "default" : "outline"}
+                onClick={() => setActiveTab("transactions")}
+              >
+                <CreditCard className="mr-2 h-4 w-4" />
+                Transações
+              </Button>
+              <Button 
+                className="w-full justify-start" 
+                variant={activeTab === "receivables" ? "default" : "outline"}
+                onClick={() => setActiveTab("receivables")}
+              >
+                <TrendingUp className="mr-2 h-4 w-4" />
+                A Receber
+              </Button>
+              <Button 
+                className="w-full justify-start" 
+                variant={activeTab === "payables" ? "default" : "outline"}
+                onClick={() => setActiveTab("payables")}
+              >
+                <Wallet className="mr-2 h-4 w-4" />
+                A Pagar
+              </Button>
+              <Button 
+                className="w-full justify-start" 
+                variant={activeTab === "expenses" ? "default" : "outline"}
+                onClick={() => setActiveTab("expenses")}
+              >
+                <TrendingDown className="mr-2 h-4 w-4" />
+                Despesas
+              </Button>
+              <Button 
+                className="w-full justify-start" 
+                variant="outline" 
+                onClick={() => setExpenseModalOpen(true)}
+              >
+                <TrendingDown className="mr-2 h-4 w-4" />
+                Cadastrar Despesa
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+      </div>
       </main>
 
       <RegisterExpenseModal open={expenseModalOpen} onOpenChange={setExpenseModalOpen} />
