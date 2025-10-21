@@ -2,7 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, LogOut, User, Clock, ChevronLeft, ChevronRight, Plus, Settings, Menu, MoreVertical, Edit, Trash2, Eye, Filter, X } from 'lucide-react';
+import { Calendar, LogOut, User, Clock, ChevronLeft, ChevronRight, Plus, Settings, Menu, MoreVertical, Edit, Trash2, Eye, Filter, X, Ban } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,6 +15,7 @@ import { EditAppointmentModal } from '@/components/EditAppointmentModal';
 import { AddToWaitingListModal } from '@/components/AddToWaitingListModal';
 import { AppointmentReminderButton } from '@/components/AppointmentReminderButton';
 import { RegisterPaymentModal } from '@/components/RegisterPaymentModal';
+import { BlockTimeModal } from '@/components/BlockTimeModal';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useToast } from '@/hooks/use-toast';
@@ -22,6 +23,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DollarSign } from 'lucide-react';
+
+const BLOCK_PATIENT_ID = '00000000-0000-0000-0000-000000000001';
 type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'Completed' | 'Cancelled' | 'No-Show' | 'Pending Confirmation';
 interface Appointment {
   id: string;
@@ -93,9 +96,19 @@ export default function Agenda() {
   const [completeAfterPaymentDialog, setCompleteAfterPaymentDialog] = useState(false);
   const [appointmentToComplete, setAppointmentToComplete] = useState<string>('');
   const previousPaymentModalOpen = useRef(paymentModalOpen);
+  const [blockTimeModalOpen, setBlockTimeModalOpen] = useState(false);
+  const [blockTimeInitialData, setBlockTimeInitialData] = useState<{
+    professional_id?: string;
+    date?: Date;
+  }>({});
 
   // Configuração mínima de intervalo para considerar slot disponível
   const MIN_GAP_MINUTES = 30;
+
+  // Helper para identificar bloqueios
+  const isBlockedTime = (appointment: Appointment): boolean => {
+    return appointment.patient_id === BLOCK_PATIENT_ID;
+  };
 
   // Função auxiliar para converter "HH:MM:SS" para minutos desde meia-noite
   const timeToMinutes = (timeStr: string): number => {
@@ -803,6 +816,19 @@ export default function Agenda() {
                         <Clock className="h-4 w-4" />
                         Lista de Espera
                       </Button>} />
+                  {userProfile.type === 'receptionist' && (
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setBlockTimeInitialData({});
+                        setBlockTimeModalOpen(true);
+                      }} 
+                      className="w-full gap-2 border-destructive/50 hover:bg-destructive/10"
+                    >
+                      <Ban className="h-4 w-4" />
+                      Bloquear Horário
+                    </Button>
+                  )}
                   <Button onClick={() => {
                   setModalInitialValues({});
                   setModalOpen(true);
@@ -828,6 +854,19 @@ export default function Agenda() {
                           <Clock className="h-4 w-4" />
                           Lista de Espera
                         </Button>} />
+                    {userProfile.type === 'receptionist' && (
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setBlockTimeInitialData({});
+                          setBlockTimeModalOpen(true);
+                        }} 
+                        className="gap-2 border-destructive/50 hover:bg-destructive/10"
+                      >
+                        <Ban className="h-4 w-4" />
+                        Bloquear Horário
+                      </Button>
+                    )}
                     <Button onClick={() => {
                     setModalInitialValues({});
                     setModalOpen(true);
@@ -895,6 +934,36 @@ export default function Agenda() {
                             return allItems.map((item, idx) => {
                               if (item.type === 'appointment') {
                                 const appointment = item.data;
+                                const isBlocked = isBlockedTime(appointment);
+                                
+                                if (isBlocked) {
+                                  return <div key={`apt-${appointment.id}`} className="relative bg-destructive/20 border-2 border-destructive/50 text-destructive-foreground p-3 rounded-md shadow-sm">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <Ban className="h-4 w-4" />
+                                      <div className="font-medium text-sm">
+                                        {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
+                                      </div>
+                                    </div>
+                                    <div className="text-sm font-medium">🚫 Horário Bloqueado</div>
+                                    {appointment.notes && (
+                                      <div className="text-xs mt-1 opacity-80">
+                                        {appointment.notes}
+                                      </div>
+                                    )}
+                                    {userProfile.type === 'receptionist' && (
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="mt-2 w-full text-xs h-7"
+                                        onClick={() => handleCancelDialogOpen(appointment.id)}
+                                      >
+                                        <Trash2 className="h-3 w-3 mr-1" />
+                                        Remover Bloqueio
+                                      </Button>
+                                    )}
+                                  </div>;
+                                }
+                                
                                 return <div key={`apt-${appointment.id}`} className="relative bg-primary text-primary-foreground p-3 rounded-md shadow-sm group">
                                              <div className="flex justify-between items-start gap-2">
                                                <div className="flex-1 cursor-pointer" onClick={() => handleAppointmentClick(appointment)}>
@@ -1042,6 +1111,25 @@ export default function Agenda() {
                                   {allItems.map((item, idx) => {
                           if (item.type === 'appointment') {
                             const appointment = item.data;
+                            const isBlocked = isBlockedTime(appointment);
+                            
+                            if (isBlocked) {
+                              return <div key={`apt-${appointment.id}`} className="relative bg-destructive/20 border-2 border-destructive/50 text-destructive-foreground p-2 rounded-md text-xs">
+                                <div className="flex items-center gap-1 mb-0.5">
+                                  <Ban className="h-3 w-3" />
+                                  <div className="font-medium">
+                                    {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
+                                  </div>
+                                </div>
+                                <div className="font-medium text-[10px]">🚫 Bloqueado</div>
+                                {appointment.notes && (
+                                  <div className="text-[9px] mt-0.5 opacity-80 truncate">
+                                    {appointment.notes}
+                                  </div>
+                                )}
+                              </div>;
+                            }
+                            
                             return <div key={`apt-${appointment.id}`} className="relative bg-primary text-primary-foreground p-2 rounded-md text-xs shadow-sm group">
                                            <div className="flex justify-between items-start gap-1">
                                              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleAppointmentClick(appointment)}>
@@ -1236,5 +1324,16 @@ export default function Agenda() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Block Time Modal */}
+      <BlockTimeModal 
+        open={blockTimeModalOpen} 
+        onOpenChange={setBlockTimeModalOpen}
+        professionals={allProfessionals}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['appointments'] });
+        }}
+        initialData={blockTimeInitialData}
+      />
     </div>;
 }

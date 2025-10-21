@@ -1,0 +1,257 @@
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
+
+const BLOCK_PATIENT_ID = '00000000-0000-0000-0000-000000000001';
+const BLOCK_TREATMENT_ID = '00000000-0000-0000-0000-000000000002';
+
+interface BlockTimeModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  professionals: Array<{ id: string; full_name: string }>;
+  onSuccess: () => void;
+  initialData?: {
+    professional_id?: string;
+    date?: Date;
+  };
+}
+
+export function BlockTimeModal({ open, onOpenChange, professionals, onSuccess, initialData }: BlockTimeModalProps) {
+  const { toast } = useToast();
+  const [professionalId, setProfessionalId] = useState(initialData?.professional_id || '');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(initialData?.date || new Date());
+  const [startTime, setStartTime] = useState('08:00');
+  const [endTime, setEndTime] = useState('09:00');
+  const [reason, setReason] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleQuickBlock = (type: 'full' | 'morning' | 'afternoon') => {
+    if (type === 'full') {
+      setStartTime('08:00');
+      setEndTime('18:00');
+    } else if (type === 'morning') {
+      setStartTime('08:00');
+      setEndTime('12:00');
+    } else if (type === 'afternoon') {
+      setStartTime('13:00');
+      setEndTime('18:00');
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!professionalId || !selectedDate || !startTime || !endTime) {
+      toast({
+        title: 'Campos obrigatórios',
+        description: 'Preencha todos os campos obrigatórios.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const startDateTime = new Date(selectedDate);
+      const [startHour, startMinute] = startTime.split(':').map(Number);
+      startDateTime.setHours(startHour, startMinute, 0, 0);
+
+      const endDateTime = new Date(selectedDate);
+      const [endHour, endMinute] = endTime.split(':').map(Number);
+      endDateTime.setHours(endHour, endMinute, 0, 0);
+
+      if (endDateTime <= startDateTime) {
+        toast({
+          title: 'Horário inválido',
+          description: 'O horário final deve ser posterior ao horário inicial.',
+          variant: 'destructive',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      const { error } = await supabase.from('appointments').insert({
+        professional_id: professionalId,
+        patient_id: BLOCK_PATIENT_ID,
+        treatment_id: BLOCK_TREATMENT_ID,
+        appointment_start_time: startDateTime.toISOString(),
+        appointment_end_time: endDateTime.toISOString(),
+        status: 'Confirmed',
+        notes: reason || 'Horário bloqueado',
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Horário bloqueado',
+        description: 'O horário foi bloqueado com sucesso.',
+      });
+
+      onSuccess();
+      onOpenChange(false);
+      
+      // Reset form
+      setProfessionalId('');
+      setSelectedDate(new Date());
+      setStartTime('08:00');
+      setEndTime('09:00');
+      setReason('');
+    } catch (error) {
+      console.error('Error blocking time:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao bloquear horário. Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Gerar opções de horário (08:00 - 20:00, a cada 30 minutos)
+  const timeOptions = [];
+  for (let hour = 8; hour <= 20; hour++) {
+    for (let minute = 0; minute < 60; minute += 30) {
+      const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      timeOptions.push(timeString);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Bloquear Horário</DialogTitle>
+          <DialogDescription>
+            Bloqueie horários na agenda para férias, reuniões, compromissos pessoais, etc.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          {/* Profissional */}
+          <div className="space-y-2">
+            <Label htmlFor="professional">Profissional *</Label>
+            <Select value={professionalId} onValueChange={setProfessionalId}>
+              <SelectTrigger id="professional">
+                <SelectValue placeholder="Selecione o profissional" />
+              </SelectTrigger>
+              <SelectContent>
+                {professionals.map((prof) => (
+                  <SelectItem key={prof.id} value={prof.id}>
+                    {prof.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Data */}
+          <div className="space-y-2">
+            <Label>Data *</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    'w-full justify-start text-left font-normal',
+                    !selectedDate && 'text-muted-foreground'
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {selectedDate ? format(selectedDate, 'PPP', { locale: ptBR }) : 'Selecione a data'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar mode="single" selected={selectedDate} onSelect={setSelectedDate} locale={ptBR} />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Botões rápidos */}
+          <div className="space-y-2">
+            <Label>Bloqueios rápidos</Label>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => handleQuickBlock('full')} className="flex-1">
+                Dia todo
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => handleQuickBlock('morning')} className="flex-1">
+                Manhã
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => handleQuickBlock('afternoon')} className="flex-1">
+                Tarde
+              </Button>
+            </div>
+          </div>
+
+          {/* Horários */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="start-time">Hora inicial *</Label>
+              <Select value={startTime} onValueChange={setStartTime}>
+                <SelectTrigger id="start-time">
+                  <Clock className="mr-2 h-4 w-4" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeOptions.map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {time}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="end-time">Hora final *</Label>
+              <Select value={endTime} onValueChange={setEndTime}>
+                <SelectTrigger id="end-time">
+                  <Clock className="mr-2 h-4 w-4" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeOptions.map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {time}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Motivo */}
+          <div className="space-y-2">
+            <Label htmlFor="reason">Motivo (opcional)</Label>
+            <Textarea
+              id="reason"
+              placeholder="Ex: Férias, reunião, compromisso pessoal..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
+            Cancelar
+          </Button>
+          <Button type="button" onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? 'Bloqueando...' : 'Bloquear Horário'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
