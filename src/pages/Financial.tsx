@@ -1346,20 +1346,20 @@ export default function Financial() {
                 Transações
               </Button>
               <Button 
-                className="w-full justify-start" 
+                className="w-full justify-start px-3 py-2 h-auto min-h-[2.5rem]" 
                 variant={activeTab === "receivables" ? "default" : "outline"}
                 onClick={() => setActiveTab("receivables")}
               >
-                <TrendingUp className="mr-2 h-4 w-4" />
-                A Receber
+                <TrendingUp className="mr-2 h-4 w-4 flex-shrink-0" />
+                <span className="whitespace-nowrap overflow-visible text-sm sm:text-base">A Receber</span>
               </Button>
               <Button 
-                className="w-full justify-start" 
+                className="w-full justify-start px-3 py-2 h-auto min-h-[2.5rem]" 
                 variant={activeTab === "payables" ? "default" : "outline"}
                 onClick={() => setActiveTab("payables")}
               >
-                <Wallet className="mr-2 h-4 w-4" />
-                A Pagar
+                <Wallet className="mr-2 h-4 w-4 flex-shrink-0" />
+                <span className="whitespace-nowrap overflow-visible text-sm sm:text-base">A Pagar</span>
               </Button>
               <Button 
                 className="w-full justify-start" 
