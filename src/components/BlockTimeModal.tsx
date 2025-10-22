@@ -12,9 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-
-const BLOCK_PATIENT_ID = '00000000-0000-0000-0000-000000000001';
-const BLOCK_TREATMENT_ID = '00000000-0000-0000-0000-000000000002';
+import { BLOCK_PATIENT_ID, BLOCK_TREATMENT_ID } from '@/lib/constants';
 
 interface BlockTimeModalProps {
   open: boolean;

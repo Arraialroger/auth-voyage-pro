@@ -18,6 +18,7 @@ import { ptBR } from 'date-fns/locale';
 import { PatientAppointmentHistory } from '@/components/PatientAppointmentHistory';
 import { logger } from '@/lib/logger';
 import { validateCPF, validatePhone, formatCPF, formatPhone } from '@/lib/validators';
+import { BLOCK_PATIENT_ID } from '@/lib/constants';
 interface Patient {
   id: string;
   full_name: string;
@@ -74,7 +75,7 @@ export default function ManagePatients() {
       const {
         data,
         error
-      } = await supabase.from('patients').select('*').order('full_name', {
+      } = await supabase.from('patients').select('*').neq('id', BLOCK_PATIENT_ID).order('full_name', {
         ascending: true
       });
       if (error) throw error;
