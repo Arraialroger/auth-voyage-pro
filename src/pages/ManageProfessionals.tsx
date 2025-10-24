@@ -96,50 +96,32 @@ export default function ManageProfessionals() {
   }, []);
   const handleCreate = async (data: ProfessionalCreateData) => {
     try {
-      console.log('Criando profissional:', data.email);
+      console.log('Criando profissional via Edge Function:', data.email);
       
-      const {
-        data: authData,
-        error: authError
-      } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password
+      const { data: result, error } = await supabase.functions.invoke('create-professional', {
+        body: {
+          full_name: data.full_name,
+          specialization: data.specialization,
+          email: data.email,
+          password: data.password,
+        }
       });
-      
-      if (authError) {
-        console.error('Erro no Auth:', authError);
-        throw authError;
-      }
-      if (!authData.user) throw new Error('Usuário não foi criado');
 
-      console.log('Usuário Auth criado:', authData.user.id);
-
-      // Delay para garantir que a foreign key esteja pronta
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const insertData: ProfessionalInsert = {
-        full_name: data.full_name,
-        specialization: data.specialization,
-        user_id: authData.user.id
-      };
-      
-      console.log('Inserindo profissional...');
-      const {
-        data: professionalData,
-        error
-      } = await supabase.from('professionals').insert([insertData]).select().single();
-      
       if (error) {
-        console.error('Erro ao inserir:', error);
-        throw error;
+        console.error('Erro ao chamar Edge Function:', error);
+        throw new Error(error.message || 'Erro ao criar profissional');
       }
 
-      console.log('Profissional criado:', professionalData.id);
+      if (!result?.professional) {
+        throw new Error('Resposta inválida da Edge Function');
+      }
+
+      console.log('Profissional criado:', result.professional.id);
 
       // Salvar horários de trabalho
-      if (professionalData && currentSchedules.length > 0) {
+      if (currentSchedules.length > 0) {
         console.log('Salvando horários...');
-        await saveSchedules(professionalData.id, currentSchedules);
+        await saveSchedules(result.professional.id, currentSchedules);
       }
 
       toast({
