@@ -90,7 +90,7 @@ export function RegisterPaymentModal({
           appointment_start_time,
           patient_id,
           patients(full_name),
-          treatments(treatment_name)
+          treatments(treatment_name, cost)
         `)
         .gte('appointment_start_time', thirtyDaysAgo.toISOString())
         .order('appointment_start_time', { ascending: false })
@@ -102,7 +102,7 @@ export function RegisterPaymentModal({
         appointment_start_time: string;
         patient_id: string;
         patients: { full_name: string } | null;
-        treatments: { treatment_name: string } | null;
+        treatments: { treatment_name: string; cost: number | null } | null;
       }>;
     },
   });
@@ -170,6 +170,17 @@ export function RegisterPaymentModal({
       form.setValue('appointment_id', prefilledAppointmentId);
     }
   }, [open, prefilledPatientId, prefilledAppointmentId, form]);
+
+  // Auto-fill amount when appointment is selected
+  const selectedAppointmentId = form.watch("appointment_id");
+  useEffect(() => {
+    if (selectedAppointmentId) {
+      const selectedAppointment = appointments.find(apt => apt.id === selectedAppointmentId);
+      if (selectedAppointment?.treatments?.cost) {
+        form.setValue('amount', selectedAppointment.treatments.cost.toString());
+      }
+    }
+  }, [selectedAppointmentId, appointments, form]);
 
   const onSubmit = async (data: PaymentFormData) => {
     setIsLoading(true);
@@ -369,7 +380,10 @@ export function RegisterPaymentModal({
                           {field.value
                             ? (() => {
                                 const apt = appointments.find((a) => a.id === field.value);
-                                return apt ? `${format(new Date(apt.appointment_start_time), "dd/MM/yy HH:mm", { locale: ptBR })} - ${apt.patients?.full_name}` : "Selecione um agendamento";
+                                if (!apt) return "Selecione um agendamento";
+                                const treatmentName = apt.treatments?.treatment_name || "Sem tratamento";
+                                const cost = apt.treatments?.cost ? `R$ ${apt.treatments.cost.toFixed(2)}` : "";
+                                return `${treatmentName}${cost ? ` (${cost})` : ""} - ${apt.patients?.full_name} - ${format(new Date(apt.appointment_start_time), "dd/MM/yy HH:mm", { locale: ptBR })}`;
                               })()
                             : "Selecione um agendamento"}
                           <Calendar className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -391,16 +405,23 @@ export function RegisterPaymentModal({
                                   setAppointmentSearchOpen(false);
                                 }}
                               >
-                                <div className="flex flex-col w-full">
+                                <div className="flex flex-col w-full gap-1">
                                   <div className="flex justify-between items-center">
                                     <span className="font-medium">{appointment.patients?.full_name}</span>
                                     <span className="text-sm text-muted-foreground">
                                       {format(new Date(appointment.appointment_start_time), "dd/MM/yy HH:mm", { locale: ptBR })}
                                     </span>
                                   </div>
-                                  <span className="text-sm text-muted-foreground">
-                                    {appointment.treatments?.treatment_name}
-                                  </span>
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-muted-foreground">
+                                      {appointment.treatments?.treatment_name || "Sem tratamento"}
+                                    </span>
+                                    {appointment.treatments?.cost && (
+                                      <span className="text-sm font-medium text-green-600">
+                                        R$ {appointment.treatments.cost.toFixed(2)}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                               </CommandItem>
                             ))}
