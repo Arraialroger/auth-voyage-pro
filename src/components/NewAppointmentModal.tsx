@@ -231,6 +231,7 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
         .from('appointments')
         .select('id')
         .eq('professional_id', data.professional_id)
+        .neq('status', 'Cancelled')
         .lt('appointment_start_time', endDateTime.toISOString())
         .gt('appointment_end_time', startDateTime.toISOString());
 

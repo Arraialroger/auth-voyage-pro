@@ -257,6 +257,7 @@ export function EditAppointmentModal({ appointmentId, open, onOpenChange, onSucc
         .select('id')
         .eq('professional_id', data.professional_id)
         .neq('id', appointmentId)
+        .neq('status', 'Cancelled')
         .lt('appointment_start_time', endDateTime.toISOString())
         .gt('appointment_end_time', startDateTime.toISOString());
 
