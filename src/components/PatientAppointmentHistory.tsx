@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { logger } from '@/lib/logger';
 
 interface Appointment {
   id: string;
@@ -95,8 +96,8 @@ export function PatientAppointmentHistory({ patientId }: PatientAppointmentHisto
         }
       }
     } catch (error) {
-      console.error('Erro ao buscar histórico de consultas:', error);
-    } finally {
+      logger.error('Erro ao buscar histórico de consultas:', error);
+    } finally{
       setLoading(false);
     }
   };

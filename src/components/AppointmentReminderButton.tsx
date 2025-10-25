@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { logger } from '@/lib/logger';
 
 interface AppointmentReminderButtonProps {
   appointmentId: string;
@@ -88,7 +89,7 @@ Obrigado!`;
         description: 'O lembrete foi registrado e o WhatsApp foi aberto.',
       });
     } catch (error) {
-      console.error('Error sending reminder:', error);
+      logger.error('Erro ao enviar lembrete:', error);
       toast({
         title: 'Erro',
         description: 'Erro ao enviar lembrete. Tente novamente.',

@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { BLOCK_TREATMENT_ID } from '@/lib/constants';
+import { logger } from '@/lib/logger';
 
 interface Treatment {
   id: string;
@@ -53,7 +54,7 @@ export default function ManageTreatments() {
       if (error) throw error;
       setTreatments(data || []);
     } catch (error) {
-      console.error('Error fetching treatments:', error);
+      logger.error('Erro ao buscar tratamentos:', error);
       toast({
         title: "Erro",
         description: "Erro ao carregar tratamentos",
@@ -108,7 +109,7 @@ export default function ManageTreatments() {
       resetForm();
       fetchTreatments();
     } catch (error) {
-      console.error('Error creating treatment:', error);
+      logger.error('Erro ao criar tratamento:', error);
       toast({
         title: "Erro",
         description: "Erro ao criar tratamento",
@@ -150,7 +151,7 @@ export default function ManageTreatments() {
       resetForm();
       fetchTreatments();
     } catch (error) {
-      console.error('Error updating treatment:', error);
+      logger.error('Erro ao atualizar tratamento:', error);
       toast({
         title: "Erro",
         description: "Erro ao atualizar tratamento",
@@ -175,7 +176,7 @@ export default function ManageTreatments() {
 
       fetchTreatments();
     } catch (error) {
-      console.error('Error deleting treatment:', error);
+      logger.error('Erro ao deletar tratamento:', error);
       toast({
         title: "Erro",
         description: "Erro ao excluir tratamento",

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/lib/logger';
 
 export interface UserProfile {
   type: 'receptionist' | 'professional' | null;
@@ -50,7 +51,7 @@ export const useUserProfile = (): UserProfile => {
 
         setProfile({ type: null, loading: false });
       } catch (error) {
-        console.error('Erro ao buscar perfil do usuário:', error);
+        logger.error('Erro ao buscar perfil do usuário:', error);
         setProfile({ type: null, loading: false });
       }
     };

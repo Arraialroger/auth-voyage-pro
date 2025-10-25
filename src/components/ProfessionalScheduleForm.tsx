@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Trash2, Clock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { logger } from '@/lib/logger';
 
 export interface TimeSlot {
   start_time: string;
@@ -77,7 +78,7 @@ export default function ProfessionalScheduleForm({ professionalId, onScheduleCha
         setSchedules(groupedSchedules);
       }
     } catch (error) {
-      console.error('Erro ao carregar horários:', error);
+      logger.error('Erro ao carregar horários:', error);
     }
   };
 

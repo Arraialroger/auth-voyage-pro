@@ -18,6 +18,7 @@ import { Search, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { logger } from "@/lib/logger";
 
 const paymentSchema = z.object({
   patient_id: z.string().uuid("Selecione um paciente válido"),
@@ -285,7 +286,7 @@ export function RegisterPaymentModal({
       onOpenChange(false);
       form.reset();
     } catch (error: any) {
-      console.error("Error registering payment:", error);
+      logger.error("Erro ao registrar pagamento:", error);
       toast.error("Erro ao registrar pagamento: " + error.message);
     } finally {
       setIsLoading(false);

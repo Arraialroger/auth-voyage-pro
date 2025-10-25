@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     // Get the user making the request
     const { data: { user }, error: userError } = await anonClient.auth.getUser();
     if (userError || !user) {
-      console.error('Error getting user:', userError);
+      console.error('Erro ao obter usuário autenticado');
       return new Response(
         JSON.stringify({ error: 'Usuário não autenticado' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
       .single();
 
     if (staffError || staffProfile?.role !== 'receptionist') {
-      console.error('User is not a receptionist:', staffError);
+      console.error('Acesso negado - usuário não é recepcionista');
       return new Response(
         JSON.stringify({ error: 'Acesso negado. Apenas recepcionistas podem criar profissionais.' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Creating professional:', { full_name, specialization, email });
+    console.log('Iniciando criação de profissional');
 
     // Create user in Auth with service client
     const { data: newUser, error: createUserError } = await serviceClient.auth.admin.createUser({
@@ -78,14 +78,14 @@ Deno.serve(async (req) => {
     });
 
     if (createUserError || !newUser.user) {
-      console.error('Error creating auth user:', createUserError);
+      console.error('Erro ao criar usuário na autenticação');
       return new Response(
         JSON.stringify({ error: `Erro ao criar usuário: ${createUserError?.message || 'Desconhecido'}` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Auth user created:', newUser.user.id);
+    console.log('Usuário de autenticação criado com sucesso');
 
     // Insert professional record with service client
     const { data: professional, error: insertError } = await serviceClient
@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
       .single();
 
     if (insertError) {
-      console.error('Error inserting professional:', insertError);
+      console.error('Erro ao inserir registro de profissional');
       // Rollback: delete the auth user
       await serviceClient.auth.admin.deleteUser(newUser.user.id);
       return new Response(
@@ -108,14 +108,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Professional created successfully:', professional);
+    console.log('Profissional criado com sucesso');
 
     return new Response(
       JSON.stringify({ professional }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Unexpected error:', error);
+    console.error('Erro inesperado no servidor');
     return new Response(
       JSON.stringify({ error: 'Erro interno do servidor' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

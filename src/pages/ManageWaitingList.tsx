@@ -9,6 +9,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { logger } from '@/lib/logger';
 import {
   Table,
   TableBody,
@@ -110,7 +111,7 @@ export default function ManageWaitingList() {
 
       queryClient.invalidateQueries({ queryKey: ['waiting-list'] });
     } catch (error) {
-      console.error('Error removing from waiting list:', error);
+      logger.error('Erro ao remover da lista de espera:', error);
       toast({
         title: 'Erro',
         description: 'Erro ao remover da lista de espera. Tente novamente.',

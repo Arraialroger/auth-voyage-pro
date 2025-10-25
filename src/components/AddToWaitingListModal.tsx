@@ -45,6 +45,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 
 const waitingListSchema = z.object({
   patient_id: z.string().min(1, 'Paciente é obrigatório'),
@@ -169,7 +170,7 @@ export function AddToWaitingListModal({ trigger, onSuccess }: AddToWaitingListMo
       setOpen(false);
       onSuccess?.();
     } catch (error) {
-      console.error('Error adding to waiting list:', error);
+      logger.error('Erro ao adicionar à lista de espera:', error);
       toast({
         title: 'Erro',
         description: 'Erro ao adicionar à lista de espera. Tente novamente.',

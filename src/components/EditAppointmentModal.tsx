@@ -57,6 +57,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 
 const appointmentSchema = z.object({
   patient_id: z.string().min(1, 'Paciente é obrigatório'),
@@ -231,7 +232,7 @@ export function EditAppointmentModal({ appointmentId, open, onOpenChange, onSucc
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
-      console.error('Error cancelling and adding to waiting list:', error);
+      logger.error('Erro ao cancelar e adicionar à lista de espera:', error);
       toast({
         title: 'Erro',
         description: 'Erro ao processar solicitação. Tente novamente.',
@@ -296,7 +297,7 @@ export function EditAppointmentModal({ appointmentId, open, onOpenChange, onSucc
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
-      console.error('Error updating appointment:', error);
+      logger.error('Erro ao atualizar agendamento:', error);
       toast({
         title: 'Erro',
         description: 'Erro ao atualizar agendamento. Tente novamente.',

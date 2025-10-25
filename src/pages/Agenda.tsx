@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DollarSign } from 'lucide-react';
 import { BLOCK_PATIENT_ID, BLOCK_TREATMENT_ID } from '@/lib/constants';
+import { logger } from '@/lib/logger';
 type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'Completed' | 'Cancelled' | 'No-Show' | 'Pending Confirmation';
 interface Appointment {
   id: string;
@@ -128,7 +129,7 @@ export default function Agenda() {
       
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
     } catch (error) {
-      console.error('Error deleting block:', error);
+      logger.error('Erro ao deletar bloqueio:', error);
       toast({
         title: 'Erro ao remover bloqueio',
         description: 'Não foi possível desbloquear o horário.',
@@ -198,7 +199,7 @@ export default function Agenda() {
         if (error) throw error;
         return data || [];
       } catch (error) {
-        console.error('Erro ao buscar tratamentos:', error);
+        logger.error('Erro ao buscar tratamentos:', error);
         return [];
       }
     }
@@ -218,7 +219,7 @@ export default function Agenda() {
         if (error) throw error;
         return data || [];
       } catch (error) {
-        console.error('Erro ao buscar pacientes:', error);
+        logger.error('Erro ao buscar pacientes:', error);
         return [];
       }
     }
@@ -240,7 +241,7 @@ export default function Agenda() {
         if (error) throw error;
         return data || [];
       } catch (error) {
-        console.error('Erro ao buscar horários dos profissionais:', error);
+        logger.error('Erro ao buscar horários dos profissionais:', error);
         return [];
       }
     }
@@ -263,7 +264,7 @@ export default function Agenda() {
         if (error) throw error;
         return data || [];
       } catch (error) {
-        console.error('Erro ao buscar status de pagamento:', error);
+        logger.error('Erro ao buscar status de pagamento:', error);
         return [];
       }
     }
@@ -289,7 +290,7 @@ export default function Agenda() {
         if (error) throw error;
         return data || [];
       } catch (error) {
-        console.error('Erro ao buscar planos de parcelamento:', error);
+        logger.error('Erro ao buscar planos de parcelamento:', error);
         return [];
       }
     }
@@ -338,7 +339,7 @@ export default function Agenda() {
           professional: apt.professionals
         })) as Appointment[];
       } catch (error) {
-        console.error('Erro ao buscar agendamentos:', error);
+        logger.error('Erro ao buscar agendamentos:', error);
         return [];
       }
     }
@@ -366,7 +367,7 @@ export default function Agenda() {
       });
       setCancelDialogOpen(false);
     } catch (error) {
-      console.error('Error cancelling appointment:', error);
+      logger.error('Erro ao cancelar agendamento:', error);
       toast({
         title: 'Erro',
         description: 'Erro ao cancelar agendamento. Tente novamente.',
@@ -458,7 +459,7 @@ export default function Agenda() {
       setStatusDialogOpen(false);
       setStatusChangeData(null);
     } catch (error) {
-      console.error('Error updating status:', error);
+      logger.error('Erro ao atualizar status:', error);
       toast({
         title: 'Erro',
         description: 'Erro ao atualizar status. Tente novamente.',

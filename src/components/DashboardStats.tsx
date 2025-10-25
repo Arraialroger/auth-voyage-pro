@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { startOfWeek, endOfWeek, startOfDay, endOfDay, addWeeks, format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { logger } from '@/lib/logger';
 
 interface Stats {
   totalPatients: number;
@@ -243,7 +244,7 @@ export function DashboardStats() {
       setTopTreatments(topTreatmentsData);
       setCashFlowData(cashFlow);
     } catch (error) {
-      console.error('Erro ao buscar estatísticas:', error);
+      logger.error('Erro ao buscar estatísticas:', error);
     } finally {
       setLoading(false);
     }

@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { Database } from '@/integrations/supabase/types';
 import ProfessionalScheduleForm, { type DaySchedule } from '@/components/ProfessionalScheduleForm';
+import { logger } from '@/lib/logger';
 
 type Professional = Database['public']['Tables']['professionals']['Row'];
 type ProfessionalInsert = Database['public']['Tables']['professionals']['Insert'];
@@ -96,7 +97,7 @@ export default function ManageProfessionals() {
   }, []);
   const handleCreate = async (data: ProfessionalCreateData) => {
     try {
-      console.log('Criando profissional via Edge Function:', data.email);
+      logger.log('Criando profissional via Edge Function');
       
       const { data: result, error } = await supabase.functions.invoke('create-professional', {
         body: {
@@ -108,7 +109,7 @@ export default function ManageProfessionals() {
       });
 
       if (error) {
-        console.error('Erro ao chamar Edge Function:', error);
+        logger.error('Erro ao chamar Edge Function:', error);
         throw new Error(error.message || 'Erro ao criar profissional');
       }
 
@@ -116,11 +117,11 @@ export default function ManageProfessionals() {
         throw new Error('Resposta inválida da Edge Function');
       }
 
-      console.log('Profissional criado:', result.professional.id);
+      logger.log('Profissional criado com sucesso');
 
       // Salvar horários de trabalho
       if (currentSchedules.length > 0) {
-        console.log('Salvando horários...');
+        logger.log('Salvando horários de trabalho');
         await saveSchedules(result.professional.id, currentSchedules);
       }
 
@@ -133,7 +134,7 @@ export default function ManageProfessionals() {
       setCurrentSchedules([]);
       fetchProfessionals();
     } catch (error) {
-      console.error('Erro completo:', error);
+      logger.error('Erro ao criar profissional:', error);
       toast({
         title: 'Erro ao criar profissional',
         description: error instanceof Error ? error.message : 'Não foi possível criar o profissional.',
@@ -144,7 +145,7 @@ export default function ManageProfessionals() {
   const handleEdit = async (data: ProfessionalEditData) => {
     if (!selectedProfessional) return;
     try {
-      console.log('Atualizando profissional:', selectedProfessional.id);
+      logger.log('Atualizando profissional');
       
       const {
         error
@@ -154,15 +155,15 @@ export default function ManageProfessionals() {
       }).eq('id', selectedProfessional.id);
       
       if (error) {
-        console.error('Erro ao atualizar:', error);
+        logger.error('Erro ao atualizar profissional:', error);
         throw error;
       }
 
-      console.log('Profissional atualizado');
+      logger.log('Profissional atualizado com sucesso');
 
       // Atualizar horários de trabalho
       if (currentSchedules.length > 0) {
-        console.log('Salvando horários...');
+        logger.log('Atualizando horários de trabalho');
         await saveSchedules(selectedProfessional.id, currentSchedules);
       }
 
@@ -176,7 +177,7 @@ export default function ManageProfessionals() {
       setCurrentSchedules([]);
       fetchProfessionals();
     } catch (error) {
-      console.error('Erro completo:', error);
+      logger.error('Erro ao atualizar profissional:', error);
       toast({
         title: 'Erro ao atualizar profissional',
         description: error instanceof Error ? error.message : 'Não foi possível atualizar o profissional.',
@@ -213,7 +214,7 @@ export default function ManageProfessionals() {
         if (error) throw error;
       }
     } catch (error) {
-      console.error('Erro ao salvar horários:', error);
+      logger.error('Erro ao salvar horários:', error);
       throw error;
     }
   };

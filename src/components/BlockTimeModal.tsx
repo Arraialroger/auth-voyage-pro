@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { BLOCK_PATIENT_ID, BLOCK_TREATMENT_ID } from '@/lib/constants';
+import { logger } from '@/lib/logger';
 
 interface BlockTimeModalProps {
   open: boolean;
@@ -152,7 +153,7 @@ export function BlockTimeModal({ open, onOpenChange, professionals, onSuccess, i
       onSuccess();
       onOpenChange(false);
     } catch (error) {
-      console.error('Error blocking time:', error);
+      logger.error('Erro ao bloquear horário:', error);
       toast({
         title: isEditing ? 'Erro ao atualizar' : 'Erro ao bloquear',
         description: isEditing 
