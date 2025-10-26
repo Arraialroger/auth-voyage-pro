@@ -247,11 +247,12 @@ export default function Agenda() {
     }
   });
 
-  // Fetch payment status for appointments
+  // Fetch payment status for appointments - APENAS PARA RECEPCIONISTAS
   const {
     data: paymentStatuses = []
   } = useQuery({
     queryKey: ['appointment-payment-statuses', weekStart.toISOString(), weekEnd.toISOString()],
+    enabled: userProfile.type === 'receptionist', // Apenas recepcionistas veem dados financeiros
     queryFn: async () => {
       try {
         const { data, error } = await supabase
@@ -270,14 +271,14 @@ export default function Agenda() {
     }
   });
 
-  // Fetch installment plans based on transaction IDs
+  // Fetch installment plans based on transaction IDs - APENAS PARA RECEPCIONISTAS
   const transactionIds = paymentStatuses.map(p => p.id).filter(Boolean);
   
   const {
     data: installmentPlans = []
   } = useQuery({
     queryKey: ['installment-plans-by-tx', transactionIds],
-    enabled: transactionIds.length > 0,
+    enabled: transactionIds.length > 0 && userProfile.type === 'receptionist', // Apenas recepcionistas
     queryFn: async () => {
       if (transactionIds.length === 0) return [];
       
