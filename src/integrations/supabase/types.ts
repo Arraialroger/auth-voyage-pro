@@ -653,7 +653,6 @@ export type Database = {
       get_professional_id: { Args: { _user_id: string }; Returns: string }
       is_professional: { Args: { _user_id: string }; Returns: boolean }
       is_receptionist: { Args: { _user_id: string }; Returns: boolean }
-      run_sql: { Args: { sql_query: string }; Returns: Json }
     }
     Enums: {
       appointment_status_enum:
