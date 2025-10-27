@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { BLOCK_TREATMENT_ID } from '@/lib/constants';
 import { logger } from '@/lib/logger';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 interface Treatment {
   id: string;
@@ -28,12 +29,19 @@ export default function ManageTreatments() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { toast } = useToast();
+  const userProfile = useUserProfile();
   const [treatments, setTreatments] = useState<Treatment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingTreatment, setEditingTreatment] = useState<Treatment | null>(null);
+
+  useEffect(() => {
+    if (!userProfile.loading && userProfile.type !== 'receptionist') {
+      navigate('/agenda', { replace: true });
+    }
+  }, [userProfile, navigate]);
 
   // Form state
   const [formData, setFormData] = useState({

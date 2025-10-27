@@ -19,6 +19,7 @@ import { PatientAppointmentHistory } from '@/components/PatientAppointmentHistor
 import { logger } from '@/lib/logger';
 import { validateCPF, validatePhone, formatCPF, formatPhone } from '@/lib/validators';
 import { BLOCK_PATIENT_ID } from '@/lib/constants';
+import { useUserProfile } from '@/hooks/useUserProfile';
 interface Patient {
   id: string;
   full_name: string;
@@ -49,6 +50,13 @@ export default function ManagePatients() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const patientIdFromUrl = searchParams.get('patientId');
+  const userProfile = useUserProfile();
+
+  useEffect(() => {
+    if (!userProfile.loading && userProfile.type !== 'receptionist') {
+      navigate('/agenda', { replace: true });
+    }
+  }, [userProfile, navigate]);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);

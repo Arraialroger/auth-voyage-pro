@@ -4,10 +4,19 @@ import { Users, UserCheck, Stethoscope, Settings, Clock, DollarSign } from 'luci
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardStats } from '@/components/DashboardStats';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { useEffect } from 'react';
 
 export default function Administration() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const userProfile = useUserProfile();
+
+  useEffect(() => {
+    if (!userProfile.loading && userProfile.type !== 'receptionist') {
+      navigate('/agenda', { replace: true });
+    }
+  }, [userProfile, navigate]);
 
   const handleLogout = async () => {
     await signOut();

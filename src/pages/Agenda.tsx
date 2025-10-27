@@ -695,17 +695,21 @@ export default function Agenda() {
         </div>
             
             <div className="flex items-center space-x-2 lg:space-x-4">
-              <Button variant="outline" onClick={() => navigate('/admin')} className="hidden lg:flex border-border/50 hover:bg-muted">
-                <Settings className="mr-2 h-4 w-4" />
-                Admin
-              </Button>
+              {userProfile.type === 'receptionist' && (
+                <Button variant="outline" onClick={() => navigate('/admin')} className="hidden lg:flex border-border/50 hover:bg-muted">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Admin
+                </Button>
+              )}
               
               {/* Mobile buttons */}
               <div className="lg:hidden flex items-center space-x-2">
                 <ThemeToggle />
-                <Button variant="outline" size="sm" onClick={() => navigate('/admin')} className="p-2">
-                  <Settings className="h-4 w-4" />
-                </Button>
+                {userProfile.type === 'receptionist' && (
+                  <Button variant="outline" size="sm" onClick={() => navigate('/admin')} className="p-2">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={handleLogout} className="p-2">
                   <LogOut className="h-4 w-4" />
                 </Button>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -32,12 +32,20 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recha
 
 import { RegisterExpenseModal } from '@/components/RegisterExpenseModal';
 import { toast } from 'sonner';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 const COLORS = ['hsl(282 100% 35%)', 'hsl(142 76% 36%)', 'hsl(38 92% 50%)', 'hsl(199 89% 48%)'];
 
 export default function Financial() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const userProfile = useUserProfile();
+
+  useEffect(() => {
+    if (!userProfile.loading && userProfile.type !== 'receptionist') {
+      navigate('/agenda', { replace: true });
+    }
+  }, [userProfile, navigate]);
   const [selectedMonth] = useState(new Date());
   const [activeTab, setActiveTab] = useState("overview");
   

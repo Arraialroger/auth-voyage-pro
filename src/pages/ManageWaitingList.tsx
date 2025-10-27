@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -57,6 +57,12 @@ export default function ManageWaitingList() {
   const { type: userType, loading: profileLoading } = useUserProfile();
   const queryClient = useQueryClient();
   const [schedulingEntry, setSchedulingEntry] = useState<WaitingListEntry | null>(null);
+
+  useEffect(() => {
+    if (!profileLoading && userType !== 'receptionist') {
+      navigate('/agenda', { replace: true });
+    }
+  }, [userType, profileLoading, navigate]);
 
   const handleLogout = async () => {
     await signOut();

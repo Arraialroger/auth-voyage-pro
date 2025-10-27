@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "next-themes";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { RoleProtectedRoute } from "@/components/RoleProtectedRoute";
 import { Navigate } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -56,32 +57,44 @@ const App = () => (
             } />
             <Route path="/admin" element={
               <ProtectedRoute>
-                <Administration />
+                <RoleProtectedRoute allowedRoles={['receptionist']}>
+                  <Administration />
+                </RoleProtectedRoute>
               </ProtectedRoute>
             } />
             <Route path="/admin/patients" element={
               <ProtectedRoute>
-                <ManagePatients />
+                <RoleProtectedRoute allowedRoles={['receptionist']}>
+                  <ManagePatients />
+                </RoleProtectedRoute>
               </ProtectedRoute>
             } />
             <Route path="/admin/professionals" element={
               <ProtectedRoute>
-                <ManageProfessionals />
+                <RoleProtectedRoute allowedRoles={['receptionist']}>
+                  <ManageProfessionals />
+                </RoleProtectedRoute>
               </ProtectedRoute>
             } />
             <Route path="/admin/treatments" element={
               <ProtectedRoute>
-                <ManageTreatments />
+                <RoleProtectedRoute allowedRoles={['receptionist']}>
+                  <ManageTreatments />
+                </RoleProtectedRoute>
               </ProtectedRoute>
             } />
             <Route path="/admin/waiting-list" element={
               <ProtectedRoute>
-                <ManageWaitingList />
+                <RoleProtectedRoute allowedRoles={['receptionist']}>
+                  <ManageWaitingList />
+                </RoleProtectedRoute>
               </ProtectedRoute>
             } />
             <Route path="/admin/financial" element={
               <ProtectedRoute>
-                <Financial />
+                <RoleProtectedRoute allowedRoles={['receptionist']}>
+                  <Financial />
+                </RoleProtectedRoute>
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

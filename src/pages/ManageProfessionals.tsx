@@ -21,6 +21,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import type { Database } from '@/integrations/supabase/types';
 import ProfessionalScheduleForm, { type DaySchedule } from '@/components/ProfessionalScheduleForm';
 import { logger } from '@/lib/logger';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 type Professional = Database['public']['Tables']['professionals']['Row'];
 type ProfessionalInsert = Database['public']['Tables']['professionals']['Insert'];
@@ -46,8 +47,15 @@ export default function ManageProfessionals() {
   const {
     toast
   } = useToast();
+  const userProfile = useUserProfile();
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userProfile.loading && userProfile.type !== 'receptionist') {
+      navigate('/agenda', { replace: true });
+    }
+  }, [userProfile, navigate]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
