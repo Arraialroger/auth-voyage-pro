@@ -641,7 +641,7 @@ export default function Agenda() {
       });
       return;
     }
-    navigate(`/admin/patients?patientId=${appointment.patient_id}`);
+    navigate(`/patient/${appointment.patient_id}`);
   };
 
   // Apply filters to appointments
