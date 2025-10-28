@@ -668,7 +668,12 @@ export default function Agenda() {
   });
 
   // Count active filters
-  const activeFiltersCount = [filterStatus !== 'all', filterTreatment !== 'all', filterPatient !== 'all'].filter(Boolean).length;
+  const activeFiltersCount = [
+    filterStatus !== 'all', 
+    filterTreatment !== 'all', 
+    filterPatient !== 'all',
+    selectedProfessional !== 'all' && userProfile.type === 'receptionist'
+  ].filter(Boolean).length;
 
   // Group appointments by professional and day
   const appointmentsByProfessional = filteredAppointments.reduce((acc, apt) => {
@@ -760,6 +765,7 @@ export default function Agenda() {
                   setFilterStatus('all');
                   setFilterTreatment('all');
                   setFilterPatient('all');
+                  setSelectedProfessional('all');
                 }} className="gap-1 text-muted-foreground hover:text-foreground">
                       <X className="h-3 w-3" />
                       Limpar
@@ -817,6 +823,28 @@ export default function Agenda() {
                     </div>
                   </div>}
               </div>
+
+              {/* Professional Filter - Desktop/Tablet Only */}
+              {userProfile.type === 'receptionist' && (
+                <div className="hidden md:flex items-center gap-3 pb-3 border-b border-border/30">
+                  <label className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                    Filtrar por Profissional:
+                  </label>
+                  <Select value={selectedProfessional} onValueChange={setSelectedProfessional}>
+                    <SelectTrigger className="w-[280px] bg-background">
+                      <SelectValue placeholder="Selecione um profissional" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os profissionais</SelectItem>
+                      {allProfessionals.map(prof => (
+                        <SelectItem key={prof.id} value={prof.id}>
+                          {prof.full_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* Mobile: Day navigation */}
               <div className="md:hidden space-y-4">
@@ -1163,8 +1191,14 @@ export default function Agenda() {
                     </div>
 
                     {/* Calendar Body */}
-                    {professionals.length > 0 ? <div className="min-w-[700px]">
-                        {professionals.map(professional => <div key={professional.id} className="grid grid-cols-7 gap-2 mb-4 border-b border-border/30 pb-4">
+                    {(() => {
+                      // Apply professional filter
+                      const visibleProfessionals = selectedProfessional === 'all' 
+                        ? professionals 
+                        : professionals.filter(p => p.id === selectedProfessional);
+                      
+                      return visibleProfessionals.length > 0 ? <div className="min-w-[700px]">
+                        {visibleProfessionals.map(professional => <div key={professional.id} className="grid grid-cols-7 gap-2 mb-4 border-b border-border/30 pb-4">
                             <div className="font-medium p-2 text-sm">
                               {professional.full_name}
                             </div>
@@ -1359,11 +1393,12 @@ export default function Agenda() {
                           </div>)}
                       </div> : <div className="text-center py-12">
                         <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold mb-2">Nenhum profissional cadastrado</h3>
+                        <h3 className="text-lg font-semibold mb-2">Nenhum profissional encontrado</h3>
                         <p className="text-muted-foreground">
-                          Não há profissionais cadastrados no sistema.
+                          Não há profissionais disponíveis para esta seleção.
                         </p>
-                      </div>}
+                      </div>;
+                    })()}
                   </div>
                 </>}
             </CardContent>
