@@ -56,6 +56,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { logger } from '@/lib/logger';
 
@@ -69,6 +70,7 @@ const appointmentSchema = z.object({
   start_time: z.string().min(1, 'Horário de início é obrigatório'),
   end_time: z.string().min(1, 'Horário de fim é obrigatório'),
   notes: z.string().optional(),
+  is_squeeze_in: z.boolean().default(false),
 });
 
 type AppointmentFormData = z.infer<typeof appointmentSchema>;
@@ -129,6 +131,7 @@ export function EditAppointmentModal({ appointmentId, open, onOpenChange, onSucc
         start_time: format(startDate, 'HH:mm'),
         end_time: format(endDate, 'HH:mm'),
         notes: appointmentData.notes || '',
+        is_squeeze_in: appointmentData.is_squeeze_in || false,
       });
     }
   }, [appointmentData, form]);
@@ -264,13 +267,24 @@ export function EditAppointmentModal({ appointmentId, open, onOpenChange, onSucc
 
       if (conflictError) throw conflictError;
 
+      const isSqueezeIn = data.is_squeeze_in;
+
       if (conflictingAppointments && conflictingAppointments.length > 0) {
-        toast({
-          title: 'Conflito de horário',
-          description: 'Este horário já está ocupado.',
-          variant: 'destructive',
-        });
-        return;
+        if (!isSqueezeIn) {
+          // Se NÃO for encaixe, bloquear normalmente
+          toast({
+            title: 'Conflito de horário',
+            description: 'Este horário já está ocupado. Marque como "Encaixe" se desejar salvar mesmo assim.',
+            variant: 'destructive',
+          });
+          return;
+        } else {
+          // Se FOR encaixe, apenas avisar mas permitir
+          toast({
+            title: 'Encaixe atualizado',
+            description: 'Este agendamento está marcado como encaixe devido ao conflito de horário.',
+          });
+        }
       }
 
       const { error } = await supabase
@@ -282,6 +296,7 @@ export function EditAppointmentModal({ appointmentId, open, onOpenChange, onSucc
           appointment_start_time: startDateTime.toISOString(),
           appointment_end_time: endDateTime.toISOString(),
           notes: data.notes || null,
+          is_squeeze_in: data.is_squeeze_in || false,
         })
         .eq('id', appointmentId);
 
@@ -527,6 +542,30 @@ export function EditAppointmentModal({ appointmentId, open, onOpenChange, onSucc
                           />
                         </FormControl>
                         <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Checkbox de Encaixe */}
+                  <FormField
+                    control={form.control}
+                    name="is_squeeze_in"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-border p-4 bg-muted/20">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="cursor-pointer">
+                            Marcar como Encaixe
+                          </FormLabel>
+                          <p className="text-sm text-muted-foreground">
+                            Permite salvar o agendamento mesmo que haja conflito de horário com outro agendamento.
+                          </p>
+                        </div>
                       </FormItem>
                     )}
                   />

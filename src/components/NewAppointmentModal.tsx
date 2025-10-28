@@ -60,6 +60,7 @@ const appointmentSchema = z.object({
   start_time: z.string().min(1, 'Horário de início é obrigatório'),
   end_time: z.string().min(1, 'Horário de fim é obrigatório'),
   notes: z.string().optional(),
+  is_squeeze_in: z.boolean().default(false),
   register_payment: z.boolean().default(false),
   payment_amount: z.string().optional(),
   payment_method: z.enum(["cash", "credit_card", "debit_card", "pix", "bank_transfer"]).optional(),
@@ -237,14 +238,25 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
 
       if (conflictError) throw conflictError;
 
+      const isSqueezeIn = data.is_squeeze_in;
+
       if (conflictingAppointments && conflictingAppointments.length > 0) {
-        toast({
-          title: 'Conflito de horário',
-          description: 'Este horário já está ocupado.',
-          variant: 'destructive',
-        });
-        setIsSubmitting(false);
-        return;
+        if (!isSqueezeIn) {
+          // Se NÃO for encaixe, bloquear normalmente
+          toast({
+            title: 'Conflito de horário',
+            description: 'Este horário já está ocupado. Marque como "Encaixe" se desejar criar mesmo assim.',
+            variant: 'destructive',
+          });
+          setIsSubmitting(false);
+          return;
+        } else {
+          // Se FOR encaixe, apenas avisar mas permitir
+          toast({
+            title: 'Encaixe criado',
+            description: 'Este agendamento será marcado como encaixe devido ao conflito de horário.',
+          });
+        }
       }
 
       // Create appointment
@@ -258,6 +270,7 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
             appointment_start_time: startDateTime.toISOString(),
             appointment_end_time: endDateTime.toISOString(),
             notes: data.notes || null,
+            is_squeeze_in: data.is_squeeze_in || false,
           },
         ])
         .select()
@@ -601,6 +614,30 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
                     />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Checkbox de Encaixe */}
+            <FormField
+              control={form.control}
+              name="is_squeeze_in"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-border p-4 bg-muted/20">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel className="cursor-pointer">
+                      Marcar como Encaixe
+                    </FormLabel>
+                    <p className="text-sm text-muted-foreground">
+                      Permite criar o agendamento mesmo que haja conflito de horário com outro agendamento.
+                    </p>
+                  </div>
                 </FormItem>
               )}
             />

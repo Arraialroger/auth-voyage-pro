@@ -25,6 +25,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DollarSign } from 'lucide-react';
 import { BLOCK_PATIENT_ID, BLOCK_TREATMENT_ID } from '@/lib/constants';
 import { logger } from '@/lib/logger';
+import { cn } from '@/lib/utils';
 type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'Completed' | 'Cancelled' | 'No-Show' | 'Pending Confirmation';
 interface Appointment {
   id: string;
@@ -35,6 +36,7 @@ interface Appointment {
   status?: AppointmentStatus;
   notes?: string;
   last_reminder_sent_at?: string | null;
+  is_squeeze_in?: boolean;
   patient: {
     full_name: string;
     contact_phone?: string;
@@ -1021,13 +1023,23 @@ export default function Agenda() {
                                   </div>;
                                 }
                                 
-                                return <div key={`apt-${appointment.id}`} className="relative bg-primary text-primary-foreground p-3 rounded-md shadow-sm group">
+                                return <div key={`apt-${appointment.id}`} className={cn(
+                                  "relative p-3 rounded-md shadow-sm group",
+                                  appointment.is_squeeze_in 
+                                    ? "bg-orange-50 dark:bg-orange-950 border-2 border-orange-300 dark:border-orange-700 text-foreground"
+                                    : "bg-primary text-primary-foreground"
+                                )}>
                                              <div className="flex justify-between items-start gap-2">
                                                <div className="flex-1 cursor-pointer" onClick={() => handleAppointmentClick(appointment)}>
                                                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                                                     <div className="font-medium text-sm">
                                                       {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
                                                     </div>
+                                                    {appointment.is_squeeze_in && (
+                                                      <Badge variant="warning" className="text-[10px] px-1.5 py-0">
+                                                        Encaixe
+                                                      </Badge>
+                                                    )}
                                                     <Badge variant={getStatusBadgeVariant(appointment.status)} className="text-[10px] px-1.5 py-0">
                                                       {getStatusLabel(appointment.status)}
                                                     </Badge>
@@ -1036,13 +1048,21 @@ export default function Agenda() {
                                                  <div className="text-sm">
                                                    {appointment.patient?.full_name || 'Paciente não identificado'}
                                                  </div>
-                                                 <div className="text-xs text-primary-foreground/80 mt-1">
+                                                 <div className={cn(
+                                                   "text-xs mt-1",
+                                                   appointment.is_squeeze_in ? "text-muted-foreground" : "text-primary-foreground/80"
+                                                 )}>
                                                    {appointment.treatment?.treatment_name || 'Tratamento não identificado'}
                                                  </div>
                                                </div>
                                                <DropdownMenu>
                                                  <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-                                                   <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-primary-foreground hover:bg-primary-foreground/20">
+                                                   <Button variant="ghost" size="sm" className={cn(
+                                                     "h-6 w-6 p-0",
+                                                     appointment.is_squeeze_in 
+                                                       ? "text-foreground hover:bg-accent"
+                                                       : "text-primary-foreground hover:bg-primary-foreground/20"
+                                                   )}>
                                                      <MoreVertical className="h-4 w-4" />
                                                    </Button>
                                                  </DropdownMenuTrigger>
@@ -1215,13 +1235,23 @@ export default function Agenda() {
                               </div>;
                             }
                             
-                            return <div key={`apt-${appointment.id}`} className="relative bg-primary text-primary-foreground p-2 rounded-md text-xs shadow-sm group">
+                            return <div key={`apt-${appointment.id}`} className={cn(
+                              "relative p-2 rounded-md text-xs shadow-sm group",
+                              appointment.is_squeeze_in 
+                                ? "bg-orange-50 dark:bg-orange-950 border-2 border-orange-300 dark:border-orange-700 text-foreground"
+                                : "bg-primary text-primary-foreground"
+                            )}>
                                            <div className="flex justify-between items-start gap-1">
                                              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleAppointmentClick(appointment)}>
                                                 <div className="flex items-center gap-1 mb-0.5 flex-wrap">
                                                   <div className="font-medium">
                                                     {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
                                                   </div>
+                                                  {appointment.is_squeeze_in && (
+                                                    <Badge variant="warning" className="text-[9px] px-1 py-0">
+                                                      Encaixe
+                                                    </Badge>
+                                                  )}
                                                   <Badge variant={getStatusBadgeVariant(appointment.status)} className="text-[9px] px-1 py-0">
                                                     {getStatusLabel(appointment.status)}
                                                   </Badge>
@@ -1230,13 +1260,21 @@ export default function Agenda() {
                                                <div className="truncate">
                                                  {appointment.patient?.full_name || 'Paciente não identificado'}
                                                </div>
-                                               <div className="truncate text-primary-foreground/80">
+                                               <div className={cn(
+                                                 "truncate",
+                                                 appointment.is_squeeze_in ? "text-muted-foreground" : "text-primary-foreground/80"
+                                               )}>
                                                  {appointment.treatment?.treatment_name || 'Tratamento não identificado'}
                                                </div>
                                              </div>
                                              <DropdownMenu>
                                                <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-                                                 <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-primary-foreground hover:bg-primary-foreground/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                 <Button variant="ghost" size="sm" className={cn(
+                                                   "h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity",
+                                                   appointment.is_squeeze_in 
+                                                     ? "text-foreground hover:bg-accent"
+                                                     : "text-primary-foreground hover:bg-primary-foreground/20"
+                                                 )}>
                                                    <MoreVertical className="h-3 w-3" />
                                                  </Button>
                                                </DropdownMenuTrigger>

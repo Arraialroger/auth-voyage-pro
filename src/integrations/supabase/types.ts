@@ -21,6 +21,7 @@ export type Database = {
           confirmation_sent_at: string | null
           created_at: string
           id: string
+          is_squeeze_in: boolean | null
           last_reminder_sent_at: string | null
           notes: string | null
           patient_id: string | null
@@ -34,6 +35,7 @@ export type Database = {
           confirmation_sent_at?: string | null
           created_at?: string
           id?: string
+          is_squeeze_in?: boolean | null
           last_reminder_sent_at?: string | null
           notes?: string | null
           patient_id?: string | null
@@ -47,6 +49,7 @@ export type Database = {
           confirmation_sent_at?: string | null
           created_at?: string
           id?: string
+          is_squeeze_in?: boolean | null
           last_reminder_sent_at?: string | null
           notes?: string | null
           patient_id?: string | null
