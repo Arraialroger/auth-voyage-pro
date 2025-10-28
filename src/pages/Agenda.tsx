@@ -314,6 +314,7 @@ export default function Agenda() {
             status,
             notes,
             last_reminder_sent_at,
+            is_squeeze_in,
             patients:patient_id (full_name, contact_phone),
             treatments:treatment_id (id, treatment_name),
             professionals:professional_id (id, full_name)
@@ -337,6 +338,7 @@ export default function Agenda() {
           status: apt.status,
           notes: apt.notes,
           last_reminder_sent_at: apt.last_reminder_sent_at,
+          is_squeeze_in: apt.is_squeeze_in || false,
           patient: apt.patients,
           treatment: apt.treatments,
           professional: apt.professionals

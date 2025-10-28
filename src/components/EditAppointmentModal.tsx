@@ -182,22 +182,6 @@ export function EditAppointmentModal({ appointmentId, open, onOpenChange, onSucc
     },
   });
 
-  // Auto-calculate end time when treatment and start time are available
-  useEffect(() => {
-    if (watchTreatmentId && watchStartTime) {
-      const selectedTreatment = treatments.find(t => t.id === watchTreatmentId);
-      if (selectedTreatment) {
-        const [hours, minutes] = watchStartTime.split(':').map(Number);
-        const startDate = new Date();
-        startDate.setHours(hours, minutes, 0, 0);
-        
-        const endDate = new Date(startDate.getTime() + (selectedTreatment.default_duration_minutes * 60000));
-        const endTime = endDate.toTimeString().slice(0, 5);
-        
-        form.setValue('end_time', endTime);
-      }
-    }
-  }, [watchTreatmentId, watchStartTime, treatments, form]);
 
   const handleCancelAndAddToWaitingList = async () => {
     try {

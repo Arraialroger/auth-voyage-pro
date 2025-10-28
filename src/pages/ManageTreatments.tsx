@@ -87,10 +87,10 @@ export default function ManageTreatments() {
   };
 
   const handleCreate = async () => {
-    if (!formData.treatment_name || !formData.default_duration_minutes) {
+    if (!formData.treatment_name) {
       toast({
         title: "Erro",
-        description: "Nome e duração são obrigatórios",
+        description: "Nome do tratamento é obrigatório",
         variant: "destructive",
       });
       return;
@@ -103,7 +103,7 @@ export default function ManageTreatments() {
           treatment_name: formData.treatment_name,
           description: formData.description || null,
           cost: formData.cost ? parseFloat(formData.cost) : null,
-          default_duration_minutes: parseInt(formData.default_duration_minutes)
+          default_duration_minutes: formData.default_duration_minutes ? parseInt(formData.default_duration_minutes) : 60
         }]);
 
       if (error) throw error;
@@ -127,10 +127,10 @@ export default function ManageTreatments() {
   };
 
   const handleEdit = async () => {
-    if (!editingTreatment || !formData.treatment_name || !formData.default_duration_minutes) {
+    if (!editingTreatment || !formData.treatment_name) {
       toast({
         title: "Erro",
-        description: "Nome e duração são obrigatórios",
+        description: "Nome do tratamento é obrigatório",
         variant: "destructive",
       });
       return;
@@ -143,7 +143,7 @@ export default function ManageTreatments() {
           treatment_name: formData.treatment_name,
           description: formData.description || null,
           cost: formData.cost ? parseFloat(formData.cost) : null,
-          default_duration_minutes: parseInt(formData.default_duration_minutes)
+          default_duration_minutes: formData.default_duration_minutes ? parseInt(formData.default_duration_minutes) : 60
         })
         .eq('id', editingTreatment.id);
 
@@ -294,7 +294,7 @@ export default function ManageTreatments() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="duration">Duração (minutos) *</Label>
+                  <Label htmlFor="duration">Duração Padrão (minutos) - Referência</Label>
                   <Input
                     id="duration"
                     type="number"
@@ -302,6 +302,7 @@ export default function ManageTreatments() {
                     onChange={(e) => setFormData({ ...formData, default_duration_minutes: e.target.value })}
                     placeholder="60"
                   />
+                  <p className="text-xs text-muted-foreground">Campo opcional. Apenas para referência, não preenche automaticamente nos agendamentos.</p>
                 </div>
               </div>
               <DialogFooter>
@@ -538,7 +539,7 @@ export default function ManageTreatments() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-duration">Duração (minutos) *</Label>
+              <Label htmlFor="edit-duration">Duração Padrão (minutos) - Referência</Label>
               <Input
                 id="edit-duration"
                 type="number"
@@ -546,6 +547,7 @@ export default function ManageTreatments() {
                 onChange={(e) => setFormData({ ...formData, default_duration_minutes: e.target.value })}
                 placeholder="60"
               />
+              <p className="text-xs text-muted-foreground">Campo opcional. Apenas para referência, não preenche automaticamente nos agendamentos.</p>
             </div>
           </div>
           <DialogFooter>
