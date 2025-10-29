@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Search, Calendar } from "lucide-react";
+import { Search, Calendar, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -24,14 +24,40 @@ const paymentSchema = z.object({
   patient_id: z.string().uuid("Selecione um paciente válido"),
   appointment_id: z.string().uuid().optional(),
   amount: z.string().min(1, "Informe o valor"),
-  payment_method: z.enum(["cash", "credit_card", "debit_card", "pix", "bank_transfer"]),
+  is_split_payment: z.boolean().default(false),
+  payment_method: z.enum(["cash", "credit_card", "debit_card", "pix", "bank_transfer"]).optional(),
   discount_amount: z.string().optional(),
   transaction_fee_percentage: z.string().optional(),
   expected_receipt_date: z.string().optional(),
+  payment_splits: z.array(z.object({
+    payment_method: z.enum(["cash", "credit_card", "debit_card", "pix", "bank_transfer"]),
+    amount: z.string().min(1, "Informe o valor"),
+    transaction_fee_percentage: z.string().default("0"),
+    expected_receipt_date: z.string(),
+    notes: z.string().optional(),
+  })).optional(),
   notes: z.string().optional(),
   is_installment: z.boolean().default(false),
   installments: z.string().optional(),
   first_due_date: z.string().optional(),
+}).refine((data) => {
+  if (data.is_split_payment && (!data.payment_splits || data.payment_splits.length < 2)) {
+    return false;
+  }
+  if (data.is_split_payment && data.payment_splits) {
+    const totalAmount = parseFloat(data.amount);
+    const discount = parseFloat(data.discount_amount || "0");
+    const finalAmount = totalAmount - discount;
+    const splitsTotal = data.payment_splits.reduce((sum, split) => sum + parseFloat(split.amount), 0);
+    return Math.abs(splitsTotal - finalAmount) < 0.01;
+  }
+  if (!data.is_split_payment && !data.payment_method) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Verifique os valores das formas de pagamento",
+  path: ["payment_splits"],
 });
 
 type PaymentFormData = z.infer<typeof paymentSchema>;
@@ -58,6 +84,30 @@ export function RegisterPaymentModal({
   const [appointmentSearchOpen, setAppointmentSearchOpen] = useState(false);
   const [calculatedNetAmount, setCalculatedNetAmount] = useState(0);
   const queryClient = useQueryClient();
+  
+  const [paymentSplits, setPaymentSplits] = useState<Array<{
+    id: string;
+    payment_method: string;
+    amount: string;
+    transaction_fee_percentage: string;
+    expected_receipt_date: string;
+    notes?: string;
+  }>>([
+    {
+      id: crypto.randomUUID(),
+      payment_method: "pix",
+      amount: "",
+      transaction_fee_percentage: "0",
+      expected_receipt_date: new Date().toISOString().split("T")[0],
+    },
+    {
+      id: crypto.randomUUID(),
+      payment_method: "cash",
+      amount: "",
+      transaction_fee_percentage: "0",
+      expected_receipt_date: new Date().toISOString().split("T")[0],
+    },
+  ]);
 
   // Fetch patients for select
   const { data: patients = [] } = useQuery({
@@ -114,6 +164,7 @@ export function RegisterPaymentModal({
       patient_id: defaultPatientId || "",
       appointment_id: defaultAppointmentId || "",
       amount: "",
+      is_split_payment: false,
       payment_method: "pix",
       discount_amount: "0",
       transaction_fee_percentage: "0",
@@ -126,6 +177,7 @@ export function RegisterPaymentModal({
   });
 
   const isInstallment = form.watch("is_installment");
+  const isSplitPayment = form.watch("is_split_payment");
   const paymentMethod = form.watch("payment_method");
   const amount = form.watch("amount");
   const discountAmount = form.watch("discount_amount");
@@ -185,21 +237,25 @@ export function RegisterPaymentModal({
 
   const onSubmit = async (data: PaymentFormData) => {
     setIsLoading(true);
+    
+    // Sync payment splits to form data
+    if (data.is_split_payment) {
+      form.setValue('payment_splits', paymentSplits.map(s => ({
+        payment_method: s.payment_method as "cash" | "credit_card" | "debit_card" | "pix" | "bank_transfer",
+        amount: s.amount,
+        transaction_fee_percentage: s.transaction_fee_percentage,
+        expected_receipt_date: s.expected_receipt_date,
+        notes: s.notes,
+      })));
+      data = form.getValues();
+    }
+    
     try {
       const amount = parseFloat(data.amount);
       const discountAmount = parseFloat(data.discount_amount || "0");
-      const feePercentage = parseFloat(data.transaction_fee_percentage || "0");
       const finalAmount = amount - discountAmount;
-      const feeAmount = (finalAmount * feePercentage) / 100;
-      const netAmount = finalAmount - feeAmount;
 
-      // Determinar status baseado na data de recebimento
-      const today = new Date().toISOString().split("T")[0];
-      const isReceiptToday = data.expected_receipt_date === today;
-
-      // Se for parcelado OU se não recebe hoje = pending
-      // Se recebe hoje (PIX, Dinheiro) = completed
-      const initialStatus = data.is_installment || !isReceiptToday ? "pending" : "completed";
+      const isSplitPayment = data.is_split_payment && data.payment_splits && data.payment_splits.length >= 2;
 
       // Create transaction
       const insertData: any = {
@@ -207,26 +263,64 @@ export function RegisterPaymentModal({
         amount,
         discount_amount: discountAmount,
         final_amount: finalAmount,
-        transaction_fee_percentage: feePercentage,
-        transaction_fee_amount: feeAmount,
-        net_amount: netAmount,
-        expected_receipt_date: data.expected_receipt_date,
-        payment_method: data.payment_method,
+        payment_method: isSplitPayment ? data.payment_splits![0].payment_method : data.payment_method!,
         transaction_type: "payment",
-        status: initialStatus,
+        transaction_fee_percentage: 0,
+        transaction_fee_amount: 0,
+        net_amount: 0,
+        expected_receipt_date: isSplitPayment ? data.payment_splits![0].expected_receipt_date : data.expected_receipt_date,
+        status: "pending",
       };
 
       if (data.appointment_id) {
         insertData.appointment_id = data.appointment_id;
       }
 
-      // Só registra payment_date se efetivamente recebeu (status completed)
-      if (initialStatus === "completed") {
-        insertData.payment_date = new Date().toISOString();
-      }
-
       if (data.notes) {
         insertData.notes = data.notes;
+      }
+
+      // Calculate values
+      if (isSplitPayment) {
+        let totalFeeAmount = 0;
+        let totalNetAmount = 0;
+
+        for (const split of data.payment_splits!) {
+          const splitAmount = parseFloat(split.amount);
+          const splitFeePercentage = parseFloat(split.transaction_fee_percentage || "0");
+          const splitFeeAmount = (splitAmount * splitFeePercentage) / 100;
+          const splitNetAmount = splitAmount - splitFeeAmount;
+
+          totalFeeAmount += splitFeeAmount;
+          totalNetAmount += splitNetAmount;
+        }
+
+        insertData.transaction_fee_amount = totalFeeAmount;
+        insertData.net_amount = totalNetAmount;
+
+        const today = new Date().toISOString().split("T")[0];
+        const allReceiveToday = data.payment_splits!.every(s => s.expected_receipt_date === today);
+        insertData.status = allReceiveToday ? "completed" : "pending";
+        
+        if (allReceiveToday) {
+          insertData.payment_date = new Date().toISOString();
+        }
+      } else {
+        const feePercentage = parseFloat(data.transaction_fee_percentage || "0");
+        const feeAmount = (finalAmount * feePercentage) / 100;
+        const netAmount = finalAmount - feeAmount;
+
+        insertData.transaction_fee_percentage = feePercentage;
+        insertData.transaction_fee_amount = feeAmount;
+        insertData.net_amount = netAmount;
+
+        const today = new Date().toISOString().split("T")[0];
+        const isReceiptToday = data.expected_receipt_date === today;
+        insertData.status = data.is_installment || !isReceiptToday ? "pending" : "completed";
+        
+        if (insertData.status === "completed") {
+          insertData.payment_date = new Date().toISOString();
+        }
       }
 
       const { data: transaction, error: transactionError } = await supabase
@@ -236,6 +330,38 @@ export function RegisterPaymentModal({
         .single();
 
       if (transactionError) throw transactionError;
+
+      // Insert payment splits if split payment
+      if (isSplitPayment && transaction) {
+        const splitsToInsert = data.payment_splits!.map(split => {
+          const splitAmount = parseFloat(split.amount);
+          const splitFeePercentage = parseFloat(split.transaction_fee_percentage || "0");
+          const splitFeeAmount = (splitAmount * splitFeePercentage) / 100;
+          const splitNetAmount = splitAmount - splitFeeAmount;
+
+          const today = new Date().toISOString().split("T")[0];
+          const isReceiptToday = split.expected_receipt_date === today;
+
+          return {
+            transaction_id: transaction.id,
+            payment_method: split.payment_method as "cash" | "credit_card" | "debit_card" | "pix" | "bank_transfer",
+            amount: splitAmount,
+            transaction_fee_percentage: splitFeePercentage,
+            transaction_fee_amount: splitFeeAmount,
+            net_amount: splitNetAmount,
+            expected_receipt_date: split.expected_receipt_date,
+            status: (isReceiptToday ? "completed" : "pending") as "pending" | "completed",
+            payment_date: isReceiptToday ? new Date().toISOString() : undefined,
+            notes: split.notes || undefined,
+          };
+        });
+
+        const { error: splitsError } = await supabase
+          .from("payment_splits")
+          .insert(splitsToInsert);
+
+        if (splitsError) throw splitsError;
+      }
 
       // Create installment plan if needed
       if (data.is_installment && transaction) {
@@ -277,14 +403,33 @@ export function RegisterPaymentModal({
         if (installmentsError) throw installmentsError;
 
         toast.success(`Pagamento parcelado em ${totalInstallments}x criado com sucesso!`);
+      } else if (isSplitPayment) {
+        toast.success(`Pagamento dividido em ${data.payment_splits!.length} métodos registrado com sucesso!`);
       } else {
         toast.success("Pagamento registrado com sucesso!");
       }
 
       queryClient.invalidateQueries({ queryKey: ["financial-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["payment-splits"] });
       queryClient.invalidateQueries({ queryKey: ["financial-stats"] });
       onOpenChange(false);
       form.reset();
+      setPaymentSplits([
+        {
+          id: crypto.randomUUID(),
+          payment_method: "pix",
+          amount: "",
+          transaction_fee_percentage: "0",
+          expected_receipt_date: new Date().toISOString().split("T")[0],
+        },
+        {
+          id: crypto.randomUUID(),
+          payment_method: "cash",
+          amount: "",
+          transaction_fee_percentage: "0",
+          expected_receipt_date: new Date().toISOString().split("T")[0],
+        },
+      ]);
     } catch (error: any) {
       logger.error("Erro ao registrar pagamento:", error);
       toast.error("Erro ao registrar pagamento: " + error.message);
@@ -468,33 +613,221 @@ export function RegisterPaymentModal({
 
             <FormField
               control={form.control}
-              name="payment_method"
+              name="is_split_payment"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Forma de Pagamento *</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="cash">Dinheiro</SelectItem>
-                      <SelectItem value="credit_card">Cartão de Crédito</SelectItem>
-                      <SelectItem value="debit_card">Cartão de Débito</SelectItem>
-                      <SelectItem value="pix">PIX</SelectItem>
-                      <SelectItem value="bank_transfer">Transferência Bancária</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked);
+                        if (!checked) {
+                          setPaymentSplits([
+                            {
+                              id: crypto.randomUUID(),
+                              payment_method: "pix",
+                              amount: "",
+                              transaction_fee_percentage: "0",
+                              expected_receipt_date: new Date().toISOString().split("T")[0],
+                            },
+                            {
+                              id: crypto.randomUUID(),
+                              payment_method: "cash",
+                              amount: "",
+                              transaction_fee_percentage: "0",
+                              expected_receipt_date: new Date().toISOString().split("T")[0],
+                            },
+                          ]);
+                        }
+                      }}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Dividir pagamento em múltiplos métodos</FormLabel>
+                    <p className="text-sm text-muted-foreground">
+                      Permite registrar um pagamento feito com mais de uma forma de pagamento
+                    </p>
+                  </div>
                 </FormItem>
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            {isSplitPayment && (
+              <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-medium">Formas de Pagamento</h3>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setPaymentSplits([...paymentSplits, {
+                        id: crypto.randomUUID(),
+                        payment_method: "cash",
+                        amount: "",
+                        transaction_fee_percentage: "0",
+                        expected_receipt_date: new Date().toISOString().split("T")[0],
+                      }]);
+                    }}
+                  >
+                    + Adicionar Forma
+                  </Button>
+                </div>
+
+                {paymentSplits.map((split, index) => (
+                  <div key={split.id} className="grid grid-cols-12 gap-3 items-start p-3 rounded-md border bg-background">
+                    <div className="col-span-12 md:col-span-3">
+                      <Select
+                        value={split.payment_method}
+                        onValueChange={(value) => {
+                          const updated = [...paymentSplits];
+                          updated[index].payment_method = value;
+                          
+                          if (value === "credit_card") {
+                            updated[index].transaction_fee_percentage = "2.5";
+                            const futureDate = new Date();
+                            futureDate.setDate(futureDate.getDate() + 30);
+                            updated[index].expected_receipt_date = futureDate.toISOString().split("T")[0];
+                          } else if (value === "debit_card") {
+                            updated[index].transaction_fee_percentage = "1.5";
+                            const tomorrow = new Date();
+                            tomorrow.setDate(tomorrow.getDate() + 1);
+                            updated[index].expected_receipt_date = tomorrow.toISOString().split("T")[0];
+                          } else {
+                            updated[index].transaction_fee_percentage = "0";
+                            updated[index].expected_receipt_date = new Date().toISOString().split("T")[0];
+                          }
+                          
+                          setPaymentSplits(updated);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cash">Dinheiro</SelectItem>
+                          <SelectItem value="pix">PIX</SelectItem>
+                          <SelectItem value="credit_card">Cartão de Crédito</SelectItem>
+                          <SelectItem value="debit_card">Cartão de Débito</SelectItem>
+                          <SelectItem value="bank_transfer">Transferência</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="col-span-6 md:col-span-3">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="Valor"
+                        value={split.amount}
+                        onChange={(e) => {
+                          const updated = [...paymentSplits];
+                          updated[index].amount = e.target.value;
+                          setPaymentSplits(updated);
+                        }}
+                      />
+                    </div>
+
+                    <div className="col-span-6 md:col-span-2">
+                      <Input
+                        type="number"
+                        step="0.1"
+                        placeholder="Taxa %"
+                        value={split.transaction_fee_percentage}
+                        onChange={(e) => {
+                          const updated = [...paymentSplits];
+                          updated[index].transaction_fee_percentage = e.target.value;
+                          setPaymentSplits(updated);
+                        }}
+                      />
+                    </div>
+
+                    <div className="col-span-10 md:col-span-3">
+                      <Input
+                        type="date"
+                        value={split.expected_receipt_date}
+                        onChange={(e) => {
+                          const updated = [...paymentSplits];
+                          updated[index].expected_receipt_date = e.target.value;
+                          setPaymentSplits(updated);
+                        }}
+                      />
+                    </div>
+
+                    <div className="col-span-2 md:col-span-1 flex justify-end">
+                      {paymentSplits.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setPaymentSplits(paymentSplits.filter((_, i) => i !== index));
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                <div className="text-sm space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Soma dos valores:</span>
+                    <span className={cn(
+                      "font-medium",
+                      Math.abs(
+                        paymentSplits.reduce((sum, s) => sum + parseFloat(s.amount || "0"), 0) -
+                        (parseFloat(amount || "0") - parseFloat(discountAmount || "0"))
+                      ) < 0.01 
+                        ? "text-green-600" 
+                        : "text-red-600"
+                    )}>
+                      R$ {paymentSplits.reduce((sum, s) => sum + parseFloat(s.amount || "0"), 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Valor esperado:</span>
+                    <span className="font-medium">
+                      R$ {(parseFloat(amount || "0") - parseFloat(discountAmount || "0")).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!isSplitPayment && (
               <FormField
                 control={form.control}
-                name="transaction_fee_percentage"
+                name="payment_method"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Forma de Pagamento *</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="cash">Dinheiro</SelectItem>
+                        <SelectItem value="credit_card">Cartão de Crédito</SelectItem>
+                        <SelectItem value="debit_card">Cartão de Débito</SelectItem>
+                        <SelectItem value="pix">PIX</SelectItem>
+                        <SelectItem value="bank_transfer">Transferência Bancária</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {!isSplitPayment && (
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="transaction_fee_percentage"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Taxa da Operadora (%)</FormLabel>
@@ -524,9 +857,11 @@ export function RegisterPaymentModal({
                   </FormItem>
                 )}
               />
-            </div>
+              </div>
+            )}
 
-            <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
+            {!isSplitPayment && (
+              <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">Valor Total:</span>
@@ -547,7 +882,8 @@ export function RegisterPaymentModal({
                   </p>
                 </div>
               </div>
-            </div>
+              </div>
+            )}
 
             <FormField
               control={form.control}

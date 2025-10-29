@@ -501,6 +501,59 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_splits: {
+        Row: {
+          amount: number
+          created_at: string
+          expected_receipt_date: string | null
+          id: string
+          net_amount: number | null
+          notes: string | null
+          payment_date: string | null
+          payment_method: Database["public"]["Enums"]["payment_method_enum"]
+          status: Database["public"]["Enums"]["payment_status_enum"]
+          transaction_fee_amount: number | null
+          transaction_fee_percentage: number | null
+          transaction_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          expected_receipt_date?: string | null
+          id?: string
+          net_amount?: number | null
+          notes?: string | null
+          payment_date?: string | null
+          payment_method: Database["public"]["Enums"]["payment_method_enum"]
+          status?: Database["public"]["Enums"]["payment_status_enum"]
+          transaction_fee_amount?: number | null
+          transaction_fee_percentage?: number | null
+          transaction_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          expected_receipt_date?: string | null
+          id?: string
+          net_amount?: number | null
+          notes?: string | null
+          payment_date?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method_enum"]
+          status?: Database["public"]["Enums"]["payment_status_enum"]
+          transaction_fee_amount?: number | null
+          transaction_fee_percentage?: number | null
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_splits_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "financial_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professional_schedules: {
         Row: {
           day_of_week: number
