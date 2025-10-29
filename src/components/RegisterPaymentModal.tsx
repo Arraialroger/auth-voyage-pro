@@ -48,16 +48,40 @@ const paymentSchema = z.object({
     const totalAmount = parseFloat(data.amount);
     const discount = parseFloat(data.discount_amount || "0");
     const finalAmount = totalAmount - discount;
-    const splitsTotal = data.payment_splits.reduce((sum, split) => sum + parseFloat(split.amount), 0);
+    const splitsTotal = data.payment_splits.reduce((sum, split) => sum + parseFloat(split.amount || "0"), 0);
     return Math.abs(splitsTotal - finalAmount) < 0.01;
   }
   if (!data.is_split_payment && !data.payment_method) {
     return false;
   }
   return true;
-}, {
-  message: "Verifique os valores das formas de pagamento",
-  path: ["payment_splits"],
+}, (data) => {
+  if (data.is_split_payment && (!data.payment_splits || data.payment_splits.length < 2)) {
+    return {
+      message: "Adicione pelo menos 2 formas de pagamento para dividir o pagamento",
+      path: ["is_split_payment"],
+    };
+  }
+  if (data.is_split_payment && data.payment_splits) {
+    const totalAmount = parseFloat(data.amount);
+    const discount = parseFloat(data.discount_amount || "0");
+    const finalAmount = totalAmount - discount;
+    const splitsTotal = data.payment_splits.reduce((sum, split) => sum + parseFloat(split.amount || "0"), 0);
+    
+    if (Math.abs(splitsTotal - finalAmount) >= 0.01) {
+      return {
+        message: `A soma dos valores (R$ ${splitsTotal.toFixed(2)}) deve ser igual ao valor esperado (R$ ${finalAmount.toFixed(2)})`,
+        path: ["payment_splits"],
+      };
+    }
+  }
+  if (!data.is_split_payment && !data.payment_method) {
+    return {
+      message: "Selecione uma forma de pagamento",
+      path: ["payment_method"],
+    };
+  }
+  return { message: "", path: [] };
 });
 
 type PaymentFormData = z.infer<typeof paymentSchema>;
@@ -235,20 +259,21 @@ export function RegisterPaymentModal({
     }
   }, [selectedAppointmentId, appointments, form]);
 
-  const onSubmit = async (data: PaymentFormData) => {
-    setIsLoading(true);
-    
-    // Sync payment splits to form data
-    if (data.is_split_payment) {
+  // Sync payment splits with form data automatically
+  useEffect(() => {
+    if (isSplitPayment && paymentSplits.length > 0) {
       form.setValue('payment_splits', paymentSplits.map(s => ({
         payment_method: s.payment_method as "cash" | "credit_card" | "debit_card" | "pix" | "bank_transfer",
         amount: s.amount,
         transaction_fee_percentage: s.transaction_fee_percentage,
         expected_receipt_date: s.expected_receipt_date,
         notes: s.notes,
-      })));
-      data = form.getValues();
+      })), { shouldValidate: true });
     }
+  }, [paymentSplits, isSplitPayment, form]);
+
+  const onSubmit = async (data: PaymentFormData) => {
+    setIsLoading(true);
     
     try {
       const amount = parseFloat(data.amount);
@@ -675,8 +700,8 @@ export function RegisterPaymentModal({
                 </div>
 
                 {paymentSplits.map((split, index) => (
-                  <div key={split.id} className="grid grid-cols-12 gap-3 items-start p-3 rounded-md border bg-background">
-                    <div className="col-span-12 md:col-span-3">
+                  <div key={split.id} className="grid grid-cols-12 gap-2 items-start p-3 rounded-md border bg-background">
+                    <div className="col-span-12 md:col-span-4">
                       <Select
                         value={split.payment_method}
                         onValueChange={(value) => {
@@ -742,7 +767,7 @@ export function RegisterPaymentModal({
                       />
                     </div>
 
-                    <div className="col-span-10 md:col-span-3">
+                    <div className="col-span-11 md:col-span-2">
                       <Input
                         type="date"
                         value={split.expected_receipt_date}
@@ -751,10 +776,11 @@ export function RegisterPaymentModal({
                           updated[index].expected_receipt_date = e.target.value;
                           setPaymentSplits(updated);
                         }}
+                        className="w-full"
                       />
                     </div>
 
-                    <div className="col-span-2 md:col-span-1 flex justify-end">
+                    <div className="col-span-1 flex justify-end items-center">
                       {paymentSplits.length > 1 && (
                         <Button
                           type="button"
