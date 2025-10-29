@@ -31,6 +31,7 @@ import { ptBR } from 'date-fns/locale';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 import { RegisterExpenseModal } from '@/components/RegisterExpenseModal';
+import { PaymentSplitsTable } from '@/components/PaymentSplitsTable';
 import { toast } from 'sonner';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
@@ -68,14 +69,28 @@ export default function Financial() {
       const startDate = startOfMonth(selectedMonth).toISOString();
       const endDate = endOfMonth(selectedMonth).toISOString();
 
-      // Receitas do mês - buscar transações completadas
-      const { data: completedRevenues } = await supabase
-        .from('financial_transactions')
-        .select('final_amount, net_amount, payment_date')
-        .eq('transaction_type', 'payment')
+      // Receitas do mês - buscar de payment_splits completados
+      const { data: completedSplits } = await supabase
+        .from('payment_splits')
+        .select('net_amount, payment_date, status')
         .eq('status', 'completed')
         .gte('payment_date', startDate)
         .lte('payment_date', endDate);
+
+      // Também buscar transações sem splits (pagamento único) que foram recebidas
+      const { data: completedSinglePayments } = await supabase
+        .from('financial_transactions')
+        .select('final_amount, net_amount, payment_date, id')
+        .eq('transaction_type', 'payment')
+        .in('status', ['completed', 'partial'])
+        .gte('payment_date', startDate)
+        .lte('payment_date', endDate);
+
+      // Filtrar apenas as que NÃO têm splits
+      const transactionIdsWithSplits = new Set(
+        (await supabase.from('payment_splits').select('transaction_id')).data?.map(s => s.transaction_id) || []
+      );
+      const singlePayments = completedSinglePayments?.filter(t => !transactionIdsWithSplits.has(t.id)) || [];
 
       // Despesas do mês
       const { data: expenses } = await supabase
@@ -107,13 +122,15 @@ export default function Financial() {
         t => !installmentTransactionIds.has(t.id)
       ) || [];
 
-      // Calcular totais - apenas pagamentos que foram efetivamente recebidos
-      const totalRevenue = completedRevenues?.reduce((sum, r) => {
-        const amount = r.net_amount !== undefined && r.net_amount !== null 
-          ? Number(r.net_amount) 
-          : Number(r.final_amount);
+      // Calcular totais - splits recebidos + pagamentos únicos recebidos
+      const totalRevenueFromSplits = completedSplits?.reduce((sum, s) => sum + Number(s.net_amount || 0), 0) || 0;
+      const totalRevenueFromSinglePayments = singlePayments.reduce((sum, t) => {
+        const amount = t.net_amount !== undefined && t.net_amount !== null 
+          ? Number(t.net_amount) 
+          : Number(t.final_amount);
         return sum + amount;
-      }, 0) || 0;
+      }, 0);
+      const totalRevenue = totalRevenueFromSplits + totalRevenueFromSinglePayments;
       
       const totalExpenses = expenses?.reduce((sum, e) => sum + (e.status === 'paid' ? Number(e.amount) : 0), 0) || 0;
       
@@ -137,7 +154,7 @@ export default function Financial() {
         netProfit: totalRevenue - totalExpenses,
         totalPending,
         overdueCount,
-        revenues: completedRevenues || [],
+        revenues: [...(completedSplits || []), ...(singlePayments || [])],
         expenses: expenses || []
       };
     }
@@ -161,10 +178,20 @@ export default function Financial() {
     }
   });
 
-  // Calcular valor a receber (pendente de operadoras de cartão)
-  const totalPendingReceipts = transactions
-    .filter(t => t.transaction_type === "payment" && t.status === "pending")
-    .reduce((sum, t) => sum + (t.net_amount || t.final_amount), 0);
+  // Buscar splits pendentes para cálculo correto de contas a receber
+  const { data: pendingSplits = [] } = useQuery({
+    queryKey: ['pending-splits'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('payment_splits')
+        .select('net_amount, status')
+        .eq('status', 'pending');
+      return data || [];
+    }
+  });
+
+  // Calcular valor a receber apenas dos splits pendentes
+  const totalPendingReceipts = pendingSplits.reduce((sum, s) => sum + Number(s.net_amount || 0), 0);
 
   // Mutation para marcar pagamento de cartão como recebido
   const markCardPaymentAsReceivedMutation = useMutation({
@@ -335,12 +362,16 @@ export default function Financial() {
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
       paid: "default",
+      completed: "default",
+      partial: "default",
       pending: "secondary",
       cancelled: "destructive",
       refunded: "outline",
     };
     const labels: Record<string, string> = {
       paid: "Pago",
+      completed: "Recebido",
+      partial: "Parcial",
       pending: "Pendente",
       cancelled: "Cancelado",
       refunded: "Reembolsado",
@@ -795,29 +826,36 @@ export default function Financial() {
                           </TableRow>
                         ) : (
                           filteredTransactions.map((transaction) => (
-                            <TableRow key={transaction.id}>
-                              <TableCell>
-                                {format(new Date(transaction.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                              </TableCell>
-                              <TableCell>{transaction.patients?.full_name || "N/A"}</TableCell>
-                              <TableCell>{getTransactionTypeLabel(transaction.transaction_type)}</TableCell>
-                              <TableCell>{formatCurrency(Number(transaction.final_amount))}</TableCell>
-                              <TableCell>
-                                {(transaction as any).transaction_fee_amount > 0 
-                                  ? formatCurrency(Number((transaction as any).transaction_fee_amount))
-                                  : "-"}
-                              </TableCell>
-                              <TableCell className="font-medium text-green-600">
-                                {formatCurrency(Number((transaction as any).net_amount || transaction.final_amount))}
-                              </TableCell>
-                              <TableCell>
-                                {(transaction as any).expected_receipt_date 
-                                  ? format(new Date((transaction as any).expected_receipt_date), "dd/MM/yyyy", { locale: ptBR })
-                                  : format(new Date(transaction.payment_date || transaction.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                              </TableCell>
-                              <TableCell>{getPaymentMethodLabel(transaction.payment_method)}</TableCell>
-                              <TableCell>{getStatusBadge(transaction.status)}</TableCell>
-                            </TableRow>
+                            <>
+                              <TableRow key={transaction.id}>
+                                <TableCell>
+                                  {format(new Date(transaction.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                                </TableCell>
+                                <TableCell>{transaction.patients?.full_name || "N/A"}</TableCell>
+                                <TableCell>{getTransactionTypeLabel(transaction.transaction_type)}</TableCell>
+                                <TableCell>{formatCurrency(Number(transaction.final_amount))}</TableCell>
+                                <TableCell>
+                                  {(transaction as any).transaction_fee_amount > 0 
+                                    ? formatCurrency(Number((transaction as any).transaction_fee_amount))
+                                    : "-"}
+                                </TableCell>
+                                <TableCell className="font-medium text-green-600">
+                                  {formatCurrency(Number((transaction as any).net_amount || transaction.final_amount))}
+                                </TableCell>
+                                <TableCell>
+                                  {(transaction as any).expected_receipt_date 
+                                    ? format(new Date((transaction as any).expected_receipt_date), "dd/MM/yyyy", { locale: ptBR })
+                                    : format(new Date(transaction.payment_date || transaction.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                                </TableCell>
+                                <TableCell>{getPaymentMethodLabel(transaction.payment_method)}</TableCell>
+                                <TableCell>{getStatusBadge(transaction.status)}</TableCell>
+                              </TableRow>
+                              <TableRow key={`${transaction.id}-splits`}>
+                                <TableCell colSpan={9} className="p-0">
+                                  <PaymentSplitsTable transactionId={transaction.id} />
+                                </TableCell>
+                              </TableRow>
+                            </>
                           ))
                         )}
                       </TableBody>

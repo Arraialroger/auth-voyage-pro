@@ -324,11 +324,19 @@ export function RegisterPaymentModal({
         insertData.net_amount = totalNetAmount;
 
         const today = new Date().toISOString().split("T")[0];
-        const allReceiveToday = data.payment_splits!.every(s => s.expected_receipt_date === today);
-        insertData.status = allReceiveToday ? "completed" : "pending";
         
-        if (allReceiveToday) {
+        // Contar quantos splits são recebidos hoje vs. no futuro
+        const splitsReceivedToday = data.payment_splits!.filter(s => s.expected_receipt_date === today);
+        const totalSplits = data.payment_splits!.length;
+
+        if (splitsReceivedToday.length === totalSplits) {
+          insertData.status = "completed"; // Todos recebidos hoje
           insertData.payment_date = new Date().toISOString();
+        } else if (splitsReceivedToday.length > 0) {
+          insertData.status = "partial" as any; // Alguns recebidos, outros pendentes
+          insertData.payment_date = new Date().toISOString(); // Data do primeiro recebimento
+        } else {
+          insertData.status = "pending"; // Nenhum recebido ainda
         }
       } else {
         const feePercentage = parseFloat(data.transaction_fee_percentage || "0");
@@ -701,7 +709,7 @@ export function RegisterPaymentModal({
 
                 {paymentSplits.map((split, index) => (
                   <div key={split.id} className="grid grid-cols-12 gap-2 items-start p-3 rounded-md border bg-background">
-                    <div className="col-span-12 md:col-span-4">
+                    <div className="col-span-12 md:col-span-3">
                       <Select
                         value={split.payment_method}
                         onValueChange={(value) => {
@@ -767,7 +775,7 @@ export function RegisterPaymentModal({
                       />
                     </div>
 
-                    <div className="col-span-11 md:col-span-2">
+                    <div className="col-span-11 md:col-span-3">
                       <Input
                         type="date"
                         value={split.expected_receipt_date}
