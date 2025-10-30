@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, Search, Clock, DollarSign } from 'lucide-react';
+import { CalendarIcon, Search, Clock } from 'lucide-react';
 import { createLocalDateTime } from '@/lib/dateUtils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -62,14 +62,6 @@ const appointmentSchema = z.object({
   end_time: z.string().min(1, 'Horário de fim é obrigatório'),
   notes: z.string().optional(),
   is_squeeze_in: z.boolean().default(false),
-  register_payment: z.boolean().default(false),
-  payment_amount: z.string().optional(),
-  payment_method: z.enum(["cash", "credit_card", "debit_card", "pix", "bank_transfer"]).optional(),
-  discount_amount: z.string().optional(),
-  is_installment: z.boolean().default(false),
-  installments: z.string().optional(),
-  first_due_date: z.string().optional(),
-  payment_notes: z.string().optional(),
 });
 
 type AppointmentFormData = z.infer<typeof appointmentSchema>;
@@ -107,14 +99,7 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
       appointment_date: undefined,
       start_time: '',
       end_time: '',
-      register_payment: false,
-      payment_amount: '',
-      payment_method: 'pix',
-      discount_amount: '0',
-      is_installment: false,
-      installments: '1',
-      first_due_date: new Date().toISOString().split('T')[0],
-      payment_notes: '',
+      is_squeeze_in: false,
     },
   });
 
@@ -142,8 +127,6 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
   // Watch for changes in treatment and start time to auto-calculate end time
   const watchTreatmentId = form.watch('treatment_id');
   const watchStartTime = form.watch('start_time');
-  const watchRegisterPayment = form.watch('register_payment');
-  const watchIsInstallment = form.watch('is_installment');
 
   // Fetch patients
   const { data: patients = [] } = useQuery({
@@ -533,153 +516,13 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
               )}
             />
 
-            {/* Register Payment Checkbox */}
-            <FormField
-              control={form.control}
-              name="register_payment"
-              render={({ field }) => (
-                <FormItem className="flex items-center space-x-2 border-t pt-4">
-                  <FormControl>
-                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                  </FormControl>
-                  <FormLabel className="!mt-0 flex items-center gap-2 cursor-pointer">
-                    <DollarSign className="h-4 w-4" />
-                    Registrar Pagamento Agora
-                  </FormLabel>
-                </FormItem>
-              )}
-            />
-
-            {/* Payment Fields - Show when register_payment is true */}
-            {watchRegisterPayment && (
-              <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Detalhes do Pagamento
-                </h3>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="payment_amount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Valor Total *</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="discount_amount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Desconto</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="payment_method"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Forma de Pagamento *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="cash">Dinheiro</SelectItem>
-                          <SelectItem value="credit_card">Cartão de Crédito</SelectItem>
-                          <SelectItem value="debit_card">Cartão de Débito</SelectItem>
-                          <SelectItem value="pix">PIX</SelectItem>
-                          <SelectItem value="bank_transfer">Transferência Bancária</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="is_installment"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-2">
-                      <FormControl>
-                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                      <FormLabel className="!mt-0">Parcelar pagamento</FormLabel>
-                    </FormItem>
-                  )}
-                />
-
-                {watchIsInstallment && (
-                  <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-background">
-                    <FormField
-                      control={form.control}
-                      name="installments"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Número de Parcelas</FormLabel>
-                          <FormControl>
-                            <Input type="number" min="2" max="24" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="first_due_date"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Data do 1º Vencimento</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                )}
-
-                <FormField
-                  control={form.control}
-                  name="payment_notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Observações do Pagamento</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Informações adicionais sobre o pagamento..." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
 
             <div className="flex justify-end space-x-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Salvando...' : watchRegisterPayment ? 'Criar Agendamento e Registrar Pagamento' : 'Criar Agendamento'}
+                {isSubmitting ? 'Salvando...' : 'Criar Agendamento'}
               </Button>
             </div>
           </form>

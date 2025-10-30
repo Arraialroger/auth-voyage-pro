@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, Calendar, Clock, TrendingUp, CheckCircle, AlertCircle, DollarSign, TrendingDown, Wallet, PiggyBank } from 'lucide-react';
+import { Users, Calendar, Clock, TrendingUp, CheckCircle, AlertCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { startOfWeek, endOfWeek, startOfDay, endOfDay, addWeeks, format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -233,46 +233,6 @@ export function DashboardStats() {
       description: 'Últimos 30 dias',
       gradient: 'from-success/10 to-success/5',
       iconColor: 'text-success',
-    },
-    {
-      title: 'Receita do Mês',
-      value: `R$ ${(stats?.monthlyRevenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      icon: DollarSign,
-      description: format(new Date(), "MMMM 'de' yyyy", { locale: ptBR }),
-      gradient: 'from-success/10 to-success/5',
-      iconColor: 'text-success',
-    },
-    {
-      title: 'Contas a Receber',
-      value: `R$ ${(stats?.accountsReceivable || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      icon: Wallet,
-      description: 'Pagamentos pendentes',
-      gradient: 'from-warning/10 to-warning/5',
-      iconColor: 'text-warning',
-    },
-    {
-      title: 'Despesas do Mês',
-      value: `R$ ${(stats?.monthlyExpenses || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      icon: TrendingDown,
-      description: format(new Date(), "MMMM 'de' yyyy", { locale: ptBR }),
-      gradient: 'from-destructive/10 to-destructive/5',
-      iconColor: 'text-destructive',
-    },
-    {
-      title: 'Lucro Líquido',
-      value: `R$ ${(stats?.netProfit || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      icon: PiggyBank,
-      description: 'Receitas - Despesas',
-      gradient: stats && stats.netProfit >= 0 ? 'from-success/10 to-success/5' : 'from-destructive/10 to-destructive/5',
-      iconColor: stats && stats.netProfit >= 0 ? 'text-success' : 'text-destructive',
-    },
-    {
-      title: 'Despesas Pendentes',
-      value: `R$ ${(stats?.pendingExpenses || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      icon: AlertCircle,
-      description: 'Aguardando aprovação',
-      gradient: 'from-warning/10 to-warning/5',
-      iconColor: 'text-warning',
     },
   ];
 
