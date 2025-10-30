@@ -12,14 +12,16 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const {
     signIn,
-    user
+    user,
+    session
   } = useAuth();
   const navigate = useNavigate();
   useEffect(() => {
-    if (user) {
+    // Só redirecionar se houver usuário E sessão válida
+    if (user && session) {
       navigate('/agenda');
     }
-  }, [user, navigate]);
+  }, [user, session, navigate]);
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);

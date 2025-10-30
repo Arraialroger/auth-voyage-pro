@@ -12,31 +12,25 @@ import { Suspense, lazy } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
+import { Loader2 } from "lucide-react";
 
-// Lazy loading para páginas principais
-const Agenda = lazy(() => import("./pages/Agenda"));
-const Administration = lazy(() => import("./pages/Administration"));
-const ManagePatients = lazy(() => import("./pages/ManagePatients"));
-const ManageProfessionals = lazy(() => import("./pages/ManageProfessionals"));
-const ManageTreatments = lazy(() => import("./pages/ManageTreatments"));
-const ManageWaitingList = lazy(() => import("./pages/ManageWaitingList"));
+// Lazy loading com retry automático para páginas principais
+const Agenda = lazyWithRetry(() => import("./pages/Agenda"));
+const Administration = lazyWithRetry(() => import("./pages/Administration"));
+const ManagePatients = lazyWithRetry(() => import("./pages/ManagePatients"));
+const ManageProfessionals = lazyWithRetry(() => import("./pages/ManageProfessionals"));
+const ManageTreatments = lazyWithRetry(() => import("./pages/ManageTreatments"));
+const ManageWaitingList = lazyWithRetry(() => import("./pages/ManageWaitingList"));
+const PatientDetails = lazyWithRetry(() => import("./pages/PatientDetails"));
 
-const PatientDetails = lazy(() => import("./pages/PatientDetails"));
-
-// Componente de loading para Suspense
+// Componente de loading aprimorado para Suspense
 const PageLoader = () => (
-  <div className="min-h-screen bg-background p-8">
-    <div className="container mx-auto max-w-6xl space-y-6">
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-10 w-32" />
-      </div>
-      <Skeleton className="h-64 w-full" />
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Skeleton className="h-48 w-full" />
-        <Skeleton className="h-48 w-full" />
-        <Skeleton className="h-48 w-full" />
-      </div>
+  <div className="min-h-screen bg-background flex items-center justify-center p-8">
+    <div className="text-center space-y-4">
+      <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+      <p className="text-muted-foreground">Carregando...</p>
     </div>
   </div>
 );
@@ -50,7 +44,8 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
           <Suspense fallback={<PageLoader />}>
-          <Routes>
+            <ErrorBoundary>
+              <Routes>
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
             <Route path="/agenda" element={
@@ -100,7 +95,8 @@ const App = () => (
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
-          </Routes>
+              </Routes>
+            </ErrorBoundary>
           </Suspense>
          </BrowserRouter>
       </TooltipProvider>

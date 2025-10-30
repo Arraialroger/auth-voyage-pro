@@ -26,6 +26,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -122,11 +123,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
+    setIsSigningOut(true);
+    
     const { error } = await supabase.auth.signOut();
     
-    // Limpar estado local sempre, independente de erro
+    // Limpar estado local IMEDIATAMENTE, independente de erro
     setSession(null);
     setUser(null);
+    
+    // Pequeno delay para garantir propagação do estado
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    setIsSigningOut(false);
     
     // Tratar erro de sessão inexistente como sucesso (usuário já está deslogado)
     if (error) {
@@ -140,6 +148,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: error.message,
           variant: "destructive",
         });
+        window.location.href = '/login';
         return;
       }
     }
