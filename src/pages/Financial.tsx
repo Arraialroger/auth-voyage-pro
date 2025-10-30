@@ -32,6 +32,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recha
 
 import { RegisterExpenseModal } from '@/components/RegisterExpenseModal';
 import { PaymentSplitsTable } from '@/components/PaymentSplitsTable';
+import { FinancialHelpDialog } from '@/components/FinancialHelpDialog';
 import { toast } from 'sonner';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
@@ -184,14 +185,16 @@ export default function Financial() {
     queryFn: async () => {
       const { data } = await supabase
         .from('payment_splits')
-        .select('net_amount, status')
+        .select('net_amount, status, payment_method')
         .eq('status', 'pending');
       return data || [];
     }
   });
 
-  // Calcular valor a receber apenas dos splits pendentes
-  const totalPendingReceipts = pendingSplits.reduce((sum, s) => sum + Number(s.net_amount || 0), 0);
+  // Calcular valor a receber apenas das operadoras (cartões pendentes)
+  const operatorPendingReceipts = pendingSplits
+    .filter(s => s.payment_method === 'credit_card' || s.payment_method === 'debit_card')
+    .reduce((sum, s) => sum + Number(s.net_amount || 0), 0);
 
   // Mutation para marcar pagamento de cartão como recebido
   const markCardPaymentAsReceivedMutation = useMutation({
@@ -600,8 +603,11 @@ export default function Financial() {
               Módulo Financeiro
             </h1>
           </div>
-          <div className="text-sm text-muted-foreground">
-            {format(selectedMonth, "MMMM 'de' yyyy", { locale: ptBR })}
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-muted-foreground">
+              {format(selectedMonth, "MMMM 'de' yyyy", { locale: ptBR })}
+            </div>
+            <FinancialHelpDialog />
           </div>
         </div>
       </header>
@@ -672,7 +678,7 @@ export default function Financial() {
                   A Receber (Operadoras)
                 </CardDescription>
                 <CardTitle className="text-3xl">
-                  {formatCurrency(totalPendingReceipts)}
+                  {formatCurrency(operatorPendingReceipts)}
                 </CardTitle>
               </CardHeader>
             </Card>

@@ -709,7 +709,7 @@ export function RegisterPaymentModal({
 
                 {paymentSplits.map((split, index) => (
                   <div key={split.id} className="grid grid-cols-12 gap-2 items-start p-3 rounded-md border bg-background">
-                    <div className="col-span-12 md:col-span-3">
+                    <div className="col-span-12 md:col-span-2">
                       <Select
                         value={split.payment_method}
                         onValueChange={(value) => {
@@ -775,7 +775,7 @@ export function RegisterPaymentModal({
                       />
                     </div>
 
-                    <div className="col-span-11 md:col-span-3">
+                    <div className="col-span-11 md:col-span-4">
                       <Input
                         type="date"
                         value={split.expected_receipt_date}
@@ -784,7 +784,7 @@ export function RegisterPaymentModal({
                           updated[index].expected_receipt_date = e.target.value;
                           setPaymentSplits(updated);
                         }}
-                        className="w-full"
+                        className="w-full text-sm"
                       />
                     </div>
 

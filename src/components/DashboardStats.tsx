@@ -20,6 +20,7 @@ interface Stats {
   monthlyExpenses: number;
   netProfit: number;
   pendingExpenses: number;
+  operatorReceivables?: number;
 }
 
 interface CashFlowData {
@@ -134,38 +135,62 @@ export function DashboardStats() {
       const monthStart = startOfMonth(now);
       const monthEnd = endOfMonth(now);
 
-      // Receita do Mês (pagamentos completados no mês atual)
-      const { data: monthlyPayments } = await supabase
-        .from('financial_transactions')
-        .select('final_amount')
+      // Receita do Mês (splits completados + transações únicas completadas)
+      const { data: completedSplits } = await supabase
+        .from('payment_splits')
+        .select('net_amount, payment_date')
         .eq('status', 'completed')
         .gte('payment_date', monthStart.toISOString())
         .lte('payment_date', monthEnd.toISOString());
 
-      const monthlyRevenue = monthlyPayments?.reduce((sum, payment) => 
-        sum + (Number(payment.final_amount) || 0), 0) || 0;
+      const { data: completedTransactions } = await supabase
+        .from('financial_transactions')
+        .select('final_amount, net_amount, id, payment_date')
+        .in('status', ['completed', 'partial'])
+        .gte('payment_date', monthStart.toISOString())
+        .lte('payment_date', monthEnd.toISOString());
 
-      // Contas a Receber (parcelas pendentes + transações pendentes)
+      const { data: allSplits } = await supabase
+        .from('payment_splits')
+        .select('transaction_id');
+
+      const transactionIdsWithSplits = new Set(allSplits?.map(s => s.transaction_id) || []);
+      const singlePayments = completedTransactions?.filter(t => !transactionIdsWithSplits.has(t.id)) || [];
+
+      const revenueFromSplits = completedSplits?.reduce((sum, s) => sum + Number(s.net_amount || 0), 0) || 0;
+      const revenueFromSinglePayments = singlePayments.reduce((sum, t) => {
+        const amount = t.net_amount !== undefined && t.net_amount !== null 
+          ? Number(t.net_amount) 
+          : Number(t.final_amount);
+        return sum + amount;
+      }, 0);
+
+      const monthlyRevenue = revenueFromSplits + revenueFromSinglePayments;
+
+      // Contas a Receber (parcelas pendentes + splits pendentes)
       const { data: pendingInstallments } = await supabase
         .from('installment_payments')
         .select('amount')
         .eq('status', 'pending');
 
-      const { data: pendingTransactions } = await supabase
-        .from('financial_transactions')
-        .select(`
-          final_amount,
-          installment_plans!left(id)
-        `)
+      const { data: pendingSplits } = await supabase
+        .from('payment_splits')
+        .select('net_amount, payment_method')
         .eq('status', 'pending');
 
-      const accountsReceivableTransactions = pendingTransactions
-        ?.filter((t: any) => !t.installment_plans || t.installment_plans.length === 0)
-        .reduce((sum, trans: any) => sum + (Number(trans.final_amount) || 0), 0) || 0;
+      const operatorSplits = pendingSplits?.filter(s => 
+        s.payment_method === 'credit_card' || s.payment_method === 'debit_card'
+      ) || [];
 
-      const accountsReceivable = 
-        (pendingInstallments?.reduce((sum, inst) => sum + (Number(inst.amount) || 0), 0) || 0) +
-        accountsReceivableTransactions;
+      const otherSplits = pendingSplits?.filter(s => 
+        s.payment_method !== 'credit_card' && s.payment_method !== 'debit_card'
+      ) || [];
+
+      const installmentsTotal = pendingInstallments?.reduce((sum, inst) => sum + Number(inst.amount), 0) || 0;
+      const otherSplitsTotal = otherSplits.reduce((sum, s) => sum + Number(s.net_amount || 0), 0);
+      const operatorTotal = operatorSplits.reduce((sum, s) => sum + Number(s.net_amount || 0), 0);
+
+      const accountsReceivable = installmentsTotal + otherSplitsTotal + operatorTotal;
 
       // Despesas do Mês (despesas pagas no mês atual)
       const { data: monthlyExpensesData } = await supabase
@@ -198,16 +223,32 @@ export function DashboardStats() {
         const monthEndDate = endOfMonth(targetMonth);
         const monthLabel = format(targetMonth, 'MMM/yy', { locale: ptBR });
 
-        // Receitas do mês
-        const { data: revenueData } = await supabase
-          .from('financial_transactions')
-          .select('final_amount')
+        // Receitas do mês (splits completados + transações únicas)
+        const { data: monthCompletedSplits } = await supabase
+          .from('payment_splits')
+          .select('net_amount, payment_date')
           .eq('status', 'completed')
           .gte('payment_date', monthStartDate.toISOString())
           .lte('payment_date', monthEndDate.toISOString());
 
-        const revenue = revenueData?.reduce((sum, payment) => 
-          sum + (Number(payment.final_amount) || 0), 0) || 0;
+        const { data: monthCompletedTransactions } = await supabase
+          .from('financial_transactions')
+          .select('final_amount, net_amount, id, payment_date')
+          .in('status', ['completed', 'partial'])
+          .gte('payment_date', monthStartDate.toISOString())
+          .lte('payment_date', monthEndDate.toISOString());
+
+        const monthSinglePayments = monthCompletedTransactions?.filter(t => !transactionIdsWithSplits.has(t.id)) || [];
+
+        const monthRevenueFromSplits = monthCompletedSplits?.reduce((sum, s) => sum + Number(s.net_amount || 0), 0) || 0;
+        const monthRevenueFromSinglePayments = monthSinglePayments.reduce((sum, t) => {
+          const amount = t.net_amount !== undefined && t.net_amount !== null 
+            ? Number(t.net_amount) 
+            : Number(t.final_amount);
+          return sum + amount;
+        }, 0);
+
+        const revenue = monthRevenueFromSplits + monthRevenueFromSinglePayments;
 
         // Despesas do mês
         const { data: expensesData } = await supabase
@@ -239,6 +280,7 @@ export function DashboardStats() {
         monthlyExpenses,
         netProfit,
         pendingExpenses,
+        operatorReceivables: operatorTotal,
       });
 
       setTopTreatments(topTreatmentsData);
