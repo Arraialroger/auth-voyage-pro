@@ -385,7 +385,7 @@ export default function PatientDetails() {
                   onChange={(e) => setMedicalNotes(e.target.value)}
                   placeholder="Adicione anotações médicas sobre o paciente..."
                   rows={8}
-                  className="resize-none"
+                  className="min-h-[200px] resize-y"
                 />
                 <Button onClick={handleSaveMedicalNotes} className="w-full">
                   <Save className="h-4 w-4 mr-2" />

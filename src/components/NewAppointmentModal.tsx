@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { CalendarIcon, Search, Clock, DollarSign } from 'lucide-react';
+import { createLocalDateTime } from '@/lib/dateUtils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -203,13 +204,8 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
     setIsSubmitting(true);
     try {
       // Combine date and time for start and end timestamps
-      const startDateTime = new Date(data.appointment_date);
-      const [startHour, startMinute] = data.start_time.split(':');
-      startDateTime.setHours(parseInt(startHour), parseInt(startMinute), 0, 0);
-
-      const endDateTime = new Date(data.appointment_date);
-      const [endHour, endMinute] = data.end_time.split(':');
-      endDateTime.setHours(parseInt(endHour), parseInt(endMinute), 0, 0);
+      const startDateTime = createLocalDateTime(data.appointment_date, data.start_time);
+      const endDateTime = createLocalDateTime(data.appointment_date, data.end_time);
 
       // Check for conflicting appointments
       const { data: conflictingAppointments, error: conflictError } = await supabase
@@ -262,97 +258,10 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
 
       if (appointmentError) throw appointmentError;
 
-      // If payment registration is requested, create the transaction
-      if (data.register_payment && data.payment_amount) {
-        try {
-          const amount = parseFloat(data.payment_amount);
-          const discountAmount = parseFloat(data.discount_amount || '0');
-          const finalAmount = amount - discountAmount;
-
-          const transactionData: any = {
-            patient_id: data.patient_id,
-            appointment_id: newAppointment.id,
-            amount,
-            discount_amount: discountAmount,
-            final_amount: finalAmount,
-            payment_method: data.payment_method || 'pix',
-            transaction_type: 'payment',
-            status: data.is_installment ? 'pending' : 'completed',
-          };
-
-          if (!data.is_installment) {
-            transactionData.payment_date = new Date().toISOString();
-          }
-
-          if (data.payment_notes) {
-            transactionData.notes = data.payment_notes;
-          }
-
-          const { data: transaction, error: transactionError } = await supabase
-            .from('financial_transactions')
-            .insert(transactionData)
-            .select()
-            .single();
-
-          if (transactionError) throw transactionError;
-
-          // Create installment plan if needed
-          if (data.is_installment && transaction) {
-            const totalInstallments = parseInt(data.installments || '1');
-            const installmentValue = finalAmount / totalInstallments;
-
-            const { data: plan, error: planError } = await supabase
-              .from('installment_plans')
-              .insert({
-                transaction_id: transaction.id,
-                total_installments: totalInstallments,
-                installment_value: installmentValue,
-                first_due_date: data.first_due_date,
-                status: 'active',
-              })
-              .select()
-              .single();
-
-            if (planError) throw planError;
-
-            // Create individual installments
-            const installments = Array.from({ length: totalInstallments }, (_, i) => {
-              const dueDate = new Date(data.first_due_date!);
-              dueDate.setMonth(dueDate.getMonth() + i);
-
-              return {
-                installment_plan_id: plan.id,
-                installment_number: i + 1,
-                amount: installmentValue,
-                due_date: dueDate.toISOString().split('T')[0],
-                status: 'pending' as const,
-              };
-            });
-
-            const { error: installmentsError } = await supabase
-              .from('installment_payments')
-              .insert(installments);
-
-            if (installmentsError) throw installmentsError;
-          }
-
-          toast({
-            title: 'Sucesso!',
-            description: data.is_installment 
-              ? `Agendamento criado e pagamento parcelado em ${data.installments}x registrado!`
-              : 'Agendamento criado e pagamento registrado com sucesso!',
-          });
-        } catch (paymentError) {
-          // Rollback: delete the appointment if payment fails
-          await supabase.from('appointments').delete().eq('id', newAppointment.id);
-          throw new Error('Erro ao processar pagamento. Agendamento cancelado.');
-        }
-      } else {
-        toast({
-          title: 'Agendamento criado',
-          description: 'O novo agendamento foi criado com sucesso.',
-        });
-      }
+      toast({
+        title: 'Agendamento criado',
+        description: 'O novo agendamento foi criado com sucesso.',
+      });
 
       // Invalidate and refetch queries
       queryClient.invalidateQueries({ queryKey: ['appointments'] });

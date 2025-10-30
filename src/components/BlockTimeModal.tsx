@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { createLocalDateTime, parseLocalDateTime } from '@/lib/dateUtils';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -48,8 +49,8 @@ export function BlockTimeModal({ open, onOpenChange, professionals, onSuccess, i
           .single();
         
         if (data && !error) {
-          const start = new Date(data.appointment_start_time);
-          const end = new Date(data.appointment_end_time);
+          const start = parseLocalDateTime(data.appointment_start_time);
+          const end = parseLocalDateTime(data.appointment_end_time);
           setStartTime(format(start, 'HH:mm'));
           setEndTime(format(end, 'HH:mm'));
           setReason(data.notes || '');
@@ -94,13 +95,8 @@ export function BlockTimeModal({ open, onOpenChange, professionals, onSuccess, i
     setIsSubmitting(true);
 
     try {
-      const startDateTime = new Date(selectedDate);
-      const [startHour, startMinute] = startTime.split(':').map(Number);
-      startDateTime.setHours(startHour, startMinute, 0, 0);
-
-      const endDateTime = new Date(selectedDate);
-      const [endHour, endMinute] = endTime.split(':').map(Number);
-      endDateTime.setHours(endHour, endMinute, 0, 0);
+      const startDateTime = createLocalDateTime(selectedDate, startTime);
+      const endDateTime = createLocalDateTime(selectedDate, endTime);
 
       if (endDateTime <= startDateTime) {
         toast({

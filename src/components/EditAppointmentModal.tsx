@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { CalendarIcon, Search } from 'lucide-react';
+import { createLocalDateTime, parseLocalDateTime } from '@/lib/dateUtils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -120,8 +121,8 @@ export function EditAppointmentModal({ appointmentId, open, onOpenChange, onSucc
   // Load appointment data into form
   useEffect(() => {
     if (appointmentData) {
-      const startDate = new Date(appointmentData.appointment_start_time);
-      const endDate = new Date(appointmentData.appointment_end_time);
+      const startDate = parseLocalDateTime(appointmentData.appointment_start_time);
+      const endDate = parseLocalDateTime(appointmentData.appointment_end_time);
       
       form.reset({
         patient_id: appointmentData.patient_id || '',
@@ -231,13 +232,8 @@ export function EditAppointmentModal({ appointmentId, open, onOpenChange, onSucc
   const onSubmit = async (data: AppointmentFormData) => {
     try {
       // Combine date and time for start and end timestamps
-      const startDateTime = new Date(data.appointment_date);
-      const [startHour, startMinute] = data.start_time.split(':');
-      startDateTime.setHours(parseInt(startHour), parseInt(startMinute), 0, 0);
-
-      const endDateTime = new Date(data.appointment_date);
-      const [endHour, endMinute] = data.end_time.split(':');
-      endDateTime.setHours(parseInt(endHour), parseInt(endMinute), 0, 0);
+      const startDateTime = createLocalDateTime(data.appointment_date, data.start_time);
+      const endDateTime = createLocalDateTime(data.appointment_date, data.end_time);
 
       // Check for conflicting appointments (excluding current one)
       const { data: conflictingAppointments, error: conflictError } = await supabase
