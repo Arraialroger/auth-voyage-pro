@@ -56,14 +56,6 @@ export default function Administration() {
       color: 'text-orange-600',
       bgColor: 'bg-orange-50'
     },
-    {
-      title: 'Finanças',
-      description: 'Controle financeiro, receitas e despesas',
-      icon: DollarSign,
-      route: '/admin/financial',
-      color: 'text-emerald-600',
-      bgColor: 'bg-emerald-50'
-    }
   ];
 
   return (

@@ -131,142 +131,6 @@ export function DashboardStats() {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
-      // **NOVAS MÉTRICAS FINANCEIRAS**
-      const monthStart = startOfMonth(now);
-      const monthEnd = endOfMonth(now);
-
-      // Receita do Mês (splits completados + transações únicas completadas)
-      const { data: completedSplits } = await supabase
-        .from('payment_splits')
-        .select('net_amount, payment_date')
-        .eq('status', 'completed')
-        .gte('payment_date', monthStart.toISOString())
-        .lte('payment_date', monthEnd.toISOString());
-
-      const { data: completedTransactions } = await supabase
-        .from('financial_transactions')
-        .select('final_amount, net_amount, id, payment_date')
-        .in('status', ['completed', 'partial'])
-        .gte('payment_date', monthStart.toISOString())
-        .lte('payment_date', monthEnd.toISOString());
-
-      const { data: allSplits } = await supabase
-        .from('payment_splits')
-        .select('transaction_id');
-
-      const transactionIdsWithSplits = new Set(allSplits?.map(s => s.transaction_id) || []);
-      const singlePayments = completedTransactions?.filter(t => !transactionIdsWithSplits.has(t.id)) || [];
-
-      const revenueFromSplits = completedSplits?.reduce((sum, s) => sum + Number(s.net_amount || 0), 0) || 0;
-      const revenueFromSinglePayments = singlePayments.reduce((sum, t) => {
-        const amount = t.net_amount !== undefined && t.net_amount !== null 
-          ? Number(t.net_amount) 
-          : Number(t.final_amount);
-        return sum + amount;
-      }, 0);
-
-      const monthlyRevenue = revenueFromSplits + revenueFromSinglePayments;
-
-      // Contas a Receber (parcelas pendentes + splits pendentes)
-      const { data: pendingInstallments } = await supabase
-        .from('installment_payments')
-        .select('amount')
-        .eq('status', 'pending');
-
-      const { data: pendingSplits } = await supabase
-        .from('payment_splits')
-        .select('net_amount, payment_method')
-        .eq('status', 'pending');
-
-      const operatorSplits = pendingSplits?.filter(s => 
-        s.payment_method === 'credit_card' || s.payment_method === 'debit_card'
-      ) || [];
-
-      const otherSplits = pendingSplits?.filter(s => 
-        s.payment_method !== 'credit_card' && s.payment_method !== 'debit_card'
-      ) || [];
-
-      const installmentsTotal = pendingInstallments?.reduce((sum, inst) => sum + Number(inst.amount), 0) || 0;
-      const otherSplitsTotal = otherSplits.reduce((sum, s) => sum + Number(s.net_amount || 0), 0);
-      const operatorTotal = operatorSplits.reduce((sum, s) => sum + Number(s.net_amount || 0), 0);
-
-      const accountsReceivable = installmentsTotal + otherSplitsTotal + operatorTotal;
-
-      // Despesas do Mês (despesas pagas no mês atual)
-      const { data: monthlyExpensesData } = await supabase
-        .from('expenses')
-        .select('amount')
-        .eq('status', 'paid')
-        .gte('expense_date', format(monthStart, 'yyyy-MM-dd'))
-        .lte('expense_date', format(monthEnd, 'yyyy-MM-dd'));
-
-      const monthlyExpenses = monthlyExpensesData?.reduce((sum, expense) => 
-        sum + (Number(expense.amount) || 0), 0) || 0;
-
-      // Despesas Pendentes (todas despesas com status 'pending')
-      const { data: pendingExpensesData } = await supabase
-        .from('expenses')
-        .select('amount')
-        .eq('status', 'pending');
-
-      const pendingExpenses = pendingExpensesData?.reduce((sum, expense) => 
-        sum + (Number(expense.amount) || 0), 0) || 0;
-
-      // Lucro Líquido (Receitas - Despesas)
-      const netProfit = monthlyRevenue - monthlyExpenses;
-
-      // **FLUXO DE CAIXA MENSAL (últimos 6 meses)**
-      const cashFlow: CashFlowData[] = [];
-      for (let i = 5; i >= 0; i--) {
-        const targetMonth = subMonths(now, i);
-        const monthStartDate = startOfMonth(targetMonth);
-        const monthEndDate = endOfMonth(targetMonth);
-        const monthLabel = format(targetMonth, 'MMM/yy', { locale: ptBR });
-
-        // Receitas do mês (splits completados + transações únicas)
-        const { data: monthCompletedSplits } = await supabase
-          .from('payment_splits')
-          .select('net_amount, payment_date')
-          .eq('status', 'completed')
-          .gte('payment_date', monthStartDate.toISOString())
-          .lte('payment_date', monthEndDate.toISOString());
-
-        const { data: monthCompletedTransactions } = await supabase
-          .from('financial_transactions')
-          .select('final_amount, net_amount, id, payment_date')
-          .in('status', ['completed', 'partial'])
-          .gte('payment_date', monthStartDate.toISOString())
-          .lte('payment_date', monthEndDate.toISOString());
-
-        const monthSinglePayments = monthCompletedTransactions?.filter(t => !transactionIdsWithSplits.has(t.id)) || [];
-
-        const monthRevenueFromSplits = monthCompletedSplits?.reduce((sum, s) => sum + Number(s.net_amount || 0), 0) || 0;
-        const monthRevenueFromSinglePayments = monthSinglePayments.reduce((sum, t) => {
-          const amount = t.net_amount !== undefined && t.net_amount !== null 
-            ? Number(t.net_amount) 
-            : Number(t.final_amount);
-          return sum + amount;
-        }, 0);
-
-        const revenue = monthRevenueFromSplits + monthRevenueFromSinglePayments;
-
-        // Despesas do mês
-        const { data: expensesData } = await supabase
-          .from('expenses')
-          .select('amount')
-          .eq('status', 'paid')
-          .gte('expense_date', format(monthStartDate, 'yyyy-MM-dd'))
-          .lte('expense_date', format(monthEndDate, 'yyyy-MM-dd'));
-
-        const expenses = expensesData?.reduce((sum, expense) => 
-          sum + (Number(expense.amount) || 0), 0) || 0;
-
-        cashFlow.push({
-          month: monthLabel,
-          receitas: revenue,
-          despesas: expenses,
-        });
-      }
 
       setStats({
         totalPatients: totalPatients || 0,
@@ -275,16 +139,16 @@ export function DashboardStats() {
         appointmentsNextWeek: appointmentsNextWeek || 0,
         waitingList: waitingList || 0,
         completedRate,
-        monthlyRevenue,
-        accountsReceivable,
-        monthlyExpenses,
-        netProfit,
-        pendingExpenses,
-        operatorReceivables: operatorTotal,
+        monthlyRevenue: 0,
+        accountsReceivable: 0,
+        monthlyExpenses: 0,
+        netProfit: 0,
+        pendingExpenses: 0,
+        operatorReceivables: 0,
       });
 
       setTopTreatments(topTreatmentsData);
-      setCashFlowData(cashFlow);
+      setCashFlowData([]);
     } catch (error) {
       logger.error('Erro ao buscar estatísticas:', error);
     } finally {

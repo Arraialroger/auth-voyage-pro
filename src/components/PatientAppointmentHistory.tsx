@@ -23,11 +23,6 @@ interface Appointment {
   } | null;
 }
 
-interface PaymentStatus {
-  appointment_id: string;
-  status: string;
-  payment_date: string | null;
-}
 
 interface PatientAppointmentHistoryProps {
   patientId: string;
@@ -51,7 +46,6 @@ const statusLabels: Record<string, string> = {
 
 export function PatientAppointmentHistory({ patientId }: PatientAppointmentHistoryProps) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [paymentStatuses, setPaymentStatuses] = useState<PaymentStatus[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -82,19 +76,6 @@ export function PatientAppointmentHistory({ patientId }: PatientAppointmentHisto
 
       if (error) throw error;
       setAppointments(data || []);
-
-      // Fetch payment statuses for all appointments
-      if (data && data.length > 0) {
-        const appointmentIds = data.map(apt => apt.id);
-        const { data: payments, error: paymentError } = await supabase
-          .from('financial_transactions')
-          .select('appointment_id, status, payment_date')
-          .in('appointment_id', appointmentIds);
-
-        if (!paymentError && payments) {
-          setPaymentStatuses(payments);
-        }
-      }
     } catch (error) {
       logger.error('Erro ao buscar histórico de consultas:', error);
     } finally{
@@ -102,16 +83,6 @@ export function PatientAppointmentHistory({ patientId }: PatientAppointmentHisto
     }
   };
 
-  // Get payment status badge for an appointment
-  const getPaymentBadge = (appointmentId: string) => {
-    const payment = paymentStatuses.find(p => p.appointment_id === appointmentId);
-    if (!payment) return null;
-    
-    if (payment.status === 'completed') {
-      return <Badge variant="default" className="ml-2 bg-success text-success-foreground">Pago</Badge>;
-    }
-    return <Badge variant="secondary" className="ml-2">Pendente</Badge>;
-  };
 
   if (loading) {
     return (
@@ -158,12 +129,9 @@ export function PatientAppointmentHistory({ patientId }: PatientAppointmentHisto
                 {format(new Date(appointment.appointment_start_time), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
               </span>
             </div>
-            <div className="flex gap-2">
-              <Badge className={statusColors[appointment.status] || 'bg-muted'}>
-                {statusLabels[appointment.status] || appointment.status}
-              </Badge>
-              {getPaymentBadge(appointment.id)}
-            </div>
+            <Badge className={statusColors[appointment.status] || 'bg-muted'}>
+              {statusLabels[appointment.status] || appointment.status}
+            </Badge>
           </div>
 
           <div className="space-y-2 text-sm">

@@ -356,8 +356,6 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
 
       // Invalidate and refetch queries
       queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      queryClient.invalidateQueries({ queryKey: ['financial-transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['financial-stats'] });
       
       form.reset();
       setOpen(false);

@@ -14,7 +14,7 @@ import { NewAppointmentModal } from '@/components/NewAppointmentModal';
 import { EditAppointmentModal } from '@/components/EditAppointmentModal';
 import { AddToWaitingListModal } from '@/components/AddToWaitingListModal';
 import { AppointmentReminderButton } from '@/components/AppointmentReminderButton';
-import { RegisterPaymentModal } from '@/components/RegisterPaymentModal';
+
 import { BlockTimeModal } from '@/components/BlockTimeModal';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -22,7 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { DollarSign } from 'lucide-react';
+
 import { BLOCK_PATIENT_ID, BLOCK_TREATMENT_ID } from '@/lib/constants';
 import { logger } from '@/lib/logger';
 import { cn } from '@/lib/utils';
@@ -90,14 +90,6 @@ export default function Agenda() {
     appointment_date?: Date;
     start_time?: string;
   }>({});
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [paymentModalData, setPaymentModalData] = useState<{
-    patientId?: string;
-    appointmentId?: string;
-  }>({});
-  const [completeAfterPaymentDialog, setCompleteAfterPaymentDialog] = useState(false);
-  const [appointmentToComplete, setAppointmentToComplete] = useState<string>('');
-  const previousPaymentModalOpen = useRef(paymentModalOpen);
   const [blockTimeModalOpen, setBlockTimeModalOpen] = useState(false);
   const [blockTimeInitialData, setBlockTimeInitialData] = useState<{
     professional_id?: string;
@@ -249,55 +241,6 @@ export default function Agenda() {
     }
   });
 
-  // Fetch payment status for appointments - APENAS PARA RECEPCIONISTAS
-  const {
-    data: paymentStatuses = []
-  } = useQuery({
-    queryKey: ['appointment-payment-statuses', weekStart.toISOString(), weekEnd.toISOString()],
-    enabled: userProfile.type === 'receptionist', // Apenas recepcionistas veem dados financeiros
-    queryFn: async () => {
-      try {
-        const { data, error } = await supabase
-          .from('financial_transactions')
-          .select('id, appointment_id, status, payment_date')
-          .not('appointment_id', 'is', null)
-          .gte('created_at', weekStart.toISOString())
-          .lte('created_at', weekEnd.toISOString());
-        
-        if (error) throw error;
-        return data || [];
-      } catch (error) {
-        logger.error('Erro ao buscar status de pagamento:', error);
-        return [];
-      }
-    }
-  });
-
-  // Fetch installment plans based on transaction IDs - APENAS PARA RECEPCIONISTAS
-  const transactionIds = paymentStatuses.map(p => p.id).filter(Boolean);
-  
-  const {
-    data: installmentPlans = []
-  } = useQuery({
-    queryKey: ['installment-plans-by-tx', transactionIds],
-    enabled: transactionIds.length > 0 && userProfile.type === 'receptionist', // Apenas recepcionistas
-    queryFn: async () => {
-      if (transactionIds.length === 0) return [];
-      
-      try {
-        const { data, error } = await supabase
-          .from('installment_plans')
-          .select('transaction_id, status')
-          .in('transaction_id', transactionIds);
-        
-        if (error) throw error;
-        return data || [];
-      } catch (error) {
-        logger.error('Erro ao buscar planos de parcelamento:', error);
-        return [];
-      }
-    }
-  });
   const {
     data: appointments = [],
     isLoading
@@ -473,64 +416,6 @@ export default function Agenda() {
     }
   };
 
-  // Função para obter status de pagamento de um agendamento
-  const getPaymentStatus = (appointmentId: string): 'paid' | 'pending' | 'overdue' | null => {
-    const payments = paymentStatuses.filter(p => p.appointment_id === appointmentId);
-    if (payments.length === 0) return null;
-    
-    // Se alguma transação está completed, mostrar como pago
-    if (payments.some(p => p.status === 'completed')) return 'paid';
-    
-    // Se existe um plano de parcelamento ativo vinculado a qualquer transação, considerar como pago
-    const hasActiveInstallmentPlan = payments.some(payment =>
-      installmentPlans.some(plan => plan.transaction_id === payment.id && plan.status === 'active')
-    );
-    
-    if (hasActiveInstallmentPlan) return 'paid';
-    
-    return 'pending';
-  };
-
-  // Função para obter badge de status de pagamento
-  const getPaymentBadge = (appointmentId: string) => {
-    const status = getPaymentStatus(appointmentId);
-    if (!status) return null;
-    
-    if (status === 'paid') {
-      return <Badge variant="success" className="ml-2">Pago</Badge>;
-    }
-    return <Badge variant="warning" className="ml-2">Pendente</Badge>;
-  };
-
-  // Função para abrir modal de pagamento com dados pré-preenchidos
-  const handleRegisterPayment = (appointmentId: string, patientId: string) => {
-    setPaymentModalData({
-      appointmentId,
-      patientId,
-    });
-    setPaymentModalOpen(true);
-  };
-
-  // Watch for payment modal close and ask about completing appointment
-  useEffect(() => {
-    // If modal was open and now closed, and there was an appointment ID
-    if (previousPaymentModalOpen.current && !paymentModalOpen && paymentModalData.appointmentId) {
-      setAppointmentToComplete(paymentModalData.appointmentId);
-      setCompleteAfterPaymentDialog(true);
-      queryClient.invalidateQueries({ queryKey: ['appointment-payment-statuses'] });
-      setPaymentModalData({});
-    }
-    previousPaymentModalOpen.current = paymentModalOpen;
-  }, [paymentModalOpen, paymentModalData.appointmentId, queryClient]);
-
-  // Função para marcar como concluído após pagamento
-  const handleCompleteAfterPayment = async () => {
-    if (appointmentToComplete) {
-      await updateAppointmentStatus(appointmentToComplete, 'Completed');
-      setCompleteAfterPaymentDialog(false);
-      setAppointmentToComplete('');
-    }
-  };
 
   // Função para calcular horários vagos baseado nos horários cadastrados
   const calculateAvailableSlots = (appointments: Appointment[], date: Date, professionalId: string, professionalName: string): AvailableSlot[] => {
@@ -1073,7 +958,6 @@ export default function Agenda() {
                                                     <Badge variant={getStatusBadgeVariant(appointment.status)} className="text-[10px] px-1.5 py-0">
                                                       {getStatusLabel(appointment.status)}
                                                     </Badge>
-                                                    {getPaymentBadge(appointment.id)}
                                                   </div>
                                                  <div className="text-sm">
                                                    {appointment.patient?.full_name || 'Paciente não identificado'}
@@ -1105,12 +989,6 @@ export default function Agenda() {
                                                       <Eye className="mr-2 h-4 w-4" />
                                                       Ver Paciente
                                                     </DropdownMenuItem>
-                                                    {appointment.patient_id && (
-                                                      <DropdownMenuItem onClick={() => handleRegisterPayment(appointment.id, appointment.patient_id!)}>
-                                                        <DollarSign className="mr-2 h-4 w-4" />
-                                                        Registrar Pagamento
-                                                      </DropdownMenuItem>
-                                                    )}
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuSub>
                                                       <DropdownMenuSubTrigger>
@@ -1291,7 +1169,6 @@ export default function Agenda() {
                                                   <Badge variant={getStatusBadgeVariant(appointment.status)} className="text-[9px] px-1 py-0">
                                                     {getStatusLabel(appointment.status)}
                                                   </Badge>
-                                                  {getPaymentBadge(appointment.id)}
                                                 </div>
                                                <div className="truncate">
                                                  {appointment.patient?.full_name || 'Paciente não identificado'}
@@ -1323,12 +1200,6 @@ export default function Agenda() {
                                                      <Eye className="mr-2 h-4 w-4" />
                                                      Ver Paciente
                                                    </DropdownMenuItem>
-                                                   {appointment.patient_id && (
-                                                     <DropdownMenuItem onClick={() => handleRegisterPayment(appointment.id, appointment.patient_id!)}>
-                                                       <DollarSign className="mr-2 h-4 w-4" />
-                                                       Registrar Pagamento
-                                                     </DropdownMenuItem>
-                                                   )}
                                                    <DropdownMenuSeparator />
                                                   <DropdownMenuItem asChild>
                                                     <div className="w-full">
@@ -1454,36 +1325,6 @@ export default function Agenda() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Payment Registration Modal */}
-      <RegisterPaymentModal 
-        open={paymentModalOpen} 
-        onOpenChange={setPaymentModalOpen}
-        prefilledPatientId={paymentModalData.patientId}
-        prefilledAppointmentId={paymentModalData.appointmentId}
-      />
-
-      {/* Complete After Payment Confirmation Dialog */}
-      <AlertDialog open={completeAfterPaymentDialog} onOpenChange={setCompleteAfterPaymentDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Pagamento Registrado!</AlertDialogTitle>
-            <AlertDialogDescription>
-              O pagamento foi registrado com sucesso. Deseja marcar a consulta como concluída?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              setCompleteAfterPaymentDialog(false);
-              setAppointmentToComplete('');
-            }}>
-              Não, agora não
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleCompleteAfterPayment} className="bg-primary text-primary-foreground hover:bg-primary/90">
-              Sim, marcar como concluída
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Block Time Modal */}
       <BlockTimeModal 

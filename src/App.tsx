@@ -19,7 +19,7 @@ const ManagePatients = lazy(() => import("./pages/ManagePatients"));
 const ManageProfessionals = lazy(() => import("./pages/ManageProfessionals"));
 const ManageTreatments = lazy(() => import("./pages/ManageTreatments"));
 const ManageWaitingList = lazy(() => import("./pages/ManageWaitingList"));
-const Financial = lazy(() => import("./pages/Financial"));
+
 const PatientDetails = lazy(() => import("./pages/PatientDetails"));
 
 // Componente de loading para Suspense
@@ -93,13 +93,6 @@ const App = () => (
               <ProtectedRoute>
                 <RoleProtectedRoute allowedRoles={['receptionist']}>
                   <ManageWaitingList />
-                </RoleProtectedRoute>
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/financial" element={
-              <ProtectedRoute>
-                <RoleProtectedRoute allowedRoles={['receptionist']}>
-                  <Financial />
                 </RoleProtectedRoute>
               </ProtectedRoute>
             } />
