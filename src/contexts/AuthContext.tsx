@@ -123,38 +123,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    setIsSigningOut(true);
-    
-    const { error } = await supabase.auth.signOut();
-    
-    // Limpar estado local IMEDIATAMENTE, independente de erro
-    setSession(null);
-    setUser(null);
-    
-    // Pequeno delay para garantir propagação do estado
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    setIsSigningOut(false);
-    
-    // Tratar erro de sessão inexistente como sucesso (usuário já está deslogado)
-    if (error) {
-      const isSessionError = error.message?.toLowerCase().includes('session') || 
-                            error.message?.toLowerCase().includes('auth session missing');
+    try {
+      setIsSigningOut(true);
       
-      if (!isSessionError) {
-        // Erro real, não relacionado a sessão
-        toast({
-          title: "Erro ao fazer logout",
-          description: error.message,
-          variant: "destructive",
-        });
-        window.location.href = '/login';
-        return;
-      }
+      // Limpar estado local PRIMEIRO
+      setSession(null);
+      setUser(null);
+      
+      // Tentar fazer logout apenas localmente para evitar erros de sessão
+      await supabase.auth.signOut({ scope: 'local' });
+      
+      // Limpar localStorage manualmente como fallback
+      localStorage.removeItem('sb-bacwlstdjceottxccrap-auth-token');
+      
+      // Pequeno delay para garantir propagação do estado
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Sempre redirecionar para login
+      window.location.href = '/login';
+    } catch (error) {
+      // Em caso de qualquer erro, ainda assim limpar e redirecionar
+      setSession(null);
+      setUser(null);
+      localStorage.clear();
+      window.location.href = '/login';
+    } finally {
+      setIsSigningOut(false);
     }
-    
-    // Logout bem-sucedido (ou sessão já estava inválida)
-    window.location.href = '/login';
   };
 
   const value = {
