@@ -2,7 +2,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, LogOut, User, Clock, ChevronLeft, ChevronRight, Plus, Settings, Menu, MoreVertical, Edit, Trash2, Eye, Filter, X, Ban } from 'lucide-react';
+import { Calendar, LogOut, User, Clock, ChevronLeft, ChevronRight, Plus, Settings, Menu, MoreVertical, Edit, Trash2, Eye, Filter, X, Ban, Check, ChevronsUpDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -74,6 +76,7 @@ export default function Agenda() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterTreatment, setFilterTreatment] = useState<string>('all');
   const [filterPatient, setFilterPatient] = useState<string>('all');
+  const [patientComboboxOpen, setPatientComboboxOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -694,17 +697,64 @@ export default function Agenda() {
                     {/* Patient Filter */}
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-muted-foreground">Paciente</label>
-                      <Select value={filterPatient} onValueChange={setFilterPatient}>
-                        <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Todos os pacientes" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todos</SelectItem>
-                          {allPatients.map(patient => <SelectItem key={patient.id} value={patient.full_name}>
-                              {patient.full_name}
-                            </SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                      <Popover open={patientComboboxOpen} onOpenChange={setPatientComboboxOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={patientComboboxOpen}
+                            className="w-full justify-between bg-background"
+                          >
+                            {filterPatient === 'all' 
+                              ? 'Todos os pacientes' 
+                              : allPatients.find(patient => patient.full_name === filterPatient)?.full_name || 'Todos os pacientes'}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Buscar paciente..." />
+                            <CommandList>
+                              <CommandEmpty>Nenhum paciente encontrado.</CommandEmpty>
+                              <CommandGroup>
+                                <CommandItem
+                                  value="all"
+                                  onSelect={() => {
+                                    setFilterPatient('all');
+                                    setPatientComboboxOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      filterPatient === 'all' ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  Todos os pacientes
+                                </CommandItem>
+                                {allPatients.map(patient => (
+                                  <CommandItem
+                                    key={patient.id}
+                                    value={patient.full_name}
+                                    onSelect={(currentValue) => {
+                                      setFilterPatient(currentValue);
+                                      setPatientComboboxOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        filterPatient === patient.full_name ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {patient.full_name}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>}
               </div>
