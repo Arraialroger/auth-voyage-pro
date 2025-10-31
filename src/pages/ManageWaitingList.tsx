@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Clock, Settings, Calendar, Trash2, MessageCircle } from 'lucide-react';
+import { Clock, Settings, Calendar, Trash2, MessageCircle, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -30,6 +30,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { NewAppointmentModal } from '@/components/NewAppointmentModal';
+import { AddToWaitingListModal } from '@/components/AddToWaitingListModal';
 
 interface WaitingListEntry {
   id: string;
@@ -159,6 +160,15 @@ export default function ManageWaitingList() {
           </div>
           
           <div className="flex items-center space-x-1 sm:space-x-4">
+            <AddToWaitingListModal 
+              trigger={
+                <Button variant="default" className="gap-2 text-xs sm:text-sm px-2 sm:px-4">
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline">Adicionar à Lista</span>
+                  <span className="sm:hidden">Adicionar</span>
+                </Button>
+              } 
+            />
             <Button variant="outline" onClick={() => navigate('/admin')} className="border-border/50 text-xs sm:text-sm px-2 sm:px-4">
               <span className="sm:hidden">Voltar</span>
               <span className="hidden sm:inline">Voltar à Administração</span>

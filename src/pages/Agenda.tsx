@@ -819,10 +819,14 @@ export default function Agenda() {
                 
                 {/* Mobile action buttons */}
                 <div className="flex flex-col gap-2 w-full">
-                  <AddToWaitingListModal trigger={<Button variant="outline" className="w-full gap-2">
-                        <Clock className="h-4 w-4" />
-                        Lista de Espera
-                      </Button>} />
+                  <Button 
+                    variant="outline" 
+                    className="w-full gap-2"
+                    onClick={() => navigate('/admin/waiting-list')}
+                  >
+                    <Clock className="h-4 w-4" />
+                    Lista de Espera
+                  </Button>
                   {userProfile.type === 'receptionist' && (
                     <Button 
                       variant="outline" 
@@ -857,10 +861,14 @@ export default function Agenda() {
                   
                   
                   <div className="flex gap-2">
-                    <AddToWaitingListModal trigger={<Button variant="outline" className="gap-2">
-                          <Clock className="h-4 w-4" />
-                          Lista de Espera
-                        </Button>} />
+                    <Button 
+                      variant="outline" 
+                      className="gap-2"
+                      onClick={() => navigate('/admin/waiting-list')}
+                    >
+                      <Clock className="h-4 w-4" />
+                      Lista de Espera
+                    </Button>
                     {userProfile.type === 'receptionist' && (
                       <Button 
                         variant="outline" 
