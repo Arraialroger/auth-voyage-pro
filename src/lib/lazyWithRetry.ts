@@ -4,22 +4,20 @@ export function lazyWithRetry<T extends ComponentType<any>>(
   componentImport: () => Promise<{ default: T }>
 ) {
   return lazy(async () => {
-    const pageHasAlreadyBeenForceRefreshed = JSON.parse(
-      window.sessionStorage.getItem('page-has-been-force-refreshed') || 'false'
-    );
+    const retryCount = Number(sessionStorage.getItem('lazy-retry-count') || '0');
+    const MAX_RETRIES = 2;
 
     try {
       const component = await componentImport();
-      window.sessionStorage.setItem('page-has-been-force-refreshed', 'false');
+      sessionStorage.setItem('lazy-retry-count', '0');
       return component;
     } catch (error) {
-      if (!pageHasAlreadyBeenForceRefreshed) {
-        // Tentar recarregar a página uma vez
-        window.sessionStorage.setItem('page-has-been-force-refreshed', 'true');
-        return window.location.reload() as never;
+      if (retryCount < MAX_RETRIES) {
+        sessionStorage.setItem('lazy-retry-count', String(retryCount + 1));
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return componentImport();
       }
       
-      // Se já tentou recarregar, jogar o erro
       throw error;
     }
   });

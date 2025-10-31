@@ -1,0 +1,37 @@
+/* PWA Mobile Fixes */
+@media (max-width: 768px) {
+  /* Garantir que portals tenham z-index alto */
+  [data-radix-portal] {
+    z-index: 9999 !important;
+  }
+  
+  /* Melhorar touch targets */
+  button, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Prevenir scroll durante interação com modais */
+  body.modal-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+  
+  /* Garantir que selects sejam clicáveis */
+  [role="combobox"], [role="listbox"] {
+    pointer-events: auto !important;
+  }
+
+  /* Inputs não devem causar zoom em iOS */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Fix para iOS PWA */
+@supports (-webkit-touch-callout: none) {
+  body {
+    min-height: -webkit-fill-available;
+  }
+}

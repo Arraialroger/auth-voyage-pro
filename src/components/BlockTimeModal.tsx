@@ -38,6 +38,17 @@ export function BlockTimeModal({ open, onOpenChange, professionals, onSuccess, i
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditing = !!initialData?.editingBlockId;
 
+  // Log para debug mobile
+  useEffect(() => {
+    if (open) {
+      logger.log('BlockTimeModal aberto', {
+        isMobile: window.innerWidth < 768,
+        viewport: { width: window.innerWidth, height: window.innerHeight },
+        userAgent: navigator.userAgent
+      });
+    }
+  }, [open]);
+
   // Load block data when editing
   useEffect(() => {
     if (initialData?.editingBlockId && open) {
