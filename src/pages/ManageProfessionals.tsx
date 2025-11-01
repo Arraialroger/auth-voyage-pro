@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowLeft, Plus, Edit, Trash2, Search, UserCheck } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, Search, UserCheck, Phone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -31,14 +31,26 @@ const professionalCreateSchema = z.object({
   full_name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres.'),
   specialization: z.enum(['Cirurgião-Dentista', 'Ortodontista']),
   email: z.string().min(1, 'Email é obrigatório.'),
-  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres.')
+  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres.'),
+  contact_phone: z.string()
+    .min(10, 'Telefone deve ter pelo menos 10 dígitos.')
+    .max(15, 'Telefone deve ter no máximo 15 dígitos.')
+    .regex(/^[\d\s\(\)\-\+]+$/, 'Telefone contém caracteres inválidos.')
+    .optional()
+    .or(z.literal(''))
 });
 type ProfessionalCreateData = z.infer<typeof professionalCreateSchema>;
 
 // Schema de validação para editar profissional (sem email e password)
 const professionalEditSchema = z.object({
   full_name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres.'),
-  specialization: z.enum(['Cirurgião-Dentista', 'Ortodontista'])
+  specialization: z.enum(['Cirurgião-Dentista', 'Ortodontista']),
+  contact_phone: z.string()
+    .min(10, 'Telefone deve ter pelo menos 10 dígitos.')
+    .max(15, 'Telefone deve ter no máximo 15 dígitos.')
+    .regex(/^[\d\s\(\)\-\+]+$/, 'Telefone contém caracteres inválidos.')
+    .optional()
+    .or(z.literal(''))
 });
 type ProfessionalEditData = z.infer<typeof professionalEditSchema>;
 export default function ManageProfessionals() {
@@ -69,7 +81,8 @@ export default function ManageProfessionals() {
       full_name: '',
       specialization: 'Cirurgião-Dentista',
       email: '',
-      password: ''
+      password: '',
+      contact_phone: ''
     }
   });
 
@@ -78,7 +91,8 @@ export default function ManageProfessionals() {
     resolver: zodResolver(professionalEditSchema),
     defaultValues: {
       full_name: '',
-      specialization: 'Cirurgião-Dentista'
+      specialization: 'Cirurgião-Dentista',
+      contact_phone: ''
     }
   });
   const fetchProfessionals = async () => {
@@ -113,6 +127,7 @@ export default function ManageProfessionals() {
           specialization: data.specialization,
           email: data.email,
           password: data.password,
+          contact_phone: data.contact_phone || null,
         }
       });
 
@@ -159,7 +174,8 @@ export default function ManageProfessionals() {
         error
       } = await supabase.from('professionals').update({
         full_name: data.full_name,
-        specialization: data.specialization
+        specialization: data.specialization,
+        contact_phone: data.contact_phone || null
       }).eq('id', selectedProfessional.id);
       
       if (error) {
@@ -252,7 +268,8 @@ export default function ManageProfessionals() {
     setSelectedProfessional(professional);
     editForm.reset({
       full_name: professional.full_name,
-      specialization: professional.specialization
+      specialization: professional.specialization,
+      contact_phone: professional.contact_phone || ''
     });
     setIsEditDialogOpen(true);
   };
@@ -334,6 +351,9 @@ export default function ManageProfessionals() {
                           <FormField control={createForm.control} name="password" render={({
                           field
                         }) => <FormItem><FormLabel>Senha</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>} />
+                          <FormField control={createForm.control} name="contact_phone" render={({
+                          field
+                        }) => <FormItem><FormLabel>Telefone (Opcional)</FormLabel><FormControl><Input type="tel" placeholder="(11) 98765-4321" {...field} /></FormControl><FormMessage /></FormItem>} />
                         </TabsContent>
                         
                         <TabsContent value="horarios" className="mt-4">
@@ -376,6 +396,12 @@ export default function ManageProfessionals() {
                             <Badge className={getSpecializationBadgeColor(p.specialization)}>
                               {p.specialization}
                             </Badge>
+                            {p.contact_phone && (
+                              <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
+                                <Phone className="h-4 w-4" />
+                                {p.contact_phone}
+                              </p>
+                            )}
                           </div>
                           <div className="flex space-x-2">
                             <Button variant="outline" size="sm" onClick={() => openEditDialog(p)}>
@@ -427,6 +453,7 @@ export default function ManageProfessionals() {
                       <TableRow>
                         <TableHead>Nome</TableHead>
                         <TableHead>Especialização</TableHead>
+                        <TableHead>Telefone</TableHead>
                         <TableHead>Data de Cadastro</TableHead>
                         <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
@@ -440,6 +467,16 @@ export default function ManageProfessionals() {
                               <Badge className={getSpecializationBadgeColor(p.specialization)}>
                                 {p.specialization}
                               </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {p.contact_phone ? (
+                                <span className="flex items-center gap-2">
+                                  <Phone className="h-4 w-4 text-muted-foreground" />
+                                  {p.contact_phone}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground italic">Não informado</span>
+                              )}
                             </TableCell>
                             <TableCell>{new Date(p.created_at).toLocaleDateString('pt-BR')}</TableCell>
                             <TableCell className="text-right">
@@ -518,6 +555,9 @@ export default function ManageProfessionals() {
                       </Select>
                       <FormMessage />
                     </FormItem>} />
+                  <FormField control={editForm.control} name="contact_phone" render={({
+                  field
+                }) => <FormItem><FormLabel>Telefone (Opcional)</FormLabel><FormControl><Input type="tel" placeholder="(11) 98765-4321" {...field} /></FormControl><FormMessage /></FormItem>} />
                 </TabsContent>
                 
                 <TabsContent value="horarios" className="mt-4">

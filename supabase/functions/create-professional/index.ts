@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
     }
 
     // Get request body
-    const { full_name, specialization, email, password } = await req.json();
+    const { full_name, specialization, email, password, contact_phone } = await req.json();
 
     // Validate payload
     if (!full_name || !specialization || !email || !password) {
@@ -94,6 +94,7 @@ Deno.serve(async (req) => {
         user_id: newUser.user.id,
         full_name,
         specialization,
+        contact_phone: contact_phone || null,
       })
       .select()
       .single();
