@@ -238,6 +238,7 @@ export type Database = {
       }
       professionals: {
         Row: {
+          contact_phone: string | null
           created_at: string
           full_name: string
           id: string
@@ -245,6 +246,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          contact_phone?: string | null
           created_at?: string
           full_name: string
           id?: string
@@ -252,6 +254,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          contact_phone?: string | null
           created_at?: string
           full_name?: string
           id?: string
