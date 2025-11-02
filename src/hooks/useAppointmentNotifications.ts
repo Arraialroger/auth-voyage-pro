@@ -7,6 +7,9 @@ import { useQueryClient } from '@tanstack/react-query';
 export const useAppointmentNotifications = () => {
   const userProfile = useUserProfile();
   const queryClient = useQueryClient();
+  
+  // Detectar se é mobile
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   // Função para tocar som de notificação usando Web Speech API
   const playNotificationSound = useCallback(() => {
@@ -46,6 +49,32 @@ export const useAppointmentNotifications = () => {
       };
     }
   }, []);
+
+  // SOLUÇÃO 1: Refresh ao voltar ao foco da página
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && userProfile.type === 'professional') {
+        queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [userProfile.type, queryClient]);
+
+  // SOLUÇÃO 2: Polling no mobile como backup
+  useEffect(() => {
+    if (isMobile && userProfile.type === 'professional') {
+      const interval = setInterval(() => {
+        queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      }, 30000); // 30 segundos
+
+      return () => clearInterval(interval);
+    }
+  }, [isMobile, userProfile.type, queryClient]);
 
   useEffect(() => {
     // Só configurar para profissionais
