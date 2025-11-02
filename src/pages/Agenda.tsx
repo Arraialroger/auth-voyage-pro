@@ -87,7 +87,7 @@ export default function Agenda() {
     if (dayWeekStart.getTime() !== currentWeekStart.getTime()) {
       setCurrentWeek(currentDay);
     }
-  }, [currentDay, currentWeek]);
+  }, [currentDay]);
   const [selectedProfessional, setSelectedProfessional] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterTreatment, setFilterTreatment] = useState<string>('all');
