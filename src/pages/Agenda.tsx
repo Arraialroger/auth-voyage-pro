@@ -77,6 +77,17 @@ export default function Agenda() {
   useAppointmentNotifications();
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [currentDay, setCurrentDay] = useState(new Date());
+
+  // Sincronizar currentWeek com currentDay (para mobile)
+  useEffect(() => {
+    const dayWeekStart = startOfWeek(currentDay, { weekStartsOn: 1 });
+    const currentWeekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
+    
+    // Se o dia atual está em uma semana diferente da currentWeek, atualizar
+    if (dayWeekStart.getTime() !== currentWeekStart.getTime()) {
+      setCurrentWeek(currentDay);
+    }
+  }, [currentDay, currentWeek]);
   const [selectedProfessional, setSelectedProfessional] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterTreatment, setFilterTreatment] = useState<string>('all');
