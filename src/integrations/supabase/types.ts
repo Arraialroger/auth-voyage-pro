@@ -371,6 +371,7 @@ export type Database = {
         | "Cancelled"
         | "No-Show"
         | "Pending Confirmation"
+        | "Patient Arrived"
       expense_category_enum:
         | "rent"
         | "utilities"
@@ -534,6 +535,7 @@ export const Constants = {
         "Cancelled",
         "No-Show",
         "Pending Confirmation",
+        "Patient Arrived",
       ],
       expense_category_enum: [
         "rent",

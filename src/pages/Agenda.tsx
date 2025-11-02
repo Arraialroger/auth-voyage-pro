@@ -2,7 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, LogOut, User, Clock, ChevronLeft, ChevronRight, Plus, Settings, Menu, MoreVertical, Edit, Trash2, Eye, Filter, X, Ban, Check, ChevronsUpDown } from 'lucide-react';
+import { Calendar, LogOut, User, Clock, ChevronLeft, ChevronRight, Plus, Settings, Menu, MoreVertical, Edit, Trash2, Eye, Filter, X, Ban, Check, ChevronsUpDown, Bell } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { useNavigate } from 'react-router-dom';
@@ -21,6 +21,8 @@ import { BlockTimeModal } from '@/components/BlockTimeModal';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useToast } from '@/hooks/use-toast';
+import { useAppointmentNotifications } from '@/hooks/useAppointmentNotifications';
+import { NotificationTestButton } from '@/components/NotificationTestButton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -28,7 +30,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { BLOCK_PATIENT_ID, BLOCK_TREATMENT_ID } from '@/lib/constants';
 import { logger } from '@/lib/logger';
 import { cn } from '@/lib/utils';
-type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'Completed' | 'Cancelled' | 'No-Show' | 'Pending Confirmation';
+type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'Patient Arrived' | 'Completed' | 'Cancelled' | 'No-Show' | 'Pending Confirmation';
 interface Appointment {
   id: string;
   patient_id: string | null;
@@ -70,6 +72,9 @@ export default function Agenda() {
     toast
   } = useToast();
   const queryClient = useQueryClient();
+  
+  // Ativar sistema de notificações
+  useAppointmentNotifications();
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [currentDay, setCurrentDay] = useState(new Date());
   const [selectedProfessional, setSelectedProfessional] = useState<string>('all');
@@ -342,6 +347,8 @@ export default function Agenda() {
         return 'default';
       case 'Confirmed':
         return 'success';
+      case 'Patient Arrived':
+        return 'success';
       case 'Completed':
         return 'secondary';
       case 'Cancelled':
@@ -362,6 +369,8 @@ export default function Agenda() {
         return 'Agendado';
       case 'Confirmed':
         return 'Confirmado';
+      case 'Patient Arrived':
+        return '🟢 Chegou';
       case 'Completed':
         return 'Concluído';
       case 'Cancelled':
@@ -621,6 +630,7 @@ export default function Agenda() {
                       {userProfile.type === 'receptionist' ? 'Recepcionista' : 'Profissional'}
                     </span>}
                 </div>
+                {userProfile.type === 'professional' && <NotificationTestButton />}
                 <ThemeToggle />
                 <Button variant="outline" onClick={handleLogout} className="group border-border/50 hover:border-destructive hover:text-destructive">
                   <LogOut className="mr-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -1002,6 +1012,15 @@ export default function Agenda() {
                                     ? "bg-orange-50 dark:bg-orange-950 border-2 border-orange-300 dark:border-orange-700 text-foreground"
                                     : "bg-primary text-primary-foreground"
                                 )}>
+                                              {/* Indicador pulsante para "Patient Arrived" */}
+                                              {appointment.status === 'Patient Arrived' && (
+                                                <div className="absolute -top-1 -right-1">
+                                                  <span className="relative flex h-3 w-3">
+                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                                                  </span>
+                                                </div>
+                                              )}
                                              <div className="flex justify-between items-start gap-2">
                                                <div className="flex-1 cursor-pointer" onClick={() => handleAppointmentClick(appointment)}>
                                                   <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -1052,20 +1071,27 @@ export default function Agenda() {
                                                       <DropdownMenuSubTrigger>
                                                         Alterar Status
                                                       </DropdownMenuSubTrigger>
-                                                      <DropdownMenuSubContent>
-                                                        <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Scheduled')}>
-                                                          Agendado
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Confirmed')}>
-                                                          Confirmado
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Completed')}>
-                                                          Concluído
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'No-Show')}>
-                                                          Faltou
-                                                        </DropdownMenuItem>
-                                                      </DropdownMenuSubContent>
+                                                       <DropdownMenuSubContent>
+                                                         <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Scheduled')}>
+                                                           Agendado
+                                                         </DropdownMenuItem>
+                                                         <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Confirmed')}>
+                                                           Confirmado
+                                                         </DropdownMenuItem>
+                                                         <DropdownMenuItem 
+                                                           onClick={() => handleStatusChange(appointment.id, 'Patient Arrived')}
+                                                           className="text-green-600 dark:text-green-400"
+                                                         >
+                                                           <Check className="mr-2 h-4 w-4" />
+                                                           Paciente Chegou
+                                                         </DropdownMenuItem>
+                                                         <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Completed')}>
+                                                           Concluído
+                                                         </DropdownMenuItem>
+                                                         <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'No-Show')}>
+                                                           Faltou
+                                                         </DropdownMenuItem>
+                                                       </DropdownMenuSubContent>
                                                     </DropdownMenuSub>
                                                    <DropdownMenuSeparator />
                                                    <DropdownMenuItem onClick={() => handleCancelDialogOpen(appointment.id)} className="text-destructive focus:text-destructive">
@@ -1213,6 +1239,15 @@ export default function Agenda() {
                                 ? "bg-orange-50 dark:bg-orange-950 border-2 border-orange-300 dark:border-orange-700 text-foreground"
                                 : "bg-primary text-primary-foreground"
                             )}>
+                                           {/* Indicador pulsante para "Patient Arrived" */}
+                                           {appointment.status === 'Patient Arrived' && (
+                                             <div className="absolute -top-1 -right-1">
+                                               <span className="relative flex h-2.5 w-2.5">
+                                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                                               </span>
+                                             </div>
+                                           )}
                                            <div className="flex justify-between items-start gap-1">
                                              <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handleAppointmentClick(appointment)}>
                                                 <div className="flex items-center gap-1 mb-0.5 flex-wrap">
@@ -1278,6 +1313,13 @@ export default function Agenda() {
                                                        </DropdownMenuItem>
                                                        <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Confirmed')}>
                                                          Confirmado
+                                                       </DropdownMenuItem>
+                                                       <DropdownMenuItem 
+                                                         onClick={() => handleStatusChange(appointment.id, 'Patient Arrived')}
+                                                         className="text-green-600 dark:text-green-400"
+                                                       >
+                                                         <Check className="mr-2 h-4 w-4" />
+                                                         Paciente Chegou
                                                        </DropdownMenuItem>
                                                        <DropdownMenuItem onClick={() => handleStatusChange(appointment.id, 'Completed')}>
                                                          Concluído
