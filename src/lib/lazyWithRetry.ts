@@ -18,6 +18,39 @@ function safeSet(key: string, value: string) {
   }
 }
 
+function isChunkLoadError(error: any): boolean {
+  const errorMsg = error?.message || String(error);
+  const chunkPatterns = [
+    'ChunkLoadError',
+    'Loading chunk',
+    'CSS chunk load failed',
+    'Failed to fetch dynamically imported module',
+    'Importing a module script failed',
+    'Failed to fetch'
+  ];
+  return chunkPatterns.some(pattern => errorMsg.includes(pattern));
+}
+
+async function clearCachesAndReload() {
+  const reloadFlag = 'lazy-hard-reloaded';
+  
+  if (safeGet(reloadFlag) === 'true') {
+    console.info('Já recarregou, evitando loop');
+    return;
+  }
+
+  try {
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => caches.delete(k)));
+    console.info('Caches limpos, recarregando...');
+  } catch (e) {
+    console.info('Não foi possível limpar caches:', e);
+  }
+
+  safeSet(reloadFlag, 'true');
+  location.reload();
+}
+
 export function lazyWithRetry<T extends ComponentType<any>>(
   componentImport: () => Promise<{ default: T }>
 ) {
@@ -32,14 +65,25 @@ export function lazyWithRetry<T extends ComponentType<any>>(
       memoryRetryCount = 0;
       return component;
     } catch (error) {
+      console.error('Erro ao carregar componente:', error);
+
+      if (isChunkLoadError(error)) {
+        console.info('ChunkLoadError detectado, limpando caches...');
+        await clearCachesAndReload();
+        throw error;
+      }
+
       if (retryCount < MAX_RETRIES) {
         const next = retryCount + 1;
         safeSet('lazy-retry-count', String(next));
         memoryRetryCount = next;
+        console.info(`Tentativa ${next}/${MAX_RETRIES} após delay...`);
         await new Promise(resolve => setTimeout(resolve, 1000));
         return componentImport();
       }
-      
+
+      console.info('Max tentativas atingido, limpando caches...');
+      await clearCachesAndReload();
       throw error;
     }
   });

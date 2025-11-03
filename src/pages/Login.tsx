@@ -25,6 +25,10 @@ export default function Login() {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    
+    // Preload da Agenda para evitar ChunkLoadError na navegação
+    void import('./Agenda').catch(() => {});
+    
     const {
       error
     } = await signIn(email, password);
