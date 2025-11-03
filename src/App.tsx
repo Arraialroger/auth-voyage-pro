@@ -88,7 +88,7 @@ const App = () => (
             } />
             <Route path="/admin/waiting-list" element={
               <ProtectedRoute>
-                <RoleProtectedRoute allowedRoles={['receptionist']}>
+                <RoleProtectedRoute allowedRoles={['receptionist', 'professional']}>
                   <ManageWaitingList />
                 </RoleProtectedRoute>
               </ProtectedRoute>

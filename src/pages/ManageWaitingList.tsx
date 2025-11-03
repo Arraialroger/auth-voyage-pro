@@ -59,8 +59,10 @@ export default function ManageWaitingList() {
   const queryClient = useQueryClient();
   const [schedulingEntry, setSchedulingEntry] = useState<WaitingListEntry | null>(null);
 
+  const userProfile = useUserProfile();
+
   useEffect(() => {
-    if (!profileLoading && userType !== 'receptionist') {
+    if (!profileLoading && userType !== 'receptionist' && userType !== 'professional') {
       navigate('/agenda', { replace: true });
     }
   }, [userType, profileLoading, navigate]);
@@ -80,9 +82,9 @@ export default function ManageWaitingList() {
   };
 
   const { data: waitingList = [], isLoading } = useQuery({
-    queryKey: ['waiting-list'],
+    queryKey: ['waiting-list', userType, userProfile.professionalId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('waiting_list')
         .select(`
           id,
@@ -94,12 +96,19 @@ export default function ManageWaitingList() {
           patients (full_name, contact_phone),
           professionals (full_name),
           treatments (treatment_name)
-        `)
-        .order('created_at', { ascending: false });
+        `);
+      
+      // Se for profissional, filtrar apenas sua lista
+      if (userType === 'professional' && userProfile.professionalId) {
+        query = query.eq('professional_id', userProfile.professionalId);
+      }
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
       
       if (error) throw error;
       return data as any[];
     },
+    enabled: userType === 'receptionist' || userType === 'professional',
   });
 
   const handleRemoveFromWaitingList = async (id: string) => {
@@ -143,10 +152,6 @@ export default function ManageWaitingList() {
     return <div>Carregando...</div>;
   }
 
-  if (userType !== 'receptionist' && userType !== 'professional') {
-    return <div>Acesso negado</div>;
-  }
-
   return (
     <div className="min-h-screen bg-gradient-subtle overflow-x-hidden">
       {/* Header */}
@@ -160,15 +165,17 @@ export default function ManageWaitingList() {
           </div>
           
           <div className="flex items-center space-x-1 sm:space-x-4">
-            <AddToWaitingListModal 
-              trigger={
-                <Button variant="default" className="gap-2 text-xs sm:text-sm px-2 sm:px-4">
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">Adicionar à Lista</span>
-                  <span className="sm:hidden">Adicionar</span>
-                </Button>
-              } 
-            />
+            {userType === 'receptionist' && (
+              <AddToWaitingListModal 
+                trigger={
+                  <Button variant="default" className="gap-2 text-xs sm:text-sm px-2 sm:px-4">
+                    <Plus className="h-4 w-4" />
+                    <span className="hidden sm:inline">Adicionar à Lista</span>
+                    <span className="sm:hidden">Adicionar</span>
+                  </Button>
+                } 
+              />
+            )}
             <Button variant="outline" onClick={() => navigate('/admin')} className="border-border/50 text-xs sm:text-sm px-2 sm:px-4">
               <span className="sm:hidden">Voltar</span>
               <span className="hidden sm:inline">Voltar à Administração</span>
@@ -262,26 +269,28 @@ export default function ManageWaitingList() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => handleScheduleAppointment(entry)}
-                              className="gap-1"
-                            >
-                              <Calendar className="h-3 w-3" />
-                              Agendar
-                            </Button>
-                            
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
+                            {userType === 'receptionist' && (
+                              <>
                                 <Button
                                   size="sm"
-                                  variant="outline"
-                                  className="gap-1 hover:bg-destructive hover:text-destructive-foreground"
+                                  onClick={() => handleScheduleAppointment(entry)}
+                                  className="gap-1"
                                 >
-                                  <Trash2 className="h-3 w-3" />
-                                  Remover
+                                  <Calendar className="h-3 w-3" />
+                                  Agendar
                                 </Button>
-                              </AlertDialogTrigger>
+                                
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="gap-1 hover:bg-destructive hover:text-destructive-foreground"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                      Remover
+                                    </Button>
+                                  </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Confirmar remoção</AlertDialogTitle>
@@ -301,6 +310,8 @@ export default function ManageWaitingList() {
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
+                              </>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

@@ -142,5 +142,5 @@ export const useAppointmentNotifications = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userProfile.type, userProfile.professionalId, playNotificationSound, sendPushNotification, requestNotificationPermission, queryClient, toast]);
+  }, [userProfile.type, userProfile.professionalId, playNotificationSound, sendPushNotification, requestNotificationPermission, queryClient]);
 };
