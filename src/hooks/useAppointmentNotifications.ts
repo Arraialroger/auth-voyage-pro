@@ -14,6 +14,9 @@ export const useAppointmentNotifications = () => {
   // Função para tocar som de notificação usando Web Speech API
   const playNotificationSound = useCallback(() => {
     try {
+      if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+        return;
+      }
       const utterance = new SpeechSynthesisUtterance('Paciente chegou');
       utterance.lang = 'pt-BR';
       utterance.rate = 1.3;

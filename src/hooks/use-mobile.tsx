@@ -11,13 +11,36 @@ export function useIsMobile() {
   });
 
   React.useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return;
+    }
+
     const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
-    const onChange = () => {
-      setIsMobile(mql.matches);
-    };
-    mql.addEventListener("change", onChange);
+    const onChange = () => setIsMobile(mql.matches);
+
+    try {
+      if (typeof mql.addEventListener === "function") {
+        mql.addEventListener("change", onChange);
+      } else if (typeof mql.addListener === "function") {
+        mql.addListener(onChange);
+      }
+    } catch {
+      // Ignora erros de navegadores incompatíveis
+    }
+
     setIsMobile(mql.matches);
-    return () => mql.removeEventListener("change", onChange);
+
+    return () => {
+      try {
+        if (typeof mql.removeEventListener === "function") {
+          mql.removeEventListener("change", onChange);
+        } else if (typeof mql.removeListener === "function") {
+          mql.removeListener(onChange);
+        }
+      } catch {
+        // Ignora erros ao limpar listeners
+      }
+    };
   }, []);
 
   return isMobile;
