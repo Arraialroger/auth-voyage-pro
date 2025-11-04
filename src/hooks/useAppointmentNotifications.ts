@@ -15,24 +15,50 @@ export const useAppointmentNotifications = () => {
   const playNotificationSound = useCallback(() => {
     try {
       if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+        console.info('ℹ️ speechSynthesis não disponível neste navegador');
         return;
       }
+      
       const utterance = new SpeechSynthesisUtterance('Paciente chegou');
       utterance.lang = 'pt-BR';
       utterance.rate = 1.3;
       utterance.volume = 0.7;
+      
+      utterance.onstart = () => console.info('🔊 Som iniciado');
+      utterance.onerror = (e) => console.error('❌ Erro no som:', e);
+      
       window.speechSynthesis.speak(utterance);
     } catch (error) {
-      console.log('Erro ao tocar som:', error);
+      console.error('❌ Erro ao tocar som:', error);
     }
   }, []);
 
   // Função para solicitar permissão de notificação push
   const requestNotificationPermission = useCallback(async () => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      await Notification.requestPermission();
+    if ('Notification' in window) {
+      if (Notification.permission === 'default') {
+        const permission = await Notification.requestPermission();
+        console.info('🔔 Permissão de notificação:', permission);
+        
+        if (permission === 'granted') {
+          toast({
+            title: '✅ Notificações ativadas',
+            description: 'Você receberá alertas quando pacientes chegarem.',
+          });
+        } else {
+          toast({
+            title: '⚠️ Notificações bloqueadas',
+            description: 'Habilite nas configurações do navegador para receber alertas.',
+            variant: 'destructive',
+          });
+        }
+      } else if (Notification.permission === 'denied') {
+        console.warn('⚠️ Notificações negadas pelo usuário');
+      }
+    } else {
+      console.warn('⚠️ Navegador não suporta notificações');
     }
-  }, []);
+  }, [toast]);
 
   // Função para enviar notificação push
   const sendPushNotification = useCallback((patientName: string, time: string) => {
@@ -73,7 +99,7 @@ export const useAppointmentNotifications = () => {
     if (isMobile && userProfile.type === 'professional') {
       const interval = setInterval(() => {
         queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      }, 30000); // 30 segundos
+      }, 10000); // 10 segundos (reduzido de 30)
 
       return () => clearInterval(interval);
     }
@@ -100,6 +126,7 @@ export const useAppointmentNotifications = () => {
           filter: `professional_id=eq.${userProfile.professionalId}`,
         },
         (payload: any) => {
+          console.info('📡 Realtime payload recebido:', payload);
           const newStatus = payload.new.status;
           const oldStatus = payload.old.status;
 
@@ -133,17 +160,29 @@ export const useAppointmentNotifications = () => {
                 // 3. Notificação push (se permitido)
                 sendPushNotification(patientName, timeStr);
 
+                // Se notificações push não estiverem disponíveis, garantir pelo menos o toast
+                if (!('Notification' in window) || Notification.permission !== 'granted') {
+                  console.info('ℹ️ Usando apenas toast (notificações push indisponíveis)');
+                }
+
                 // 4. Atualizar lista de appointments
                 queryClient.invalidateQueries({ queryKey: ['appointments'] });
               });
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.info('📡 Realtime status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.info('✅ Realtime conectado com sucesso');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('❌ Realtime falhou:', status);
+        }
+      });
 
     // Cleanup
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userProfile.type, userProfile.professionalId, playNotificationSound, sendPushNotification, requestNotificationPermission, queryClient]);
+  }, [userProfile.type, userProfile.professionalId, playNotificationSound, sendPushNotification, requestNotificationPermission, queryClient, toast]);
 };

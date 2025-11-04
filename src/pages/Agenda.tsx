@@ -419,6 +419,9 @@ export default function Agenda() {
       } = await supabase.from('appointments').update({
         status: newStatus
       }).eq('id', appointmentId);
+      
+      console.info('📝 Status atualizado:', { appointmentId, newStatus, error });
+      
       if (error) throw error;
       toast({
         title: 'Status atualizado',
