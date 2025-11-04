@@ -31,24 +31,32 @@ function isChunkLoadError(error: any): boolean {
   return chunkPatterns.some(pattern => errorMsg.includes(pattern));
 }
 
-async function clearCachesAndReload() {
-  const reloadFlag = 'lazy-hard-reloaded';
-  
-  if (safeGet(reloadFlag) === 'true') {
-    console.info('Já recarregou, evitando loop');
-    return;
+function getBustedUrlOnce(): string | null {
+  const url = new URL(location.href);
+  const tries = parseInt(url.searchParams.get('cb') || '0', 10);
+  if (tries >= 1) {
+    console.info('Já tentou recarregar com cache-busting, evitando loop');
+    return null;
   }
+  url.searchParams.set('cb', String(tries + 1));
+  return url.toString();
+}
 
+async function reloadWithBuster() {
   try {
     const keys = await caches.keys();
     await Promise.all(keys.map(k => caches.delete(k)));
-    console.info('Caches limpos, recarregando...');
+    console.info('Caches limpos, recarregando com cache-busting...');
   } catch (e) {
     console.info('Não foi possível limpar caches:', e);
   }
 
-  safeSet(reloadFlag, 'true');
-  location.reload();
+  const bustedUrl = getBustedUrlOnce();
+  if (bustedUrl) {
+    location.replace(bustedUrl);
+  } else {
+    console.info('Tentativas esgotadas, não recarregando');
+  }
 }
 
 export function lazyWithRetry<T extends ComponentType<any>>(
@@ -69,7 +77,7 @@ export function lazyWithRetry<T extends ComponentType<any>>(
 
       if (isChunkLoadError(error)) {
         console.info('ChunkLoadError detectado, limpando caches...');
-        await clearCachesAndReload();
+        await reloadWithBuster();
         throw error;
       }
 
@@ -83,7 +91,7 @@ export function lazyWithRetry<T extends ComponentType<any>>(
       }
 
       console.info('Max tentativas atingido, limpando caches...');
-      await clearCachesAndReload();
+      await reloadWithBuster();
       throw error;
     }
   });

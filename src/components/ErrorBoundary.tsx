@@ -42,7 +42,24 @@ export class ErrorBoundary extends Component<Props, State> {
             </CardHeader>
             <CardContent>
               <Button 
-                onClick={() => window.location.reload()} 
+                onClick={async () => {
+                  // Limpa flags e caches
+                  try {
+                    sessionStorage.removeItem('lazy-hard-reloaded');
+                    sessionStorage.removeItem('global-chunk-reloaded');
+                    sessionStorage.removeItem('lazy-retry-count');
+                  } catch {}
+                  
+                  try {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map(k => caches.delete(k)));
+                  } catch {}
+                  
+                  // Recarrega com cache-busting
+                  const url = new URL(location.href);
+                  url.searchParams.set('cb', '1');
+                  location.replace(url.toString());
+                }} 
                 className="w-full"
               >
                 <RefreshCw className="mr-2 h-4 w-4" />

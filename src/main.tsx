@@ -37,29 +37,24 @@ window.addEventListener('unhandledrejection', (event) => {
   if (isChunkError) {
     console.error('ChunkLoadError global detectado:', event.reason);
     
-    const reloadFlag = 'global-chunk-reloaded';
-    try {
-      if (sessionStorage.getItem(reloadFlag) === 'true') {
-        console.info('Já recarregou globalmente, evitando loop');
-        return;
-      }
+    const url = new URL(location.href);
+    const tries = parseInt(url.searchParams.get('cb') || '0', 10);
 
-      sessionStorage.setItem(reloadFlag, 'true');
-      
-      caches.keys().then(keys => {
-        return Promise.all(keys.map(k => caches.delete(k)));
-      }).then(() => {
-        console.info('Caches limpos globalmente, recarregando...');
-        location.reload();
-      }).catch(() => {
-        console.info('Erro ao limpar caches, recarregando mesmo assim...');
-        location.reload();
-      });
-    } catch {
-      location.reload();
+    if (tries >= 1) {
+      console.info('Já tentou recarregar globalmente, evitando loop');
+      return;
     }
-    
+
     event.preventDefault();
+    
+    caches.keys()
+      .then(keys => Promise.all(keys.map(k => caches.delete(k))))
+      .catch(() => console.info('Erro ao limpar caches'))
+      .finally(() => {
+        url.searchParams.set('cb', String(tries + 1));
+        console.info('Caches limpos globalmente, recarregando com cache-busting...');
+        location.replace(url.toString());
+      });
   }
 });
 
