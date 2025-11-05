@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { logger } from "@/lib/logger";
 
 // Registra Service Worker do PWA para atualizações automáticas
 if ('serviceWorker' in navigator) {
@@ -9,15 +10,15 @@ if ('serviceWorker' in navigator) {
     registerSW({
       immediate: true,
       onNeedRefresh() {
-        console.info('Nova versão disponível, recarregando...');
+        logger.info('Nova versão disponível, recarregando...');
         location.reload();
       },
       onOfflineReady() {
-        console.info('App pronto para uso offline');
+        logger.info('App pronto para uso offline');
       }
     });
   }).catch(() => {
-    console.info('PWA não disponível');
+    logger.info('PWA não disponível');
   });
 }
 
@@ -35,13 +36,13 @@ window.addEventListener('unhandledrejection', (event) => {
   const isChunkError = chunkPatterns.some(pattern => errorMsg.includes(pattern));
 
   if (isChunkError) {
-    console.error('ChunkLoadError global detectado:', event.reason);
+    logger.error('ChunkLoadError global detectado:', event.reason);
     
     const url = new URL(location.href);
     const tries = parseInt(url.searchParams.get('cb') || '0', 10);
 
     if (tries >= 1) {
-      console.info('Já tentou recarregar globalmente, evitando loop');
+      logger.info('Já tentou recarregar globalmente, evitando loop');
       return;
     }
 
@@ -49,10 +50,10 @@ window.addEventListener('unhandledrejection', (event) => {
     
     caches.keys()
       .then(keys => Promise.all(keys.map(k => caches.delete(k))))
-      .catch(() => console.info('Erro ao limpar caches'))
+      .catch(() => logger.info('Erro ao limpar caches'))
       .finally(() => {
         url.searchParams.set('cb', String(tries + 1));
-        console.info('Caches limpos globalmente, recarregando com cache-busting...');
+        logger.info('Caches limpos globalmente, recarregando com cache-busting...');
         location.replace(url.toString());
       });
   }

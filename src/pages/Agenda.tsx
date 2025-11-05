@@ -420,7 +420,7 @@ export default function Agenda() {
         status: newStatus
       }).eq('id', appointmentId);
       
-      console.info('📝 Status atualizado:', { appointmentId, newStatus, error });
+      logger.info('📝 Status atualizado:', { appointmentId, newStatus, error });
       
       if (error) throw error;
       toast({

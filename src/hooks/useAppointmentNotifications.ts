@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUserProfile } from './useUserProfile';
 import { toast } from './use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { logger } from '@/lib/logger';
 
 export const useAppointmentNotifications = () => {
   const userProfile = useUserProfile();
@@ -15,7 +16,7 @@ export const useAppointmentNotifications = () => {
   const playNotificationSound = useCallback(() => {
     try {
       if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
-        console.info('ℹ️ speechSynthesis não disponível neste navegador');
+        logger.info('ℹ️ speechSynthesis não disponível neste navegador');
         return;
       }
       
@@ -24,12 +25,12 @@ export const useAppointmentNotifications = () => {
       utterance.rate = 1.3;
       utterance.volume = 0.7;
       
-      utterance.onstart = () => console.info('🔊 Som iniciado');
-      utterance.onerror = (e) => console.error('❌ Erro no som:', e);
+      utterance.onstart = () => logger.info('🔊 Som iniciado');
+      utterance.onerror = (e) => logger.error('❌ Erro no som:', e);
       
       window.speechSynthesis.speak(utterance);
     } catch (error) {
-      console.error('❌ Erro ao tocar som:', error);
+      logger.error('❌ Erro ao tocar som:', error);
     }
   }, []);
 
@@ -38,7 +39,7 @@ export const useAppointmentNotifications = () => {
     if ('Notification' in window) {
       if (Notification.permission === 'default') {
         const permission = await Notification.requestPermission();
-        console.info('🔔 Permissão de notificação:', permission);
+        logger.info('🔔 Permissão de notificação:', permission);
         
         if (permission === 'granted') {
           toast({
@@ -53,10 +54,10 @@ export const useAppointmentNotifications = () => {
           });
         }
       } else if (Notification.permission === 'denied') {
-        console.warn('⚠️ Notificações negadas pelo usuário');
+        logger.warn('⚠️ Notificações negadas pelo usuário');
       }
     } else {
-      console.warn('⚠️ Navegador não suporta notificações');
+      logger.warn('⚠️ Navegador não suporta notificações');
     }
   }, [toast]);
 
@@ -126,7 +127,7 @@ export const useAppointmentNotifications = () => {
           filter: `professional_id=eq.${userProfile.professionalId}`,
         },
         (payload: any) => {
-          console.info('📡 Realtime payload recebido:', payload);
+          logger.info('📡 Realtime payload recebido:', payload);
           const newStatus = payload.new.status;
           const oldStatus = payload.old.status;
 
@@ -162,7 +163,7 @@ export const useAppointmentNotifications = () => {
 
                 // Se notificações push não estiverem disponíveis, garantir pelo menos o toast
                 if (!('Notification' in window) || Notification.permission !== 'granted') {
-                  console.info('ℹ️ Usando apenas toast (notificações push indisponíveis)');
+                  logger.info('ℹ️ Usando apenas toast (notificações push indisponíveis)');
                 }
 
                 // 4. Atualizar lista de appointments
@@ -172,11 +173,11 @@ export const useAppointmentNotifications = () => {
         }
       )
       .subscribe((status) => {
-        console.info('📡 Realtime status:', status);
+        logger.info('📡 Realtime status:', status);
         if (status === 'SUBSCRIBED') {
-          console.info('✅ Realtime conectado com sucesso');
+          logger.info('✅ Realtime conectado com sucesso');
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error('❌ Realtime falhou:', status);
+          logger.error('❌ Realtime falhou:', status);
         }
       });
 

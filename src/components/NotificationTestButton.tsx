@@ -2,7 +2,14 @@ import { Button } from '@/components/ui/button';
 import { Bell } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
+// Mostrar apenas em desenvolvimento
+const isDevelopment = import.meta.env.DEV;
+
 export const NotificationTestButton = () => {
+  // Ocultar em produção
+  if (!isDevelopment) {
+    return null;
+  }
   const testNotification = async () => {
     // Solicitar permissão
     if ('Notification' in window) {

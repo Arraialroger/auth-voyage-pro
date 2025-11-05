@@ -1,4 +1,5 @@
 import { lazy, ComponentType } from 'react';
+import { logger } from '@/lib/logger';
 
 let memoryRetryCount = 0;
 
@@ -35,7 +36,7 @@ function getBustedUrlOnce(): string | null {
   const url = new URL(location.href);
   const tries = parseInt(url.searchParams.get('cb') || '0', 10);
   if (tries >= 1) {
-    console.info('Já tentou recarregar com cache-busting, evitando loop');
+    logger.info('Já tentou recarregar com cache-busting, evitando loop');
     return null;
   }
   url.searchParams.set('cb', String(tries + 1));
@@ -46,16 +47,16 @@ async function reloadWithBuster() {
   try {
     const keys = await caches.keys();
     await Promise.all(keys.map(k => caches.delete(k)));
-    console.info('Caches limpos, recarregando com cache-busting...');
+    logger.info('Caches limpos, recarregando com cache-busting...');
   } catch (e) {
-    console.info('Não foi possível limpar caches:', e);
+    logger.info('Não foi possível limpar caches:', e);
   }
 
   const bustedUrl = getBustedUrlOnce();
   if (bustedUrl) {
     location.replace(bustedUrl);
   } else {
-    console.info('Tentativas esgotadas, não recarregando');
+    logger.info('Tentativas esgotadas, não recarregando');
   }
 }
 
@@ -73,10 +74,10 @@ export function lazyWithRetry<T extends ComponentType<any>>(
       memoryRetryCount = 0;
       return component;
     } catch (error) {
-      console.error('Erro ao carregar componente:', error);
+      logger.error('Erro ao carregar componente:', error);
 
       if (isChunkLoadError(error)) {
-        console.info('ChunkLoadError detectado, limpando caches...');
+        logger.info('ChunkLoadError detectado, limpando caches...');
         await reloadWithBuster();
         throw error;
       }
@@ -85,12 +86,12 @@ export function lazyWithRetry<T extends ComponentType<any>>(
         const next = retryCount + 1;
         safeSet('lazy-retry-count', String(next));
         memoryRetryCount = next;
-        console.info(`Tentativa ${next}/${MAX_RETRIES} após delay...`);
+        logger.info(`Tentativa ${next}/${MAX_RETRIES} após delay...`);
         await new Promise(resolve => setTimeout(resolve, 1000));
         return componentImport();
       }
 
-      console.info('Max tentativas atingido, limpando caches...');
+      logger.info('Max tentativas atingido, limpando caches...');
       await reloadWithBuster();
       throw error;
     }

@@ -66,17 +66,6 @@ export function AddToWaitingListModal({ trigger, onSuccess }: AddToWaitingListMo
   const [patientSearchOpen, setPatientSearchOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  // Log para debug mobile
-  React.useEffect(() => {
-    if (open) {
-      logger.log('AddToWaitingListModal aberto', {
-        isMobile: window.innerWidth < 768,
-        viewport: { width: window.innerWidth, height: window.innerHeight },
-        userAgent: navigator.userAgent
-      });
-    }
-  }, [open]);
-
   const form = useForm<WaitingListFormData>({
     resolver: zodResolver(waitingListSchema),
     defaultValues: {
