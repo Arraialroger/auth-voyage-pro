@@ -611,7 +611,10 @@ export default function Agenda() {
         <div className="container mx-auto px-4 py-3 lg:py-4">
           <div className="flex justify-between items-center">
         <div className="flex items-center">
-          <img src="/assets/new-logo.png" alt="Arraial Odonto" className="h-16 w-16 lg:h-20 lg:w-20 object-contain" />
+          <picture>
+            <source srcSet="/assets/new-logo.webp" type="image/webp" />
+            <img src="/assets/new-logo.png" alt="Arraial Odonto" className="h-16 w-16 lg:h-20 lg:w-20 object-contain" />
+          </picture>
         </div>
             
             <div className="flex items-center space-x-2 lg:space-x-4">
