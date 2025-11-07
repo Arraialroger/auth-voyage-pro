@@ -30,6 +30,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { BLOCK_PATIENT_ID, BLOCK_TREATMENT_ID } from '@/lib/constants';
 import { logger } from '@/lib/logger';
 import { cn } from '@/lib/utils';
+import { OptimizedImage } from '@/components/OptimizedImage';
 type AppointmentStatus = 'Scheduled' | 'Confirmed' | 'Patient Arrived' | 'Completed' | 'Cancelled' | 'No-Show' | 'Pending Confirmation';
 interface Appointment {
   id: string;
@@ -611,10 +612,12 @@ export default function Agenda() {
         <div className="container mx-auto px-4 py-3 lg:py-4">
           <div className="flex justify-between items-center">
         <div className="flex items-center">
-          <picture>
-            <source srcSet="/assets/new-logo.webp" type="image/webp" />
-            <img src="/assets/new-logo.png" alt="Arraial Odonto" className="h-16 w-16 lg:h-20 lg:w-20 object-contain" />
-          </picture>
+          <OptimizedImage 
+            src="/assets/new-logo.png" 
+            alt="Arraial Odonto" 
+            className="h-16 w-16 lg:h-20 lg:w-20 object-contain"
+            loading="eager"
+          />
         </div>
             
             <div className="flex items-center space-x-2 lg:space-x-4">
@@ -1049,7 +1052,7 @@ export default function Agenda() {
                                                         Encaixe
                                                       </Badge>
                                                     )}
-                                                    <Badge variant={getStatusBadgeVariant(appointment.status)} className="text-[10px] px-1.5 py-0">
+                                                    <Badge variant={getStatusBadgeVariant(appointment.status)} className="text-[10px] px-1.5 whitespace-nowrap">
                                                       {getStatusLabel(appointment.status)}
                                                     </Badge>
                                                   </div>
@@ -1276,7 +1279,7 @@ export default function Agenda() {
                                                       Encaixe
                                                     </Badge>
                                                   )}
-                                                  <Badge variant={getStatusBadgeVariant(appointment.status)} className="text-[9px] px-1 py-0">
+                                                  <Badge variant={getStatusBadgeVariant(appointment.status)} className="text-[10px] px-1.5 whitespace-nowrap">
                                                     {getStatusLabel(appointment.status)}
                                                   </Badge>
                                                 </div>
