@@ -11,21 +11,16 @@ interface OptimizedImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, 
  * Usa <picture> para servir WebP quando disponível, com fallback para PNG
  */
 export function OptimizedImage({ src, webpSrc, alt, className, ...props }: OptimizedImageProps) {
-  // Se webpSrc não for fornecido, tenta gerar automaticamente
-  const autoWebpSrc = webpSrc || src.replace(/\.(png|jpg|jpeg)$/i, '.webp');
-  
-  // Verifica se existe versão WebP (baseado na convenção de nomenclatura)
-  const hasWebp = webpSrc || src.match(/\.(png|jpg|jpeg)$/i);
-
-  if (!hasWebp) {
-    // Se não tiver versão WebP, usa imagem normal
-    return <img src={src} alt={alt} className={className} {...props} />;
+  // Para evitar imagens quebradas: só usa <picture> se webpSrc for EXPLÍCITO
+  // Caso contrário, renderiza <img> normal com o PNG/JPEG fornecido
+  if (webpSrc) {
+    return (
+      <picture>
+        <source srcSet={webpSrc} type="image/webp" />
+        <img src={src} alt={alt} className={className} {...props} />
+      </picture>
+    );
   }
 
-  return (
-    <picture>
-      <source srcSet={autoWebpSrc} type="image/webp" />
-      <img src={src} alt={alt} className={className} {...props} />
-    </picture>
-  );
+  return <img src={src} alt={alt} className={className} {...props} />;
 }
