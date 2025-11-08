@@ -26,15 +26,19 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
     
-    // Preload da Agenda para evitar ChunkLoadError na navegação
-    void import('./Agenda').catch(() => {});
+    const { error } = await signIn(email, password);
     
-    const {
-      error
-    } = await signIn(email, password);
     if (!error) {
+      // Preload do chunk da Agenda antes de navegar
+      try {
+        await import('./Agenda');
+      } catch (preloadError) {
+        // Se falhar o preload, mesmo assim tenta navegar
+        // O ErrorBoundary vai capturar e fazer auto-recovery se necessário
+      }
       navigate('/agenda');
     }
+    
     setIsLoading(false);
   };
   return (
