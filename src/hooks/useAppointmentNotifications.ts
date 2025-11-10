@@ -36,28 +36,38 @@ export const useAppointmentNotifications = () => {
 
   // Função para solicitar permissão de notificação push
   const requestNotificationPermission = useCallback(async () => {
-    if ('Notification' in window) {
-      if (Notification.permission === 'default') {
-        const permission = await Notification.requestPermission();
-        logger.info('🔔 Permissão de notificação:', permission);
-        
-        if (permission === 'granted') {
-          toast({
-            title: '✅ Notificações ativadas',
-            description: 'Você receberá alertas quando pacientes chegarem.',
-          });
-        } else {
-          toast({
-            title: '⚠️ Notificações bloqueadas',
-            description: 'Habilite nas configurações do navegador para receber alertas.',
-            variant: 'destructive',
-          });
+    try {
+      if ('Notification' in window) {
+        if (Notification.permission === 'default') {
+          let permission: NotificationPermission = 'default';
+          try {
+            permission = await Notification.requestPermission();
+          } catch (e) {
+            logger.error('❌ Erro ao solicitar permissão de notificação:', e);
+            return;
+          }
+          logger.info('🔔 Permissão de notificação:', permission);
+          
+          if (permission === 'granted') {
+            toast({
+              title: '✅ Notificações ativadas',
+              description: 'Você receberá alertas quando pacientes chegarem.',
+            });
+          } else {
+            toast({
+              title: '⚠️ Notificações bloqueadas',
+              description: 'Habilite nas configurações do navegador para receber alertas.',
+              variant: 'destructive',
+            });
+          }
+        } else if (Notification.permission === 'denied') {
+          logger.warn('⚠️ Notificações negadas pelo usuário');
         }
-      } else if (Notification.permission === 'denied') {
-        logger.warn('⚠️ Notificações negadas pelo usuário');
+      } else {
+        logger.warn('⚠️ Navegador não suporta notificações');
       }
-    } else {
-      logger.warn('⚠️ Navegador não suporta notificações');
+    } catch (e) {
+      logger.error('❌ Erro inesperado em requestNotificationPermission:', e);
     }
   }, [toast]);
 

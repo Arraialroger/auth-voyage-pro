@@ -34,28 +34,44 @@ export class ErrorBoundary extends Component<Props, State> {
       'Loading chunk',
       'CSS chunk load failed',
       'Failed to fetch dynamically imported module',
-      'Importing a module script failed'
+      'Importing a module script failed',
+      'Failed to fetch'
     ];
     
     const isChunkError = chunkPatterns.some(pattern => errorMsg.includes(pattern));
     
     if (isChunkError) {
-      const autoReloaded = sessionStorage.getItem('eb_auto_reload');
+      // Helpers para sessionStorage com fallback silencioso
+      const safeGet = (k: string) => { try { return sessionStorage.getItem(k); } catch { return null; } };
+      const safeSet = (k: string, v: string) => { try { sessionStorage.setItem(k, v); } catch {} };
+
+      const autoReloaded = safeGet('eb_auto_reload');
       
       if (!autoReloaded) {
         logger.info('ErrorBoundary detectou ChunkError, iniciando auto-recovery...');
-        sessionStorage.setItem('eb_auto_reload', '1');
+        safeSet('eb_auto_reload', '1');
         
-        // Limpa caches e recarrega
-        caches.keys()
-          .then(keys => Promise.all(keys.map(k => caches.delete(k))))
-          .catch(() => logger.info('Erro ao limpar caches'))
-          .finally(() => {
-            const url = new URL(location.href);
-            url.searchParams.set('cb', String(Date.now()));
-            logger.info('Auto-recovery: recarregando com cache-busting...');
-            location.replace(url.toString());
-          });
+        const now = Date.now();
+        const url = new URL(location.href);
+        url.searchParams.set('cb', String(now));
+        
+        const doReload = () => {
+          logger.info('Auto-recovery: recarregando com cache-busting...');
+          location.replace(url.toString());
+        };
+
+        try {
+          if ('caches' in window) {
+            caches.keys()
+              .then(keys => Promise.all(keys.map(k => caches.delete(k))))
+              .catch(() => logger.info('Erro ao limpar caches'))
+              .finally(doReload);
+          } else {
+            doReload();
+          }
+        } catch {
+          doReload();
+        }
       } else {
         logger.info('Auto-recovery já tentado, exibindo erro ao usuário');
       }
@@ -88,13 +104,17 @@ export class ErrorBoundary extends Component<Props, State> {
                   } catch {}
                   
                   try {
-                    const keys = await caches.keys();
-                    await Promise.all(keys.map(k => caches.delete(k)));
+                    if ('caches' in window) {
+                      const keys = await caches.keys();
+                      await Promise.all(keys.map(k => caches.delete(k)));
+                    }
                   } catch {}
                   
                   // Recarrega com cache-busting
                   const url = new URL(location.href);
                   url.searchParams.set('cb', String(Date.now()));
+                  // Aciona kill switch para este reload manual
+                  url.searchParams.set('no-sw', '1');
                   location.replace(url.toString());
                 }} 
                 className="w-full"
