@@ -141,6 +141,44 @@ export type Database = {
         }
         Relationships: []
       }
+      odontogram_records: {
+        Row: {
+          id: string
+          last_updated_at: string
+          last_updated_by: string | null
+          notes: string | null
+          patient_id: string
+          status: Database["public"]["Enums"]["tooth_status_enum"]
+          tooth_number: number
+        }
+        Insert: {
+          id?: string
+          last_updated_at?: string
+          last_updated_by?: string | null
+          notes?: string | null
+          patient_id: string
+          status?: Database["public"]["Enums"]["tooth_status_enum"]
+          tooth_number: number
+        }
+        Update: {
+          id?: string
+          last_updated_at?: string
+          last_updated_by?: string | null
+          notes?: string | null
+          patient_id?: string
+          status?: Database["public"]["Enums"]["tooth_status_enum"]
+          tooth_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "odontogram_records_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_documents: {
         Row: {
           created_at: string
@@ -281,6 +319,70 @@ export type Database = {
         }
         Relationships: []
       }
+      tooth_procedures: {
+        Row: {
+          created_at: string
+          faces: Database["public"]["Enums"]["tooth_face_enum"][] | null
+          id: string
+          material_used: string | null
+          notes: string | null
+          patient_id: string
+          procedure_date: string
+          procedure_type: string
+          professional_id: string | null
+          status_after: Database["public"]["Enums"]["tooth_status_enum"]
+          status_before: Database["public"]["Enums"]["tooth_status_enum"] | null
+          tooth_number: number
+        }
+        Insert: {
+          created_at?: string
+          faces?: Database["public"]["Enums"]["tooth_face_enum"][] | null
+          id?: string
+          material_used?: string | null
+          notes?: string | null
+          patient_id: string
+          procedure_date?: string
+          procedure_type: string
+          professional_id?: string | null
+          status_after: Database["public"]["Enums"]["tooth_status_enum"]
+          status_before?:
+            | Database["public"]["Enums"]["tooth_status_enum"]
+            | null
+          tooth_number: number
+        }
+        Update: {
+          created_at?: string
+          faces?: Database["public"]["Enums"]["tooth_face_enum"][] | null
+          id?: string
+          material_used?: string | null
+          notes?: string | null
+          patient_id?: string
+          procedure_date?: string
+          procedure_type?: string
+          professional_id?: string | null
+          status_after?: Database["public"]["Enums"]["tooth_status_enum"]
+          status_before?:
+            | Database["public"]["Enums"]["tooth_status_enum"]
+            | null
+          tooth_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tooth_procedures_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tooth_procedures_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       treatments: {
         Row: {
           cost: number | null
@@ -400,6 +502,23 @@ export type Database = {
         | "refunded"
         | "partial"
       specialization_enum: "Cirurgião-Dentista" | "Ortodontista"
+      tooth_face_enum:
+        | "oclusal"
+        | "mesial"
+        | "distal"
+        | "vestibular"
+        | "lingual"
+        | "incisal"
+      tooth_status_enum:
+        | "higido"
+        | "cariado"
+        | "obturado"
+        | "extraido"
+        | "tratamento_canal"
+        | "coroa"
+        | "implante"
+        | "ausente"
+        | "fratura"
       transaction_type_enum: "payment" | "refund" | "discount"
     }
     CompositeTypes: {
@@ -568,6 +687,25 @@ export const Constants = {
         "partial",
       ],
       specialization_enum: ["Cirurgião-Dentista", "Ortodontista"],
+      tooth_face_enum: [
+        "oclusal",
+        "mesial",
+        "distal",
+        "vestibular",
+        "lingual",
+        "incisal",
+      ],
+      tooth_status_enum: [
+        "higido",
+        "cariado",
+        "obturado",
+        "extraido",
+        "tratamento_canal",
+        "coroa",
+        "implante",
+        "ausente",
+        "fratura",
+      ],
       transaction_type_enum: ["payment", "refund", "discount"],
     },
   },

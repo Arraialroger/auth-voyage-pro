@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { OdontogramView } from '@/components/odontogram/OdontogramView';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, Upload, Download, FileText, Image, Trash2, Eye, MessageCircle, Save } from 'lucide-react';
@@ -332,8 +333,9 @@ export default function PatientDetails() {
       {/* Main Content */}
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs defaultValue="info" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="info">Informações</TabsTrigger>
+            <TabsTrigger value="odontogram">Odontograma</TabsTrigger>
             <TabsTrigger value="history">Histórico</TabsTrigger>
             <TabsTrigger value="documents">Documentos</TabsTrigger>
           </TabsList>
@@ -395,7 +397,12 @@ export default function PatientDetails() {
             </Card>
           </TabsContent>
 
-          {/* Tab 2: Histórico */}
+          {/* Tab 2: Odontograma */}
+          <TabsContent value="odontogram">
+            <OdontogramView patientId={patientId!} />
+          </TabsContent>
+
+          {/* Tab 3: Histórico */}
           <TabsContent value="history">
             <PatientAppointmentHistory patientId={patientId!} />
           </TabsContent>
