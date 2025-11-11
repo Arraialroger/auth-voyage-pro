@@ -25,8 +25,8 @@ export const ToothSVG = ({ toothNumber, status, isSelected, onClick }: ToothSVGP
   return (
     <div 
       className={cn(
-        "relative cursor-pointer transition-all hover:scale-110",
-        isSelected && "ring-2 ring-primary rounded-lg"
+        "flex flex-col items-center gap-1 cursor-pointer transition-all hover:scale-110",
+        isSelected && "ring-2 ring-primary rounded-lg p-1"
       )}
       onClick={onClick}
     >
@@ -49,7 +49,7 @@ export const ToothSVG = ({ toothNumber, status, isSelected, onClick }: ToothSVGP
                 strokeWidth="2" />
         )}
       </svg>
-      <span className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[10px] font-bold text-foreground">
+      <span className="text-[10px] font-bold text-white bg-gray-800 dark:bg-gray-700 px-1.5 py-0.5 rounded min-w-[20px] text-center">
         {toothNumber}
       </span>
     </div>
