@@ -75,39 +75,39 @@ export const OdontogramCanvas = ({ teeth, onToothClick, selectedTooth }: Odontog
         <p className="text-sm font-semibold mb-3">Legenda:</p>
         <div className="grid grid-cols-3 gap-3 text-xs">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-background border-2 border-foreground" />
+            <div className="w-4 h-4 rounded bg-white border-2 border-gray-800" />
             <span>Hígido</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-destructive" />
+            <div className="w-4 h-4 rounded bg-red-600 border-2 border-red-800" />
             <span>Cariado</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-primary" />
+            <div className="w-4 h-4 rounded bg-blue-400 border-2 border-blue-600" />
             <span>Obturado</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-accent" />
+            <div className="w-4 h-4 rounded bg-purple-500 border-2 border-purple-700" />
             <span>Tratamento Canal</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-secondary" />
+            <div className="w-4 h-4 rounded bg-yellow-400 border-2 border-yellow-600" />
             <span>Coroa</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-chart-1" />
+            <div className="w-4 h-4 rounded bg-orange-500 border-2 border-orange-700" />
             <span>Implante</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-muted opacity-50" />
+            <div className="w-4 h-4 rounded bg-gray-400 border-2 border-gray-600 opacity-70" />
             <span>Extraído</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-destructive/70" />
+            <div className="w-4 h-4 rounded bg-gray-800 border-2 border-black" />
             <span>Fratura</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-muted/20 border border-muted-foreground" />
+            <div className="w-4 h-4 rounded bg-gray-200 border-2 border-gray-400 opacity-50" />
             <span>Ausente</span>
           </div>
         </div>

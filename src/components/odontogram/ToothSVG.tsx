@@ -8,15 +8,15 @@ interface ToothSVGProps {
 }
 
 const statusColors: Record<string, string> = {
-  higido: "fill-background stroke-foreground",
-  cariado: "fill-destructive stroke-destructive-foreground",
-  obturado: "fill-primary stroke-primary-foreground",
-  extraido: "fill-muted stroke-muted-foreground opacity-50",
-  tratamento_canal: "fill-accent stroke-accent-foreground",
-  coroa: "fill-secondary stroke-secondary-foreground",
-  implante: "fill-chart-1 stroke-foreground",
-  ausente: "fill-muted/20 stroke-muted-foreground opacity-30",
-  fratura: "fill-destructive/70 stroke-destructive",
+  higido: "fill-white stroke-gray-800",
+  cariado: "fill-red-600 stroke-red-800",
+  obturado: "fill-blue-400 stroke-blue-600",
+  extraido: "fill-gray-400 stroke-gray-600 opacity-70",
+  tratamento_canal: "fill-purple-500 stroke-purple-700",
+  coroa: "fill-yellow-400 stroke-yellow-600",
+  implante: "fill-orange-500 stroke-orange-700",
+  ausente: "fill-gray-200 stroke-gray-400 opacity-50",
+  fratura: "fill-gray-800 stroke-black",
 };
 
 export const ToothSVG = ({ toothNumber, status, isSelected, onClick }: ToothSVGProps) => {
