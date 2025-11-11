@@ -76,6 +76,8 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
           notes,
           last_updated_by: user?.id,
           last_updated_at: new Date().toISOString(),
+        }, { 
+          onConflict: 'patient_id,tooth_number' 
         });
 
       if (odontogramError) throw odontogramError;
