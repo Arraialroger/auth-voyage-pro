@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Clock, XCircle, Edit, Trash2 } from "lucide-react";
+import { CheckCircle2, Clock, XCircle, Trash2, Pencil } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { logger } from "@/lib/logger";
+import { EditItemModal } from "./EditItemModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +26,7 @@ interface TreatmentPlanItemRowProps {
 export const TreatmentPlanItemRow = ({ item, onUpdate, isReceptionist }: TreatmentPlanItemRowProps) => {
   const { toast } = useToast();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const getStatusBadge = (status: string) => {
     const configs = {
@@ -147,7 +149,16 @@ export const TreatmentPlanItemRow = ({ item, onUpdate, isReceptionist }: Treatme
           <Button
             variant="ghost"
             size="sm"
+            onClick={() => setShowEditModal(true)}
+            title="Editar procedimento"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setShowDeleteDialog(true)}
+            title="Excluir procedimento"
           >
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
@@ -157,17 +168,27 @@ export const TreatmentPlanItemRow = ({ item, onUpdate, isReceptionist }: Treatme
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remover procedimento?</AlertDialogTitle>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. O procedimento será permanentemente removido do plano de tratamento.
+              Tem certeza que deseja remover este procedimento do plano de tratamento?
+              Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Remover</AlertDialogAction>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <EditItemModal
+        item={item}
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        onUpdate={onUpdate}
+      />
     </>
   );
 };
