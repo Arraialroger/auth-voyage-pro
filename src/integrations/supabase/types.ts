@@ -383,6 +383,111 @@ export type Database = {
           },
         ]
       }
+      treatment_plan_items: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          estimated_cost: number | null
+          id: string
+          notes: string | null
+          priority: number | null
+          procedure_description: string
+          status: Database["public"]["Enums"]["treatment_plan_item_status_enum"]
+          tooth_number: number | null
+          treatment_id: string | null
+          treatment_plan_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          estimated_cost?: number | null
+          id?: string
+          notes?: string | null
+          priority?: number | null
+          procedure_description: string
+          status?: Database["public"]["Enums"]["treatment_plan_item_status_enum"]
+          tooth_number?: number | null
+          treatment_id?: string | null
+          treatment_plan_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          estimated_cost?: number | null
+          id?: string
+          notes?: string | null
+          priority?: number | null
+          procedure_description?: string
+          status?: Database["public"]["Enums"]["treatment_plan_item_status_enum"]
+          tooth_number?: number | null
+          treatment_id?: string | null
+          treatment_plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_plan_items_treatment_id_fkey"
+            columns: ["treatment_id"]
+            isOneToOne: false
+            referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_plan_items_treatment_plan_id_fkey"
+            columns: ["treatment_plan_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treatment_plans: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          patient_id: string
+          professional_id: string
+          status: Database["public"]["Enums"]["treatment_plan_status_enum"]
+          total_cost: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+          professional_id: string
+          status?: Database["public"]["Enums"]["treatment_plan_status_enum"]
+          total_cost?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          professional_id?: string
+          status?: Database["public"]["Enums"]["treatment_plan_status_enum"]
+          total_cost?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_plans_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_plans_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       treatments: {
         Row: {
           cost: number | null
@@ -520,6 +625,17 @@ export type Database = {
         | "ausente"
         | "fratura"
       transaction_type_enum: "payment" | "refund" | "discount"
+      treatment_plan_item_status_enum:
+        | "pending"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+      treatment_plan_status_enum:
+        | "draft"
+        | "approved"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -707,6 +823,19 @@ export const Constants = {
         "fratura",
       ],
       transaction_type_enum: ["payment", "refund", "discount"],
+      treatment_plan_item_status_enum: [
+        "pending",
+        "in_progress",
+        "completed",
+        "cancelled",
+      ],
+      treatment_plan_status_enum: [
+        "draft",
+        "approved",
+        "in_progress",
+        "completed",
+        "cancelled",
+      ],
     },
   },
 } as const
