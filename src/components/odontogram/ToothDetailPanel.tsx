@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -7,7 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Save, History } from "lucide-react";
+import { Save, FileText, Plus } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 
 interface ToothDetailPanelProps {
   toothNumber: number;
@@ -44,10 +48,34 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
   const [materialUsed, setMaterialUsed] = useState("");
   const [selectedFaces, setSelectedFaces] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
+  const [estimatedCost, setEstimatedCost] = useState("");
+  const [addToPlan, setAddToPlan] = useState(false);
+
+  // Buscar planos de tratamento do paciente
+  const { data: treatmentPlans } = useQuery({
+    queryKey: ['treatment-plans-active', patientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('treatment_plans')
+        .select('id, status, created_at, professional:professionals(full_name)')
+        .eq('patient_id', patientId)
+        .in('status', ['draft', 'approved', 'in_progress'])
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const handleSave = async () => {
     if (!procedureType.trim()) {
       toast.error("Informe o tipo de procedimento");
+      return;
+    }
+
+    if (addToPlan && !selectedPlanId) {
+      toast.error("Selecione um plano de tratamento");
       return;
     }
 
@@ -99,13 +127,37 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
 
       if (procedureError) throw procedureError;
 
-      toast.success("Procedimento registrado com sucesso!");
+      // Adicionar ao plano de tratamento se selecionado
+      if (addToPlan && selectedPlanId) {
+        const procedureDescription = `${procedureType} - Dente ${toothNumber}${selectedFaces.length > 0 ? ` (${selectedFaces.join(', ')})` : ''}`;
+        
+        const { error: planItemError } = await supabase
+          .from('treatment_plan_items')
+          .insert({
+            treatment_plan_id: selectedPlanId,
+            tooth_number: toothNumber,
+            procedure_description: procedureDescription,
+            estimated_cost: estimatedCost ? parseFloat(estimatedCost) : 0,
+            status: 'completed', // Marcado como concluído pois já foi realizado
+            notes: notes || null,
+            completed_at: new Date().toISOString(),
+          });
+
+        if (planItemError) throw planItemError;
+        
+        toast.success("Procedimento registrado e adicionado ao plano!");
+      } else {
+        toast.success("Procedimento registrado com sucesso!");
+      }
       
       // Limpar formulário
       setProcedureType("");
       setNotes("");
       setMaterialUsed("");
       setSelectedFaces([]);
+      setAddToPlan(false);
+      setSelectedPlanId("");
+      setEstimatedCost("");
       
       onUpdate();
     } catch (error) {
@@ -206,13 +258,81 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
           />
         </div>
 
+        <Separator />
+
+        {/* Seção de Adicionar ao Plano */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="add-to-plan"
+              checked={addToPlan}
+              onCheckedChange={(checked) => setAddToPlan(checked as boolean)}
+            />
+            <Label htmlFor="add-to-plan" className="cursor-pointer flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Adicionar ao Plano de Tratamento
+            </Label>
+          </div>
+
+          {addToPlan && (
+            <div className="space-y-3 pl-6 border-l-2 border-primary/20">
+              {treatmentPlans && treatmentPlans.length > 0 ? (
+                <>
+                  <div>
+                    <Label>Selecione o Plano *</Label>
+                    <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Escolha um plano..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {treatmentPlans.map((plan) => (
+                          <SelectItem key={plan.id} value={plan.id}>
+                            <div className="flex items-center gap-2">
+                              <span>
+                                {new Date(plan.created_at).toLocaleDateString('pt-BR', { 
+                                  month: 'short', 
+                                  year: 'numeric' 
+                                })}
+                              </span>
+                              <Badge variant="outline" className="text-xs">
+                                {plan.status === 'draft' ? 'Rascunho' : 
+                                 plan.status === 'approved' ? 'Aprovado' : 'Em Andamento'}
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Custo Estimado (R$)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={estimatedCost}
+                      onChange={(e) => setEstimatedCost(e.target.value)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm text-muted-foreground p-3 bg-muted/50 rounded-lg">
+                  <p className="mb-2">Nenhum plano ativo encontrado.</p>
+                  <p className="text-xs">Crie um plano na aba "Plano de Tratamento" primeiro.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         <Button 
           onClick={handleSave} 
           disabled={saving}
           className="w-full"
         >
           <Save className="w-4 h-4 mr-2" />
-          {saving ? "Salvando..." : "Registrar Procedimento"}
+          {saving ? "Salvando..." : addToPlan ? "Registrar e Adicionar ao Plano" : "Registrar Procedimento"}
         </Button>
       </CardContent>
     </Card>
