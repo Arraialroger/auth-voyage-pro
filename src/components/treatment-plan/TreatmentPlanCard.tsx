@@ -15,7 +15,8 @@ import {
   Plus,
   Trash2,
   AlertTriangle,
-  Download
+  Download,
+  Copy
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -39,6 +40,7 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
 
   const getStatusConfig = (status: string) => {
     const configs = {
@@ -89,6 +91,63 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
     }
   };
 
+  const handleDuplicatePlan = async () => {
+    try {
+      setIsDuplicating(true);
+      
+      // Create new treatment plan
+      const { data: newPlan, error: planError } = await supabase
+        .from('treatment_plans')
+        .insert({
+          patient_id: plan.patient_id,
+          professional_id: plan.professional_id,
+          status: 'draft',
+          notes: plan.notes ? `[Cópia] ${plan.notes}` : '[Cópia do plano anterior]',
+          total_cost: 0, // Will be updated by trigger
+        })
+        .select()
+        .single();
+      
+      if (planError) throw planError;
+      
+      // Copy all items to new plan (reset status to pending)
+      if (plan.items && plan.items.length > 0) {
+        const itemsToCopy = plan.items.map((item: any) => ({
+          treatment_plan_id: newPlan.id,
+          procedure_description: item.procedure_description,
+          tooth_number: item.tooth_number,
+          estimated_cost: item.estimated_cost,
+          priority: item.priority,
+          notes: item.notes,
+          treatment_id: item.treatment_id,
+          status: 'pending', // Reset status
+        }));
+        
+        const { error: itemsError } = await supabase
+          .from('treatment_plan_items')
+          .insert(itemsToCopy);
+        
+        if (itemsError) throw itemsError;
+      }
+      
+      toast({
+        title: "Plano duplicado",
+        description: `Novo plano de tratamento criado com ${plan.items?.length || 0} procedimentos.`,
+      });
+      
+      onUpdate();
+    } catch (error) {
+      logger.error('Erro ao duplicar plano:', error);
+      toast({
+        title: "Erro ao duplicar plano",
+        description: "Não foi possível duplicar o plano de tratamento.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
+
   return (
     <>
       <Card className="overflow-hidden">
@@ -136,6 +195,15 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
               <Button
                 variant="ghost"
                 size="sm"
+                onClick={handleDuplicatePlan}
+                disabled={isDuplicating}
+                title="Duplicar plano"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={handleGeneratePDF}
                 disabled={isGeneratingPDF}
                 title="Gerar PDF"
@@ -146,6 +214,7 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsEditModalOpen(true)}
+                title="Editar plano"
               >
                 <Edit className="h-4 w-4" />
               </Button>
@@ -153,6 +222,7 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsExpanded(!isExpanded)}
+                title={isExpanded ? "Recolher" : "Expandir"}
               >
                 {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </Button>
