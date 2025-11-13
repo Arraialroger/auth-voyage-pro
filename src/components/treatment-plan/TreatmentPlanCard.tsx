@@ -14,13 +14,18 @@ import {
   FileText,
   Plus,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Download
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditTreatmentPlanModal } from "./EditTreatmentPlanModal";
 import { AddItemModal } from "./AddItemModal";
 import { TreatmentPlanItemRow } from "./TreatmentPlanItemRow";
+import { generateTreatmentPlanPDF } from "@/lib/pdfGenerator";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { logger } from "@/lib/logger";
 
 interface TreatmentPlanCardProps {
   plan: any;
@@ -29,9 +34,11 @@ interface TreatmentPlanCardProps {
 }
 
 export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentPlanCardProps) => {
+  const { toast } = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   const getStatusConfig = (status: string) => {
     const configs = {
@@ -50,6 +57,37 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
   const completedItems = plan.items?.filter((item: any) => item.status === 'completed').length || 0;
   const totalItems = plan.items?.length || 0;
   const progress = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
+
+  const handleGeneratePDF = async () => {
+    try {
+      setIsGeneratingPDF(true);
+      
+      // Fetch patient data
+      const { data: patient, error } = await supabase
+        .from('patients')
+        .select('full_name, contact_phone, cpf, birth_date')
+        .eq('id', plan.patient_id)
+        .single();
+      
+      if (error) throw error;
+      
+      await generateTreatmentPlanPDF(plan, patient);
+      
+      toast({
+        title: "PDF gerado com sucesso",
+        description: "O download do plano de tratamento foi iniciado.",
+      });
+    } catch (error) {
+      logger.error('Erro ao gerar PDF:', error);
+      toast({
+        title: "Erro ao gerar PDF",
+        description: "Não foi possível gerar o PDF do plano de tratamento.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
 
   return (
     <>
@@ -95,6 +133,15 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
               )}
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleGeneratePDF}
+                disabled={isGeneratingPDF}
+                title="Gerar PDF"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
