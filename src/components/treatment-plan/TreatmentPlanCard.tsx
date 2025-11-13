@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   ChevronDown, 
   ChevronUp, 
@@ -12,7 +13,8 @@ import {
   XCircle,
   FileText,
   Plus,
-  Trash2
+  Trash2,
+  AlertTriangle
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -136,9 +138,12 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
               </div>
 
               {totalItems === 0 ? (
-                <p className="text-center text-muted-foreground py-6 text-sm">
-                  Nenhum procedimento adicionado ainda
-                </p>
+                <Alert variant="destructive" className="border-amber-500/50 bg-amber-500/10">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+                  <AlertDescription className="text-amber-800 dark:text-amber-400">
+                    Este plano não possui procedimentos. Adicione pelo menos um procedimento para iniciar o tratamento.
+                  </AlertDescription>
+                </Alert>
               ) : (
                 <div className="space-y-2">
                   {plan.items.map((item: any) => (

@@ -13,6 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Info } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -118,6 +120,13 @@ export const CreateTreatmentPlanModal = ({
         </DialogHeader>
 
         <div className="space-y-4">
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Após criar o plano, lembre-se de adicionar os procedimentos necessários para o tratamento do paciente.
+            </AlertDescription>
+          </Alert>
+
           {isReceptionist && (
             <div>
               <Label>Profissional Responsável *</Label>
