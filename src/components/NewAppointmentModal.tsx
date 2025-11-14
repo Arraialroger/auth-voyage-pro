@@ -8,6 +8,7 @@ import { createLocalDateTime } from '@/lib/dateUtils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { logger } from '@/lib/logger';
 
 import {
   Dialog,
@@ -78,9 +79,10 @@ interface NewAppointmentModalProps {
     patient_id?: string;
     treatment_id?: string;
   };
+  treatmentPlanItemId?: string;
 }
 
-export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, onOpenChange: externalOnOpenChange, initialValues }: NewAppointmentModalProps) {
+export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, onOpenChange: externalOnOpenChange, initialValues, treatmentPlanItemId }: NewAppointmentModalProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [patientSearchOpen, setPatientSearchOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -234,12 +236,29 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
             appointment_end_time: endDateTime.toISOString(),
             notes: data.notes || null,
             is_squeeze_in: data.is_squeeze_in || false,
+            treatment_plan_item_id: treatmentPlanItemId || null,
           },
         ])
         .select()
         .single();
 
       if (appointmentError) throw appointmentError;
+
+      // Update treatment_plan_item if linked
+      if (treatmentPlanItemId && newAppointment) {
+        const { error: updateItemError } = await supabase
+          .from('treatment_plan_items')
+          .update({
+            appointment_id: newAppointment.id,
+            scheduled_date: startDateTime.toISOString(),
+          })
+          .eq('id', treatmentPlanItemId);
+
+        if (updateItemError) {
+          logger.error('Erro ao atualizar item do plano:', updateItemError);
+          // Não bloqueia o fluxo, apenas loga o erro
+        }
+      }
 
       toast({
         title: 'Agendamento criado',

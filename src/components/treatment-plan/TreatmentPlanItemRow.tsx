@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Clock, XCircle, Trash2, Pencil } from "lucide-react";
+import { CheckCircle2, Clock, XCircle, Trash2, Pencil, Calendar, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { logger } from "@/lib/logger";
 import { EditItemModal } from "./EditItemModal";
+import { NewAppointmentModal } from "../NewAppointmentModal";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,12 +24,14 @@ interface TreatmentPlanItemRowProps {
   item: any;
   onUpdate: () => void;
   isReceptionist: boolean;
+  patientId: string;
 }
 
-export const TreatmentPlanItemRow = ({ item, onUpdate, isReceptionist }: TreatmentPlanItemRowProps) => {
+export const TreatmentPlanItemRow = ({ item, onUpdate, isReceptionist, patientId }: TreatmentPlanItemRowProps) => {
   const { toast } = useToast();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
 
   const getStatusBadge = (status: string) => {
     const configs = {
@@ -108,6 +113,11 @@ export const TreatmentPlanItemRow = ({ item, onUpdate, isReceptionist }: Treatme
     }
   };
 
+  const handleScheduleSuccess = async () => {
+    setShowScheduleModal(false);
+    onUpdate();
+  };
+
   return (
     <>
       <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
@@ -122,6 +132,12 @@ export const TreatmentPlanItemRow = ({ item, onUpdate, isReceptionist }: Treatme
             {item.priority > 1 && (
               <Badge variant="outline" className="text-xs">
                 Prioridade {item.priority}
+              </Badge>
+            )}
+            {item.scheduled_date && (
+              <Badge variant="outline" className="text-xs gap-1">
+                <Calendar className="h-3 w-3" />
+                {format(new Date(item.scheduled_date), "dd/MM/yy", { locale: ptBR })}
               </Badge>
             )}
           </div>

@@ -28,6 +28,7 @@ export type Database = {
           professional_id: string | null
           status: Database["public"]["Enums"]["appointment_status_enum"]
           treatment_id: string | null
+          treatment_plan_item_id: string | null
         }
         Insert: {
           appointment_end_time: string
@@ -42,6 +43,7 @@ export type Database = {
           professional_id?: string | null
           status?: Database["public"]["Enums"]["appointment_status_enum"]
           treatment_id?: string | null
+          treatment_plan_item_id?: string | null
         }
         Update: {
           appointment_end_time?: string
@@ -56,6 +58,7 @@ export type Database = {
           professional_id?: string | null
           status?: Database["public"]["Enums"]["appointment_status_enum"]
           treatment_id?: string | null
+          treatment_plan_item_id?: string | null
         }
         Relationships: [
           {
@@ -77,6 +80,13 @@ export type Database = {
             columns: ["treatment_id"]
             isOneToOne: false
             referencedRelation: "treatments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_treatment_plan_item_id_fkey"
+            columns: ["treatment_plan_item_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_plan_items"
             referencedColumns: ["id"]
           },
         ]
@@ -385,6 +395,7 @@ export type Database = {
       }
       treatment_plan_items: {
         Row: {
+          appointment_id: string | null
           completed_at: string | null
           created_at: string
           estimated_cost: number | null
@@ -392,12 +403,14 @@ export type Database = {
           notes: string | null
           priority: number | null
           procedure_description: string
+          scheduled_date: string | null
           status: Database["public"]["Enums"]["treatment_plan_item_status_enum"]
           tooth_number: number | null
           treatment_id: string | null
           treatment_plan_id: string
         }
         Insert: {
+          appointment_id?: string | null
           completed_at?: string | null
           created_at?: string
           estimated_cost?: number | null
@@ -405,12 +418,14 @@ export type Database = {
           notes?: string | null
           priority?: number | null
           procedure_description: string
+          scheduled_date?: string | null
           status?: Database["public"]["Enums"]["treatment_plan_item_status_enum"]
           tooth_number?: number | null
           treatment_id?: string | null
           treatment_plan_id: string
         }
         Update: {
+          appointment_id?: string | null
           completed_at?: string | null
           created_at?: string
           estimated_cost?: number | null
@@ -418,12 +433,20 @@ export type Database = {
           notes?: string | null
           priority?: number | null
           procedure_description?: string
+          scheduled_date?: string | null
           status?: Database["public"]["Enums"]["treatment_plan_item_status_enum"]
           tooth_number?: number | null
           treatment_id?: string | null
           treatment_plan_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "treatment_plan_items_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "treatment_plan_items_treatment_id_fkey"
             columns: ["treatment_id"]
