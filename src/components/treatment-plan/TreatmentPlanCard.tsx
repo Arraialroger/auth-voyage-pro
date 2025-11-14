@@ -269,6 +269,7 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
                       item={item}
                       onUpdate={onUpdate}
                       isReceptionist={isReceptionist}
+                      patientId={plan.patient_id}
                     />
                   ))}
                 </div>

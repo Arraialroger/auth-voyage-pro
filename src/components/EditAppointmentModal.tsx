@@ -102,13 +102,23 @@ export function EditAppointmentModal({ appointmentId, open, onOpenChange, onSucc
     },
   });
 
-  // Fetch appointment data
+  // Fetch appointment data with treatment_plan_item info
   const { data: appointmentData, isLoading: loadingAppointment } = useQuery({
     queryKey: ['appointment', appointmentId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('appointments')
-        .select('*')
+        .select(`
+          *,
+          treatment_plan_item:treatment_plan_items(
+            id,
+            procedure_description,
+            treatment_plan:treatment_plans(
+              id,
+              patient:patients(full_name)
+            )
+          )
+        `)
         .eq('id', appointmentId)
         .single();
       
@@ -315,6 +325,27 @@ export function EditAppointmentModal({ appointmentId, open, onOpenChange, onSucc
           </div>
         ) : (
           <>
+            {/* Treatment Plan Info Section */}
+            {appointmentData?.treatment_plan_item && (
+              <div className="px-1 mb-4">
+                <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-primary mb-1">📋 Vinculado ao Plano de Tratamento</p>
+                      <p className="text-sm text-muted-foreground">
+                        {appointmentData.treatment_plan_item.procedure_description}
+                      </p>
+                      {appointmentData.treatment_plan_item.treatment_plan?.patient?.full_name && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Paciente: {appointmentData.treatment_plan_item.treatment_plan.patient.full_name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="flex-1 overflow-y-auto px-1">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" id="edit-appointment-form">
