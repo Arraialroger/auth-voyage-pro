@@ -12,6 +12,7 @@ import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { logger } from "@/lib/logger";
+import { validateAppointment } from "@/lib/appointmentValidation";
 
 interface BulkScheduleModalProps {
   isOpen: boolean;
@@ -113,7 +114,7 @@ export const BulkScheduleModal = ({ isOpen, onClose, treatmentPlan, onSuccess }:
     }
   };
 
-  const calculateSuggestedDates = () => {
+  const calculateSuggestedDates = async () => {
     if (selectedItems.length === 0 || professionalSchedules.length === 0) {
       toast({
         title: "Não é possível calcular",
@@ -154,22 +155,15 @@ export const BulkScheduleModal = ({ isOpen, onClose, treatmentPlan, onSuccess }:
 
             if (isAfter(slotEnd, scheduleEnd)) break;
 
-            // Check if slot conflicts with existing appointments or suggested slots
-            const hasConflict = [
-              ...existingAppointments,
-              ...suggestions.map(s => ({ 
-                appointment_start_time: s.startTime.toISOString(), 
-                appointment_end_time: s.endTime.toISOString() 
-              }))
-            ].some(apt => {
-              const aptStart = parseISO(apt.appointment_start_time);
-              const aptEnd = parseISO(apt.appointment_end_time);
-              return (
-                (isBefore(slotStart, aptEnd) && isAfter(slotEnd, aptStart))
-              );
+            // Validate using centralized validation
+            const validation = await validateAppointment({
+              professionalId: treatmentPlan.professional_id,
+              patientId: treatmentPlan.patient_id,
+              startTime: slotStart,
+              endTime: slotEnd,
             });
 
-            if (!hasConflict) {
+            if (validation.isValid) {
               const priorityLabel = item.priority === 3 ? 'Alta prioridade' : 
                                    item.priority === 2 ? 'Média prioridade' : 'Normal';
               
