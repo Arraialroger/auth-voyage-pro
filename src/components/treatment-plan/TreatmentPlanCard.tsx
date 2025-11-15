@@ -16,13 +16,15 @@ import {
   Trash2,
   AlertTriangle,
   Download,
-  Copy
+  Copy,
+  Sparkles
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { EditTreatmentPlanModal } from "./EditTreatmentPlanModal";
 import { AddItemModal } from "./AddItemModal";
 import { TreatmentPlanItemRow } from "./TreatmentPlanItemRow";
+import { BulkScheduleModal } from "./BulkScheduleModal";
 import { generateTreatmentPlanPDF } from "@/lib/pdfGenerator";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,6 +43,7 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
+  const [isBulkScheduleModalOpen, setIsBulkScheduleModalOpen] = useState(false);
 
   const getStatusConfig = (status: string) => {
     const configs = {
@@ -58,6 +61,7 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
 
   const completedItems = plan.items?.filter((item: any) => item.status === 'completed').length || 0;
   const totalItems = plan.items?.length || 0;
+  const pendingItems = plan.items?.filter((item: any) => item.status === 'pending' && !item.appointment_id).length || 0;
   const progress = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
 
   const handleGeneratePDF = async () => {
@@ -192,6 +196,18 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
               )}
             </div>
             <div className="flex items-center gap-2">
+              {pendingItems > 0 && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setIsBulkScheduleModalOpen(true)}
+                  title="Agendar múltiplos procedimentos"
+                  className="gap-1"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Agendar Lote
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -290,6 +306,13 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
         isOpen={isAddItemModalOpen}
         onClose={() => setIsAddItemModalOpen(false)}
         treatmentPlanId={plan.id}
+        onSuccess={onUpdate}
+      />
+
+      <BulkScheduleModal
+        isOpen={isBulkScheduleModalOpen}
+        onClose={() => setIsBulkScheduleModalOpen(false)}
+        treatmentPlan={plan}
         onSuccess={onUpdate}
       />
     </>
