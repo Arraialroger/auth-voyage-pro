@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { OdontogramView } from '@/components/odontogram/OdontogramView';
 import { TreatmentPlanView } from '@/components/treatment-plan/TreatmentPlanView';
+import { TreatmentPlanProgressDashboard } from '@/components/treatment-plan/TreatmentPlanProgressDashboard';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, Upload, Download, FileText, Image, Trash2, Eye, MessageCircle, Save } from 'lucide-react';
@@ -334,10 +335,11 @@ export default function PatientDetails() {
       {/* Main Content */}
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs defaultValue="info" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="info">Informações</TabsTrigger>
             <TabsTrigger value="odontogram">Odontograma</TabsTrigger>
             <TabsTrigger value="treatment-plan">Plano de Tratamento</TabsTrigger>
+            <TabsTrigger value="progress">Progresso</TabsTrigger>
             <TabsTrigger value="history">Histórico</TabsTrigger>
             <TabsTrigger value="documents">Documentos</TabsTrigger>
           </TabsList>
@@ -409,12 +411,19 @@ export default function PatientDetails() {
             <TreatmentPlanView patientId={patientId!} />
           </TabsContent>
 
-          {/* Tab 4: Histórico */}
+          {/* Tab 4: Dashboard de Progresso */}
+          <TabsContent value="progress">
+            <TreatmentPlanProgressDashboard 
+              plans={queryClient.getQueryData(['treatment-plans', patientId]) || []} 
+            />
+          </TabsContent>
+
+          {/* Tab 5: Histórico */}
           <TabsContent value="history">
             <PatientAppointmentHistory patientId={patientId!} />
           </TabsContent>
 
-          {/* Tab 5: Documentos */}
+          {/* Tab 6: Documentos */}
           <TabsContent value="documents" className="space-y-6">
             <Card>
               <CardHeader>
