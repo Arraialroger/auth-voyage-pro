@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Save, FileText, Plus } from "lucide-react";
+import { Save, FileText, Plus, Info } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -54,6 +54,7 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
   const [estimatedCost, setEstimatedCost] = useState("");
   const [addToPlan, setAddToPlan] = useState(false);
   const [showCreatePlanModal, setShowCreatePlanModal] = useState(false);
+  const [planItemStatus, setPlanItemStatus] = useState<"completed" | "pending" | "in_progress">("pending");
 
   // Buscar planos de tratamento do paciente
   const { data: treatmentPlans, refetch: refetchPlans } = useQuery({
@@ -141,9 +142,9 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
             tooth_number: toothNumber,
             procedure_description: procedureDescription,
             estimated_cost: estimatedCost ? parseFloat(estimatedCost) : 0,
-            status: 'completed', // Marcado como concluído pois já foi realizado
+            status: planItemStatus,
             notes: notes || null,
-            completed_at: new Date().toISOString(),
+            completed_at: planItemStatus === 'completed' ? new Date().toISOString() : null,
           });
 
         if (planItemError) throw planItemError;
@@ -161,6 +162,7 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
       setAddToPlan(false);
       setSelectedPlanId("");
       setEstimatedCost("");
+      setPlanItemStatus("pending");
       
       onUpdate();
     } catch (error) {
@@ -291,6 +293,17 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
 
           {addToPlan && (
             <div className="space-y-3 pl-6 border-l-2 border-primary/20">
+              <Alert className="bg-muted/50">
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  <div className="space-y-1">
+                    <p><strong>✅ Concluído:</strong> O procedimento já foi realizado</p>
+                    <p><strong>⏳ Pendente:</strong> Procedimento planejado para o futuro</p>
+                    <p><strong>🔄 Em Andamento:</strong> Procedimento iniciado mas não finalizado</p>
+                  </div>
+                </AlertDescription>
+              </Alert>
+
               {!treatmentPlans || treatmentPlans.length === 0 ? (
                 <Alert>
                   <AlertDescription className="flex items-center justify-between gap-2">
@@ -343,6 +356,20 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
                         <Plus className="w-4 h-4" />
                       </Button>
                     </div>
+                  </div>
+
+                  <div>
+                    <Label>Status do Item no Plano *</Label>
+                    <Select value={planItemStatus} onValueChange={(value: any) => setPlanItemStatus(value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="completed">✅ Concluído</SelectItem>
+                        <SelectItem value="pending">⏳ Pendente</SelectItem>
+                        <SelectItem value="in_progress">🔄 Em Andamento</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div>
