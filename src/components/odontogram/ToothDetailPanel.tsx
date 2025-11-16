@@ -12,6 +12,8 @@ import { Save, FileText, Plus } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CreateTreatmentPlanModal } from "@/components/treatment-plan/CreateTreatmentPlanModal";
 
 interface ToothDetailPanelProps {
   toothNumber: number;
@@ -51,9 +53,10 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
   const [estimatedCost, setEstimatedCost] = useState("");
   const [addToPlan, setAddToPlan] = useState(false);
+  const [showCreatePlanModal, setShowCreatePlanModal] = useState(false);
 
   // Buscar planos de tratamento do paciente
-  const { data: treatmentPlans } = useQuery({
+  const { data: treatmentPlans, refetch: refetchPlans } = useQuery({
     queryKey: ['treatment-plans-active', patientId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -176,6 +179,18 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
     );
   };
 
+  const handlePlanCreated = async () => {
+    await refetchPlans();
+    
+    // Automaticamente seleciona o plano mais recente
+    const plans = await refetchPlans();
+    if (plans.data && plans.data.length > 0) {
+      setSelectedPlanId(plans.data[0].id);
+      setAddToPlan(true);
+      toast.success("Plano criado e selecionado!");
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -276,33 +291,58 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
 
           {addToPlan && (
             <div className="space-y-3 pl-6 border-l-2 border-primary/20">
-              {treatmentPlans && treatmentPlans.length > 0 ? (
+              {!treatmentPlans || treatmentPlans.length === 0 ? (
+                <Alert>
+                  <AlertDescription className="flex items-center justify-between gap-2">
+                    <span className="text-sm">Nenhum plano de tratamento ativo encontrado.</span>
+                    <Button 
+                      type="button"
+                      size="sm"
+                      onClick={() => setShowCreatePlanModal(true)}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Criar Plano
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              ) : (
                 <>
                   <div>
                     <Label>Selecione o Plano *</Label>
-                    <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Escolha um plano..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {treatmentPlans.map((plan) => (
-                          <SelectItem key={plan.id} value={plan.id}>
-                            <div className="flex items-center gap-2">
-                              <span>
-                                {new Date(plan.created_at).toLocaleDateString('pt-BR', { 
-                                  month: 'short', 
-                                  year: 'numeric' 
-                                })}
-                              </span>
-                              <Badge variant="outline" className="text-xs">
-                                {plan.status === 'draft' ? 'Rascunho' : 
-                                 plan.status === 'approved' ? 'Aprovado' : 'Em Andamento'}
-                              </Badge>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-2">
+                      <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Escolha um plano..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {treatmentPlans.map((plan) => (
+                            <SelectItem key={plan.id} value={plan.id}>
+                              <div className="flex items-center gap-2">
+                                <span>
+                                  {new Date(plan.created_at).toLocaleDateString('pt-BR', { 
+                                    month: 'short', 
+                                    year: 'numeric' 
+                                  })}
+                                </span>
+                                <Badge variant="outline" className="text-xs">
+                                  {plan.status === 'draft' ? 'Rascunho' : 
+                                   plan.status === 'approved' ? 'Aprovado' : 'Em Andamento'}
+                                </Badge>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button 
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setShowCreatePlanModal(true)}
+                        title="Criar novo plano"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
 
                   <div>
@@ -316,11 +356,6 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
                     />
                   </div>
                 </>
-              ) : (
-                <div className="text-sm text-muted-foreground p-3 bg-muted/50 rounded-lg">
-                  <p className="mb-2">Nenhum plano ativo encontrado.</p>
-                  <p className="text-xs">Crie um plano na aba "Plano de Tratamento" primeiro.</p>
-                </div>
               )}
             </div>
           )}
@@ -335,6 +370,14 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
           {saving ? "Salvando..." : addToPlan ? "Registrar e Adicionar ao Plano" : "Registrar Procedimento"}
         </Button>
       </CardContent>
+
+      {/* Modal de criação de plano */}
+      <CreateTreatmentPlanModal
+        isOpen={showCreatePlanModal}
+        onClose={() => setShowCreatePlanModal(false)}
+        patientId={patientId}
+        onSuccess={handlePlanCreated}
+      />
     </Card>
   );
 };
