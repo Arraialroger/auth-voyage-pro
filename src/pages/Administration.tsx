@@ -89,9 +89,6 @@ export default function Administration() {
             </p>
           </div>
 
-          {/* Dashboard com estatísticas */}
-          <DashboardStats />
-
           {/* Seção de Gerenciamento */}
           <div className="space-y-4">
             <h3 className="text-2xl font-semibold text-foreground">
@@ -127,6 +124,9 @@ export default function Administration() {
             })}
             </div>
           </div>
+
+          {/* Dashboard com estatísticas */}
+          <DashboardStats />
         </div>
       </main>
     </div>
