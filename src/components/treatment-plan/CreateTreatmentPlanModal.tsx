@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info } from "lucide-react";
 import {
@@ -40,6 +41,7 @@ export const CreateTreatmentPlanModal = ({
   const { user } = useAuth();
   const { toast } = useToast();
   const userProfile = useUserProfile();
+  const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,6 +83,7 @@ export const CreateTreatmentPlanModal = ({
           patient_id: patientId,
           professional_id: planProfessionalId,
           status: 'draft',
+          title: title.trim() || null,
           notes: notes || null,
           total_cost: 0,
         });
@@ -107,6 +110,7 @@ export const CreateTreatmentPlanModal = ({
   };
 
   const handleClose = () => {
+    setTitle("");
     setNotes("");
     setSelectedProfessionalId("");
     onClose();
@@ -144,6 +148,15 @@ export const CreateTreatmentPlanModal = ({
               </Select>
             </div>
           )}
+
+          <div>
+            <Label>Título do Plano</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Ex: Tratamento Ortodôntico, Reabilitação Completa..."
+            />
+          </div>
 
           <div>
             <Label>Observações</Label>
