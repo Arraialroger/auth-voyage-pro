@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -33,11 +34,13 @@ export const EditTreatmentPlanModal = ({
   onSuccess,
 }: EditTreatmentPlanModalProps) => {
   const { toast } = useToast();
+  const [title, setTitle] = useState(plan.title || "");
   const [status, setStatus] = useState(plan.status);
   const [notes, setNotes] = useState(plan.notes || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    setTitle(plan.title || "");
     setStatus(plan.status);
     setNotes(plan.notes || "");
   }, [plan]);
@@ -48,6 +51,7 @@ export const EditTreatmentPlanModal = ({
       const { error } = await supabase
         .from('treatment_plans')
         .update({
+          title: title || null,
           status,
           notes: notes || null,
         })
@@ -82,6 +86,15 @@ export const EditTreatmentPlanModal = ({
         </DialogHeader>
 
         <div className="space-y-4">
+          <div>
+            <Label>Título</Label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Nome do plano de tratamento..."
+            />
+          </div>
+
           <div>
             <Label>Status</Label>
             <Select value={status} onValueChange={setStatus}>
