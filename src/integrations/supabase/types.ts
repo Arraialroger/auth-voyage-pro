@@ -471,6 +471,7 @@ export type Database = {
           patient_id: string
           professional_id: string
           status: Database["public"]["Enums"]["treatment_plan_status_enum"]
+          title: string | null
           total_cost: number | null
           updated_at: string
         }
@@ -481,6 +482,7 @@ export type Database = {
           patient_id: string
           professional_id: string
           status?: Database["public"]["Enums"]["treatment_plan_status_enum"]
+          title?: string | null
           total_cost?: number | null
           updated_at?: string
         }
@@ -491,6 +493,7 @@ export type Database = {
           patient_id?: string
           professional_id?: string
           status?: Database["public"]["Enums"]["treatment_plan_status_enum"]
+          title?: string | null
           total_cost?: number | null
           updated_at?: string
         }

@@ -160,7 +160,7 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
                 <CardTitle className="text-lg">
-                  Plano de {format(new Date(plan.created_at), "MMMM 'de' yyyy", { locale: ptBR })}
+                  {plan.title || `Plano de ${format(new Date(plan.created_at), "MMMM 'de' yyyy", { locale: ptBR })}`}
                 </CardTitle>
                 <Badge className={statusConfig.className}>
                   <StatusIcon className="h-3 w-3 mr-1" />
