@@ -133,6 +133,82 @@ export type Database = {
           },
         ]
       }
+      medical_certificates: {
+        Row: {
+          additional_notes: string | null
+          appointment_id: string | null
+          certificate_type: Database["public"]["Enums"]["certificate_type_enum"]
+          cid_10_code: string | null
+          created_at: string
+          days_count: number | null
+          end_date: string | null
+          id: string
+          patient_id: string
+          pdf_file_path: string | null
+          professional_id: string
+          reason: string
+          signature_hash: string | null
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          additional_notes?: string | null
+          appointment_id?: string | null
+          certificate_type?: Database["public"]["Enums"]["certificate_type_enum"]
+          cid_10_code?: string | null
+          created_at?: string
+          days_count?: number | null
+          end_date?: string | null
+          id?: string
+          patient_id: string
+          pdf_file_path?: string | null
+          professional_id: string
+          reason: string
+          signature_hash?: string | null
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          additional_notes?: string | null
+          appointment_id?: string | null
+          certificate_type?: Database["public"]["Enums"]["certificate_type_enum"]
+          cid_10_code?: string | null
+          created_at?: string
+          days_count?: number | null
+          end_date?: string | null
+          id?: string
+          patient_id?: string
+          pdf_file_path?: string | null
+          professional_id?: string
+          reason?: string
+          signature_hash?: string | null
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medical_certificates_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medical_certificates_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medical_certificates_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       n8n_chat_histories: {
         Row: {
           id: number
@@ -251,6 +327,202 @@ export type Database = {
           medical_history_notes?: string | null
         }
         Relationships: []
+      }
+      prescription_items: {
+        Row: {
+          created_at: string
+          dosage: string
+          duration: string
+          frequency: string
+          id: string
+          instructions: string | null
+          item_order: number
+          medication_name: string
+          prescription_id: string
+        }
+        Insert: {
+          created_at?: string
+          dosage: string
+          duration: string
+          frequency: string
+          id?: string
+          instructions?: string | null
+          item_order?: number
+          medication_name: string
+          prescription_id: string
+        }
+        Update: {
+          created_at?: string
+          dosage?: string
+          duration?: string
+          frequency?: string
+          id?: string
+          instructions?: string | null
+          item_order?: number
+          medication_name?: string
+          prescription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescription_items_prescription_id_fkey"
+            columns: ["prescription_id"]
+            isOneToOne: false
+            referencedRelation: "prescriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prescription_template_items: {
+        Row: {
+          dosage: string
+          duration: string
+          frequency: string
+          id: string
+          instructions: string | null
+          item_order: number
+          medication_name: string
+          template_id: string
+        }
+        Insert: {
+          dosage: string
+          duration: string
+          frequency: string
+          id?: string
+          instructions?: string | null
+          item_order?: number
+          medication_name: string
+          template_id: string
+        }
+        Update: {
+          dosage?: string
+          duration?: string
+          frequency?: string
+          id?: string
+          instructions?: string | null
+          item_order?: number
+          medication_name?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescription_template_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "prescription_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prescription_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          general_instructions: string | null
+          id: string
+          is_shared: boolean | null
+          prescription_type: Database["public"]["Enums"]["prescription_type_enum"]
+          professional_id: string
+          template_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          general_instructions?: string | null
+          id?: string
+          is_shared?: boolean | null
+          prescription_type?: Database["public"]["Enums"]["prescription_type_enum"]
+          professional_id: string
+          template_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          general_instructions?: string | null
+          id?: string
+          is_shared?: boolean | null
+          prescription_type?: Database["public"]["Enums"]["prescription_type_enum"]
+          professional_id?: string
+          template_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescription_templates_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prescriptions: {
+        Row: {
+          appointment_id: string | null
+          created_at: string
+          general_instructions: string | null
+          id: string
+          is_template: boolean | null
+          patient_id: string
+          pdf_file_path: string | null
+          prescription_type: Database["public"]["Enums"]["prescription_type_enum"]
+          professional_id: string
+          signature_hash: string | null
+          template_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          appointment_id?: string | null
+          created_at?: string
+          general_instructions?: string | null
+          id?: string
+          is_template?: boolean | null
+          patient_id: string
+          pdf_file_path?: string | null
+          prescription_type?: Database["public"]["Enums"]["prescription_type_enum"]
+          professional_id: string
+          signature_hash?: string | null
+          template_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          appointment_id?: string | null
+          created_at?: string
+          general_instructions?: string | null
+          id?: string
+          is_template?: boolean | null
+          patient_id?: string
+          pdf_file_path?: string | null
+          prescription_type?: Database["public"]["Enums"]["prescription_type_enum"]
+          professional_id?: string
+          signature_hash?: string | null
+          template_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescriptions_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescriptions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescriptions_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       professional_schedules: {
         Row: {
@@ -605,6 +877,7 @@ export type Database = {
         | "No-Show"
         | "Pending Confirmation"
         | "Patient Arrived"
+      certificate_type_enum: "attendance" | "medical_leave" | "fitness"
       expense_category_enum:
         | "rent"
         | "utilities"
@@ -632,6 +905,7 @@ export type Database = {
         | "cancelled"
         | "refunded"
         | "partial"
+      prescription_type_enum: "simple" | "controlled" | "special"
       specialization_enum: "Cirurgião-Dentista" | "Ortodontista"
       tooth_face_enum:
         | "oclusal"
@@ -798,6 +1072,7 @@ export const Constants = {
         "Pending Confirmation",
         "Patient Arrived",
       ],
+      certificate_type_enum: ["attendance", "medical_leave", "fitness"],
       expense_category_enum: [
         "rent",
         "utilities",
@@ -828,6 +1103,7 @@ export const Constants = {
         "refunded",
         "partial",
       ],
+      prescription_type_enum: ["simple", "controlled", "special"],
       specialization_enum: ["Cirurgião-Dentista", "Ortodontista"],
       tooth_face_enum: [
         "oclusal",
