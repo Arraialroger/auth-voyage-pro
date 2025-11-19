@@ -12,7 +12,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Trash2, Plus } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 const templateItemSchema = z.object({
   id: z.string().optional(),

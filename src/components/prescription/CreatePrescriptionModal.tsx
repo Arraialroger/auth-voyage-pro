@@ -14,7 +14,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Trash2, Plus, FileText } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { SaveAsTemplateModal } from './SaveAsTemplateModal';
 
 const prescriptionItemSchema = z.object({
