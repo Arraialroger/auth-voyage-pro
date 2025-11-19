@@ -216,14 +216,14 @@ export const CreatePrescriptionModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh]">
+      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Nova Receita</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <ScrollArea className="max-h-[calc(90vh-200px)] pr-4">
-            <div className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-6 pb-4">
               {/* Tipo de Receita */}
               <div className="space-y-2">
                 <Label htmlFor="prescription_type">Tipo de Receita *</Label>
@@ -396,7 +396,7 @@ export const CreatePrescriptionModal = ({
             </div>
           </ScrollArea>
 
-          <DialogFooter className="mt-6">
+          <DialogFooter className="pt-4 border-t">
             <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
               Cancelar
             </Button>
