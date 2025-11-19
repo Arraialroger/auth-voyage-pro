@@ -76,10 +76,6 @@ export default function ManagePatients() {
   });
   const [cpfValidationError, setCpfValidationError] = useState<string>('');
   const [cpfSuggestion, setCpfSuggestion] = useState<string>('');
-  const [phoneError, setPhoneError] = useState<{
-    exists: boolean;
-    patient?: { full_name: string; created_at: string; id: string };
-  } | null>(null);
 
   const [cpfDuplicateError, setCpfDuplicateError] = useState<{
     exists: boolean;
@@ -337,17 +333,6 @@ export default function ManagePatients() {
       return;
     }
 
-    // ✅ Bloquear submit se telefone duplicado detectado
-    if (phoneError?.exists) {
-      toast({
-        title: "Telefone já cadastrado",
-        description: `Este telefone pertence a: ${phoneError.patient?.full_name}. Verifique os dados ou edite o paciente existente.`,
-        variant: "destructive",
-        duration: 8000
-      });
-      return;
-    }
-
     // ✅ Bloquear submit se CPF duplicado detectado
     if (cpfDuplicateError?.exists) {
       toast({
@@ -481,17 +466,6 @@ export default function ManagePatients() {
       return;
     }
     
-    // Block submission if duplicate phone detected (excluding current patient)
-    if (phoneError?.exists && phoneError.patient?.id !== editingPatient.id) {
-      toast({
-        title: "Telefone já cadastrado",
-        description: `Este telefone pertence a: ${phoneError.patient?.full_name}. Verifique os dados ou edite o paciente existente.`,
-        variant: "destructive",
-        duration: 8000
-      });
-      return;
-    }
-
     // ✅ Block submission if duplicate CPF detected (excluding current patient)
     if (cpfDuplicateError?.exists && cpfDuplicateError.patient?.id !== editingPatient.id) {
       toast({
@@ -535,7 +509,6 @@ export default function ManagePatients() {
         title: "Paciente atualizado",
         description: "As informações foram salvas com sucesso."
       });
-      setPhoneError(null);
       setIsEditDialogOpen(false);
       setEditingPatient(null);
       queryClient.invalidateQueries({
@@ -626,7 +599,6 @@ export default function ManagePatients() {
   };
   const handlePhoneBlur = async (phone: string) => {
     if (!phone || !validatePhone(phone)) {
-      setPhoneError(null);
       return;
     }
 
@@ -638,26 +610,23 @@ export default function ManagePatients() {
         .select('id, full_name, created_at')
         .eq('contact_phone', cleanedPhone)
         .maybeSingle();
-
-      if (error) throw error;
-
-      if (data) {
-        setPhoneError({
-          exists: true,
-          patient: data
+      
+      if (data && !error) {
+        // ⚠️ Aviso informativo, NÃO bloqueia submissão
+        toast({
+          title: "⚠️ Telefone compartilhado",
+          description: `Este número também pertence a: ${data.full_name}`,
+          variant: "default",
+          duration: 5000
         });
-      } else {
-        setPhoneError(null);
       }
     } catch (error) {
       logger.error('Erro ao verificar telefone:', error);
-      setPhoneError(null);
     }
   };
 
   const handlePhoneBlurEdit = async (phone: string) => {
     if (!phone || !validatePhone(phone) || !editingPatient) {
-      setPhoneError(null);
       return;
     }
 
@@ -668,22 +637,20 @@ export default function ManagePatients() {
         .from('patients')
         .select('id, full_name, created_at')
         .eq('contact_phone', cleanedPhone)
-        .neq('id', editingPatient.id) // Exclude current patient
+        .neq('id', editingPatient.id)
         .maybeSingle();
-
-      if (error) throw error;
-
-      if (data) {
-        setPhoneError({
-          exists: true,
-          patient: data
+      
+      if (data && !error) {
+        // ⚠️ Aviso informativo, NÃO bloqueia submissão
+        toast({
+          title: "⚠️ Telefone compartilhado",
+          description: `Este número também pertence a: ${data.full_name}`,
+          variant: "default",
+          duration: 5000
         });
-      } else {
-        setPhoneError(null);
       }
     } catch (error) {
       logger.error('Erro ao verificar telefone:', error);
-      setPhoneError(null);
     }
   };
 
@@ -748,7 +715,6 @@ export default function ManagePatients() {
 
   const openEditDialog = (patient: Patient) => {
     setEditingPatient(patient);
-    setPhoneError(null);
     setCpfDuplicateError(null);
     setCpfValidationError('');
     setCpfSuggestion('');
@@ -769,7 +735,6 @@ export default function ManagePatients() {
       birth_date: '',
       medical_history_notes: ''
     });
-    setPhoneError(null);
     setCpfDuplicateError(null);
     setCpfValidationError('');
     setCpfSuggestion('');
@@ -851,28 +816,10 @@ export default function ManagePatients() {
                         onChange={e => {
                           const formatted = formatPhone(e.target.value);
                           setFormData({ ...formData, contact_phone: formatted });
-                          setPhoneError(null);
                         }}
                         onBlur={(e) => handlePhoneBlur(e.target.value)}
                         placeholder="(00) 00000-0000"
-                        error={phoneError?.exists}
-                        errorMessage={phoneError?.exists ? `⚠️ Telefone já cadastrado para: ${phoneError.patient?.full_name}` : undefined}
                       />
-                      {phoneError?.exists && phoneError.patient && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="mt-2 w-full"
-                          onClick={() => {
-                            setIsCreateDialogOpen(false);
-                            navigate(`/patient/${phoneError.patient.id}`);
-                          }}
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          Ver Paciente Existente
-                        </Button>
-                      )}
                     </div>
                     <div>
                       <Label htmlFor="cpf">CPF</Label>
@@ -1073,29 +1020,11 @@ export default function ManagePatients() {
                                         onChange={e => {
                                           const formatted = formatPhone(e.target.value);
                                           setFormData(prev => ({ ...prev, contact_phone: formatted }));
-                                          setPhoneError(null);
                                         }}
                                         onBlur={(e) => handlePhoneBlurEdit(e.target.value)}
                                         placeholder="(00) 00000-0000" 
                                         className="mt-2"
-                                        error={phoneError?.exists}
-                                        errorMessage={phoneError?.exists ? `⚠️ Telefone já cadastrado para: ${phoneError.patient?.full_name}` : undefined}
                                       />
-                                      {phoneError?.exists && phoneError.patient && (
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="sm"
-                                          className="mt-2 w-full"
-                                          onClick={() => {
-                                            setIsEditDialogOpen(false);
-                                            navigate(`/patient/${phoneError.patient.id}`);
-                                          }}
-                                        >
-                                          <Eye className="h-4 w-4 mr-2" />
-                                          Ver Paciente Existente
-                                        </Button>
-                                      )}
                                       {formData.contact_phone && <div className="flex flex-col gap-2 mt-1">
                                           <a href={formatWhatsAppLink(formData.contact_phone)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors group">
                                             <MessageCircle className="h-3 w-3 group-hover:scale-110 transition-transform" />
