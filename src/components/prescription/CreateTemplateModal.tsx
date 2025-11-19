@@ -178,14 +178,15 @@ export const CreateTemplateModal = ({
               {/* Tipo de Receita */}
               <div className="space-y-2">
                 <Label htmlFor="prescription_type">Tipo de Receita *</Label>
-                <Select
-                  value={watch('prescription_type')}
-                  onValueChange={(value: 'simple' | 'controlled' | 'special') =>
-                    setValue('prescription_type', value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
+            <Select
+              value={watch('prescription_type')}
+              onValueChange={(value: 'simple' | 'controlled' | 'special') =>
+                setValue('prescription_type', value)
+              }
+              defaultValue="simple"
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o tipo" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="simple">Simples</SelectItem>
