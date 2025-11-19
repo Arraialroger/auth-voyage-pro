@@ -10,14 +10,18 @@ import { FileText, Calendar, User, Pill, Download, Eye, Plus } from 'lucide-reac
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CreatePrescriptionModal } from './CreatePrescriptionModal';
+import { generatePrescriptionPDF } from '@/lib/prescriptionPdf';
+import { useToast } from '@/hooks/use-toast';
 
 interface PrescriptionViewProps {
   patientId: string;
 }
 
 export const PrescriptionView = ({ patientId }: PrescriptionViewProps) => {
+  const { toast } = useToast();
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [selectedPrescription, setSelectedPrescription] = useState<string | null>(null);
+  const [generatingPdf, setGeneratingPdf] = useState<string | null>(null);
 
   const { data: prescriptions, isLoading, refetch } = useQuery({
     queryKey: ['prescriptions', patientId],
@@ -26,7 +30,17 @@ export const PrescriptionView = ({ patientId }: PrescriptionViewProps) => {
         .from('prescriptions')
         .select(`
           *,
-          professional:professionals(full_name),
+          professional:professionals(
+            full_name,
+            specialization,
+            contact_phone,
+            professional_registry,
+            registry_uf,
+            clinic_name,
+            clinic_address,
+            clinic_phone,
+            clinic_cnpj
+          ),
           prescription_items(*)
         `)
         .eq('patient_id', patientId)
@@ -36,6 +50,59 @@ export const PrescriptionView = ({ patientId }: PrescriptionViewProps) => {
       return data;
     },
   });
+
+  const handleGeneratePDF = async (prescriptionId: string) => {
+    try {
+      setGeneratingPdf(prescriptionId);
+      toast({
+        title: 'Gerando PDF...',
+        description: 'Por favor, aguarde.',
+      });
+
+      // Find prescription data
+      const prescription = prescriptions?.find(p => p.id === prescriptionId);
+      if (!prescription) throw new Error('Receita não encontrada');
+
+      // Fetch patient data
+      const { data: patientData, error: patientError } = await supabase
+        .from('patients')
+        .select('full_name, birth_date, contact_phone')
+        .eq('id', patientId)
+        .single();
+
+      if (patientError) throw patientError;
+
+      // Generate PDF
+      const signatureHash = await generatePrescriptionPDF({
+        ...prescription,
+        patient: patientData,
+      });
+
+      // Update prescription with signature hash
+      const { error: updateError } = await supabase
+        .from('prescriptions')
+        .update({ signature_hash: signatureHash })
+        .eq('id', prescriptionId);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: 'PDF gerado com sucesso!',
+        description: 'O download iniciará automaticamente.',
+      });
+
+      refetch();
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast({
+        title: 'Erro ao gerar PDF',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingPdf(null);
+    }
+  };
 
   const getPrescriptionTypeLabel = (type: string) => {
     switch (type) {
@@ -127,13 +194,14 @@ export const PrescriptionView = ({ patientId }: PrescriptionViewProps) => {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
-                      <Eye className="h-4 w-4 mr-2" />
-                      Visualizar
-                    </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="default" 
+                      size="sm"
+                      onClick={() => handleGeneratePDF(prescription.id)}
+                      disabled={generatingPdf === prescription.id}
+                    >
                       <Download className="h-4 w-4 mr-2" />
-                      PDF
+                      {generatingPdf === prescription.id ? 'Gerando...' : 'Gerar PDF'}
                     </Button>
                   </div>
                 </div>

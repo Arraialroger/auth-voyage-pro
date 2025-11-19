@@ -8,13 +8,17 @@ import { FileText, Calendar, User, Clock, Download, Eye, Plus } from 'lucide-rea
 import { format, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CreateCertificateModal } from './CreateCertificateModal';
+import { generateCertificatePDF } from '@/lib/certificatePdf';
+import { useToast } from '@/hooks/use-toast';
 
 interface CertificateViewProps {
   patientId: string;
 }
 
 export const CertificateView = ({ patientId }: CertificateViewProps) => {
+  const { toast } = useToast();
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState<string | null>(null);
 
   const { data: certificates, isLoading, refetch } = useQuery({
     queryKey: ['medical_certificates', patientId],
@@ -23,7 +27,16 @@ export const CertificateView = ({ patientId }: CertificateViewProps) => {
         .from('medical_certificates')
         .select(`
           *,
-          professional:professionals(full_name)
+          professional:professionals(
+            full_name,
+            specialization,
+            professional_registry,
+            registry_uf,
+            clinic_name,
+            clinic_address,
+            clinic_phone,
+            clinic_cnpj
+          )
         `)
         .eq('patient_id', patientId)
         .order('created_at', { ascending: false });
@@ -32,6 +45,59 @@ export const CertificateView = ({ patientId }: CertificateViewProps) => {
       return data;
     },
   });
+
+  const handleGeneratePDF = async (certificateId: string) => {
+    try {
+      setGeneratingPdf(certificateId);
+      toast({
+        title: 'Gerando PDF...',
+        description: 'Por favor, aguarde.',
+      });
+
+      // Find certificate data
+      const certificate = certificates?.find(c => c.id === certificateId);
+      if (!certificate) throw new Error('Atestado não encontrado');
+
+      // Fetch patient data
+      const { data: patientData, error: patientError } = await supabase
+        .from('patients')
+        .select('full_name, cpf')
+        .eq('id', patientId)
+        .single();
+
+      if (patientError) throw patientError;
+
+      // Generate PDF
+      const signatureHash = await generateCertificatePDF({
+        ...certificate,
+        patient: patientData,
+      });
+
+      // Update certificate with signature hash
+      const { error: updateError } = await supabase
+        .from('medical_certificates')
+        .update({ signature_hash: signatureHash })
+        .eq('id', certificateId);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: 'PDF gerado com sucesso!',
+        description: 'O download iniciará automaticamente.',
+      });
+
+      refetch();
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast({
+        title: 'Erro ao gerar PDF',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingPdf(null);
+    }
+  };
 
   const getCertificateTypeLabel = (type: string) => {
     switch (type) {
@@ -123,13 +189,14 @@ export const CertificateView = ({ patientId }: CertificateViewProps) => {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
-                      <Eye className="h-4 w-4 mr-2" />
-                      Visualizar
-                    </Button>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="default" 
+                      size="sm"
+                      onClick={() => handleGeneratePDF(certificate.id)}
+                      disabled={generatingPdf === certificate.id}
+                    >
                       <Download className="h-4 w-4 mr-2" />
-                      PDF
+                      {generatingPdf === certificate.id ? 'Gerando...' : 'Gerar PDF'}
                     </Button>
                   </div>
                 </div>
