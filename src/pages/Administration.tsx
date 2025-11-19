@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, UserCheck, Stethoscope, Settings, DollarSign } from 'lucide-react';
+import { Users, UserCheck, Stethoscope, Settings, DollarSign, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardStats } from '@/components/DashboardStats';
@@ -47,6 +47,14 @@ export default function Administration() {
       route: '/admin/treatments',
       color: 'text-purple-600',
       bgColor: 'bg-purple-50'
+    },
+    {
+      title: 'Templates de Receitas',
+      description: 'Criar e gerenciar templates de receitas médicas',
+      icon: FileText,
+      route: '/prescription-templates',
+      color: 'text-pink-600',
+      bgColor: 'bg-pink-50'
     },
   ];
 
