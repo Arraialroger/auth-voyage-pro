@@ -37,6 +37,17 @@ const professionalCreateSchema = z.object({
     .max(15, 'Telefone deve ter no máximo 15 dígitos.')
     .regex(/^[\d\s\(\)\-\+]+$/, 'Telefone contém caracteres inválidos.')
     .optional()
+    .or(z.literal('')),
+  professional_registry: z.string().min(3, 'Número de registro é obrigatório.'),
+  registry_uf: z.string().length(2, 'UF deve ter 2 caracteres.').toUpperCase(),
+  clinic_name: z.string().min(2, 'Nome da clínica é obrigatório.'),
+  clinic_address: z.string().min(5, 'Endereço da clínica é obrigatório.'),
+  clinic_phone: z.string()
+    .min(10, 'Telefone da clínica deve ter pelo menos 10 dígitos.')
+    .regex(/^[\d\s\(\)\-\+]+$/, 'Telefone contém caracteres inválidos.'),
+  clinic_cnpj: z.string()
+    .regex(/^[\d\.\-\/]+$/, 'CNPJ contém caracteres inválidos.')
+    .optional()
     .or(z.literal(''))
 });
 type ProfessionalCreateData = z.infer<typeof professionalCreateSchema>;
@@ -49,6 +60,17 @@ const professionalEditSchema = z.object({
     .min(10, 'Telefone deve ter pelo menos 10 dígitos.')
     .max(15, 'Telefone deve ter no máximo 15 dígitos.')
     .regex(/^[\d\s\(\)\-\+]+$/, 'Telefone contém caracteres inválidos.')
+    .optional()
+    .or(z.literal('')),
+  professional_registry: z.string().min(3, 'Número de registro é obrigatório.'),
+  registry_uf: z.string().length(2, 'UF deve ter 2 caracteres.').toUpperCase(),
+  clinic_name: z.string().min(2, 'Nome da clínica é obrigatório.'),
+  clinic_address: z.string().min(5, 'Endereço da clínica é obrigatório.'),
+  clinic_phone: z.string()
+    .min(10, 'Telefone da clínica deve ter pelo menos 10 dígitos.')
+    .regex(/^[\d\s\(\)\-\+]+$/, 'Telefone contém caracteres inválidos.'),
+  clinic_cnpj: z.string()
+    .regex(/^[\d\.\-\/]+$/, 'CNPJ contém caracteres inválidos.')
     .optional()
     .or(z.literal(''))
 });
@@ -128,6 +150,12 @@ export default function ManageProfessionals() {
           email: data.email,
           password: data.password,
           contact_phone: data.contact_phone || null,
+          professional_registry: data.professional_registry,
+          registry_uf: data.registry_uf.toUpperCase(),
+          clinic_name: data.clinic_name,
+          clinic_address: data.clinic_address,
+          clinic_phone: data.clinic_phone,
+          clinic_cnpj: data.clinic_cnpj || null,
         }
       });
 
@@ -175,7 +203,13 @@ export default function ManageProfessionals() {
       } = await supabase.from('professionals').update({
         full_name: data.full_name,
         specialization: data.specialization,
-        contact_phone: data.contact_phone || null
+        contact_phone: data.contact_phone || null,
+        professional_registry: data.professional_registry,
+        registry_uf: data.registry_uf.toUpperCase(),
+        clinic_name: data.clinic_name,
+        clinic_address: data.clinic_address,
+        clinic_phone: data.clinic_phone,
+        clinic_cnpj: data.clinic_cnpj || null,
       }).eq('id', selectedProfessional.id);
       
       if (error) {
@@ -269,7 +303,13 @@ export default function ManageProfessionals() {
     editForm.reset({
       full_name: professional.full_name,
       specialization: professional.specialization,
-      contact_phone: professional.contact_phone || ''
+      contact_phone: professional.contact_phone || '',
+      professional_registry: professional.professional_registry || '',
+      registry_uf: professional.registry_uf || '',
+      clinic_name: professional.clinic_name || '',
+      clinic_address: professional.clinic_address || '',
+      clinic_phone: professional.clinic_phone || '',
+      clinic_cnpj: professional.clinic_cnpj || '',
     });
     setIsEditDialogOpen(true);
   };
@@ -323,9 +363,10 @@ export default function ManageProfessionals() {
                   <Form {...createForm}>
                     <form onSubmit={createForm.handleSubmit(handleCreate)} className="space-y-6">
                       <Tabs defaultValue="dados" className="w-full">
-                        <TabsList className="grid w-full grid-cols-2">
+                        <TabsList className="grid w-full grid-cols-3">
                           <TabsTrigger value="dados">Dados Básicos</TabsTrigger>
-                          <TabsTrigger value="horarios">Horários de Trabalho</TabsTrigger>
+                          <TabsTrigger value="clinica">Dados da Clínica</TabsTrigger>
+                          <TabsTrigger value="horarios">Horários</TabsTrigger>
                         </TabsList>
                         
                         <TabsContent value="dados" className="space-y-4 mt-4">
@@ -353,7 +394,31 @@ export default function ManageProfessionals() {
                         }) => <FormItem><FormLabel>Senha</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>} />
                           <FormField control={createForm.control} name="contact_phone" render={({
                           field
-                        }) => <FormItem><FormLabel>Telefone (Opcional)</FormLabel><FormControl><Input type="tel" placeholder="(11) 98765-4321" {...field} /></FormControl><FormMessage /></FormItem>} />
+                        }) => <FormItem><FormLabel>Telefone Pessoal (Opcional)</FormLabel><FormControl><Input type="tel" placeholder="(11) 98765-4321" {...field} /></FormControl><FormMessage /></FormItem>} />
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <FormField control={createForm.control} name="professional_registry" render={({
+                            field
+                          }) => <FormItem><FormLabel>Registro Profissional (CRO/CRM)</FormLabel><FormControl><Input placeholder="12345" {...field} /></FormControl><FormMessage /></FormItem>} />
+                            <FormField control={createForm.control} name="registry_uf" render={({
+                            field
+                          }) => <FormItem><FormLabel>UF do Registro</FormLabel><FormControl><Input placeholder="SP" maxLength={2} {...field} onChange={(e) => field.onChange(e.target.value.toUpperCase())} /></FormControl><FormMessage /></FormItem>} />
+                          </div>
+                        </TabsContent>
+                        
+                        <TabsContent value="clinica" className="space-y-4 mt-4">
+                          <FormField control={createForm.control} name="clinic_name" render={({
+                          field
+                        }) => <FormItem><FormLabel>Nome da Clínica</FormLabel><FormControl><Input placeholder="Clínica Odontológica..." {...field} /></FormControl><FormMessage /></FormItem>} />
+                          <FormField control={createForm.control} name="clinic_address" render={({
+                          field
+                        }) => <FormItem><FormLabel>Endereço Completo</FormLabel><FormControl><Input placeholder="Rua, Número, Bairro, Cidade - Estado" {...field} /></FormControl><FormMessage /></FormItem>} />
+                          <FormField control={createForm.control} name="clinic_phone" render={({
+                          field
+                        }) => <FormItem><FormLabel>Telefone da Clínica</FormLabel><FormControl><Input type="tel" placeholder="(11) 3456-7890" {...field} /></FormControl><FormMessage /></FormItem>} />
+                          <FormField control={createForm.control} name="clinic_cnpj" render={({
+                          field
+                        }) => <FormItem><FormLabel>CNPJ da Clínica (Opcional)</FormLabel><FormControl><Input placeholder="12.345.678/0001-90" {...field} /></FormControl><FormMessage /></FormItem>} />
                         </TabsContent>
                         
                         <TabsContent value="horarios" className="mt-4">
@@ -533,9 +598,10 @@ export default function ManageProfessionals() {
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit(handleEdit)} className="space-y-6">
               <Tabs defaultValue="dados" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="dados">Dados Básicos</TabsTrigger>
-                  <TabsTrigger value="horarios">Horários de Trabalho</TabsTrigger>
+                  <TabsTrigger value="clinica">Dados da Clínica</TabsTrigger>
+                  <TabsTrigger value="horarios">Horários</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="dados" className="space-y-4 mt-4">
@@ -557,7 +623,31 @@ export default function ManageProfessionals() {
                     </FormItem>} />
                   <FormField control={editForm.control} name="contact_phone" render={({
                   field
-                }) => <FormItem><FormLabel>Telefone (Opcional)</FormLabel><FormControl><Input type="tel" placeholder="(11) 98765-4321" {...field} /></FormControl><FormMessage /></FormItem>} />
+                }) => <FormItem><FormLabel>Telefone Pessoal (Opcional)</FormLabel><FormControl><Input type="tel" placeholder="(11) 98765-4321" {...field} /></FormControl><FormMessage /></FormItem>} />
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField control={editForm.control} name="professional_registry" render={({
+                    field
+                  }) => <FormItem><FormLabel>Registro Profissional (CRO/CRM)</FormLabel><FormControl><Input placeholder="12345" {...field} /></FormControl><FormMessage /></FormItem>} />
+                    <FormField control={editForm.control} name="registry_uf" render={({
+                    field
+                  }) => <FormItem><FormLabel>UF do Registro</FormLabel><FormControl><Input placeholder="SP" maxLength={2} {...field} onChange={(e) => field.onChange(e.target.value.toUpperCase())} /></FormControl><FormMessage /></FormItem>} />
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="clinica" className="space-y-4 mt-4">
+                  <FormField control={editForm.control} name="clinic_name" render={({
+                  field
+                }) => <FormItem><FormLabel>Nome da Clínica</FormLabel><FormControl><Input placeholder="Clínica Odontológica..." {...field} /></FormControl><FormMessage /></FormItem>} />
+                  <FormField control={editForm.control} name="clinic_address" render={({
+                  field
+                }) => <FormItem><FormLabel>Endereço Completo</FormLabel><FormControl><Input placeholder="Rua, Número, Bairro, Cidade - Estado" {...field} /></FormControl><FormMessage /></FormItem>} />
+                  <FormField control={editForm.control} name="clinic_phone" render={({
+                  field
+                }) => <FormItem><FormLabel>Telefone da Clínica</FormLabel><FormControl><Input type="tel" placeholder="(11) 3456-7890" {...field} /></FormControl><FormMessage /></FormItem>} />
+                  <FormField control={editForm.control} name="clinic_cnpj" render={({
+                  field
+                }) => <FormItem><FormLabel>CNPJ da Clínica (Opcional)</FormLabel><FormControl><Input placeholder="12.345.678/0001-90" {...field} /></FormControl><FormMessage /></FormItem>} />
                 </TabsContent>
                 
                 <TabsContent value="horarios" className="mt-4">
