@@ -61,7 +61,7 @@ export default function PrescriptionTemplates() {
       // Filtro baseado no tipo de usuário
       if (userType === 'professional' && professionalId) {
         // Profissionais veem: templates genéricos + compartilhados + próprios
-        query = query.or(`professional_id.is.null,professional_id.eq.${professionalId},is_shared.eq.true`);
+        query = query.or(`professional_id.is.null,and(professional_id.eq.${professionalId}),and(is_shared.eq.true,professional_id.neq.${professionalId})`);
       }
       // Recepcionistas veem todos (RLS já filtra adequadamente)
 
@@ -107,7 +107,10 @@ export default function PrescriptionTemplates() {
   };
 
   const handleDuplicate = async (template: Template) => {
-    if (!professionalId) return;
+    // Determinar o professional_id para o novo template
+    const newTemplateProfessionalId = userType === 'professional' 
+      ? professionalId 
+      : null; // Recepcionistas criam templates genéricos
 
     try {
       // Criar cópia do template
@@ -117,8 +120,8 @@ export default function PrescriptionTemplates() {
           template_name: `${template.template_name} (Cópia)`,
           description: template.description,
           prescription_type: template.prescription_type,
-          is_shared: false,
-          professional_id: professionalId,
+          is_shared: userType === 'receptionist' ? true : false, // Genéricos são sempre compartilhados
+          professional_id: newTemplateProfessionalId,
           general_instructions: template.general_instructions,
         })
         .select()
@@ -260,7 +263,7 @@ export default function PrescriptionTemplates() {
                   onEdit={handleEdit}
                   onDuplicate={handleDuplicate}
                   onDelete={handleDelete}
-                  isOwner={template.professional_id === professionalId}
+                  isOwner={userType === 'receptionist' || template.professional_id === professionalId}
                 />
               ))}
             </div>
