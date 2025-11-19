@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -12,7 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Plus } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Trash2, Plus, FileText } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const prescriptionItemSchema = z.object({
@@ -49,6 +50,8 @@ export const CreatePrescriptionModal = ({
   const { user } = useAuth();
   const { professionalId } = useUserProfile();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [templates, setTemplates] = useState<any[]>([]);
 
   const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<PrescriptionFormData>({
     resolver: zodResolver(prescriptionSchema),
@@ -61,6 +64,70 @@ export const CreatePrescriptionModal = ({
 
   const items = watch('items') || [];
   const prescriptionType = watch('prescription_type');
+
+  // Carregar templates quando o tipo de receita mudar
+  useEffect(() => {
+    if (!professionalId || !open) return;
+
+    const fetchTemplates = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('prescription_templates')
+          .select(`
+            *,
+            prescription_template_items (*)
+          `)
+          .or(`professional_id.eq.${professionalId},is_shared.eq.true`)
+          .eq('prescription_type', prescriptionType)
+          .order('template_name');
+
+        if (error) throw error;
+        setTemplates(data || []);
+      } catch (error) {
+        console.error('Erro ao carregar templates:', error);
+      }
+    };
+
+    fetchTemplates();
+  }, [professionalId, prescriptionType, open]);
+
+  // Função para aplicar template selecionado
+  const applyTemplate = (templateId: string) => {
+    if (!templateId) return;
+
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return;
+
+    try {
+      // Pré-preencher instruções gerais
+      setValue('general_instructions', template.general_instructions || '');
+
+      // Pré-preencher medicamentos
+      const medications = template.prescription_template_items
+        .sort((a: any, b: any) => a.item_order - b.item_order)
+        .map((item: any) => ({
+          medication_name: item.medication_name,
+          dosage: item.dosage,
+          frequency: item.frequency,
+          duration: item.duration,
+          instructions: item.instructions || '',
+        }));
+
+      setValue('items', medications);
+
+      toast({
+        title: 'Template aplicado',
+        description: `Template "${template.template_name}" carregado com sucesso`,
+      });
+    } catch (error) {
+      console.error('Erro ao aplicar template:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível aplicar o template',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const addMedication = () => {
     setValue('items', [...items, { medication_name: '', dosage: '', frequency: '', duration: '', instructions: '' }]);
@@ -165,6 +232,58 @@ export const CreatePrescriptionModal = ({
                   <p className="text-sm text-destructive">{errors.prescription_type.message}</p>
                 )}
               </div>
+
+              {/* Usar Template */}
+              {templates.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="template_select">Usar Template (Opcional)</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={selectedTemplate}
+                      onValueChange={(value) => {
+                        setSelectedTemplate(value);
+                        applyTemplate(value);
+                      }}
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Selecione um template para pré-preencher..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {templates.map((template) => (
+                          <SelectItem key={template.id} value={template.id}>
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4" />
+                              <span>{template.template_name}</span>
+                              {template.is_shared && (
+                                <Badge variant="outline" className="ml-2 text-xs">
+                                  Compartilhado
+                                </Badge>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedTemplate && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedTemplate('');
+                          setValue('general_instructions', '');
+                          setValue('items', [{ medication_name: '', dosage: '', frequency: '', duration: '', instructions: '' }]);
+                        }}
+                      >
+                        Limpar
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    💡 Selecione um template para pré-preencher os campos automaticamente. Você pode editá-los após aplicar.
+                  </p>
+                </div>
+              )}
 
               {/* Medicamentos */}
               <div className="space-y-4">
