@@ -850,7 +850,7 @@ export default function ManagePatients() {
                           className="mt-2 w-full"
                           onClick={() => {
                             setIsCreateDialogOpen(false);
-                            navigate(`/admin/patient-details?id=${phoneError.patient.id}`);
+                            navigate(`/patient/${phoneError.patient.id}`);
                           }}
                         >
                           <Eye className="h-4 w-4 mr-2" />
@@ -913,7 +913,7 @@ export default function ManagePatients() {
                           className="mt-2"
                           onClick={() => {
                             setIsCreateDialogOpen(false);
-                            navigate(`/admin/patient-details?id=${cpfDuplicateError.patient.id}`);
+                            navigate(`/patient/${cpfDuplicateError.patient.id}`);
                           }}
                         >
                           <Eye className="h-4 w-4 mr-2" />
@@ -1073,7 +1073,7 @@ export default function ManagePatients() {
                                           className="mt-2 w-full"
                                           onClick={() => {
                                             setIsEditDialogOpen(false);
-                                            navigate(`/admin/patient-details?id=${phoneError.patient.id}`);
+                                            navigate(`/patient/${phoneError.patient.id}`);
                                           }}
                                         >
                                           <Eye className="h-4 w-4 mr-2" />
@@ -1152,7 +1152,7 @@ export default function ManagePatients() {
                                           className="mt-2"
                                           onClick={() => {
                                             setIsEditDialogOpen(false);
-                                            navigate(`/admin/patient-details?id=${cpfDuplicateError.patient.id}`);
+                                            navigate(`/patient/${cpfDuplicateError.patient.id}`);
                                           }}
                                         >
                                           <Eye className="h-4 w-4 mr-2" />
