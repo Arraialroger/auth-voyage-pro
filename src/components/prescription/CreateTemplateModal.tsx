@@ -145,14 +145,14 @@ export const CreateTemplateModal = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh]">
+      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Criar Template de Receita</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <ScrollArea className="max-h-[calc(90vh-200px)] pr-4">
-            <div className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-4 pb-4">
               {/* Nome do Template */}
               <div className="space-y-2">
                 <Label htmlFor="template_name">Nome do Template *</Label>
@@ -316,7 +316,7 @@ export const CreateTemplateModal = ({
             </div>
           </ScrollArea>
 
-          <DialogFooter>
+          <DialogFooter className="pt-4 border-t">
             <Button type="button" variant="outline" onClick={handleClose} disabled={isSubmitting}>
               Cancelar
             </Button>
