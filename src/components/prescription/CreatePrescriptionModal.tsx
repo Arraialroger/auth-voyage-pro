@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Trash2, Plus, FileText } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { SaveAsTemplateModal } from './SaveAsTemplateModal';
 
 const prescriptionItemSchema = z.object({
   medication_name: z.string().min(1, 'Nome do medicamento é obrigatório'),
@@ -52,6 +53,8 @@ export const CreatePrescriptionModal = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [templates, setTemplates] = useState<any[]>([]);
+  const [saveTemplateModalOpen, setSaveTemplateModalOpen] = useState(false);
+  const [lastCreatedPrescription, setLastCreatedPrescription] = useState<any>(null);
 
   const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<PrescriptionFormData>({
     resolver: zodResolver(prescriptionSchema),
@@ -183,13 +186,22 @@ export const CreatePrescriptionModal = ({
 
       if (itemsError) throw itemsError;
 
+      // Armazenar dados da receita para possível salvamento como template
+      setLastCreatedPrescription({
+        prescription_type: data.prescription_type,
+        general_instructions: data.general_instructions || '',
+        items: data.items,
+      });
+
       toast({
         title: 'Sucesso',
         description: 'Receita criada com sucesso',
       });
 
+      // Mostrar opção de salvar como template
+      setSaveTemplateModalOpen(true);
+
       onSuccess?.();
-      onClose();
     } catch (error) {
       console.error('Erro ao criar receita:', error);
       toast({
@@ -394,6 +406,20 @@ export const CreatePrescriptionModal = ({
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* Modal para salvar como template */}
+      <SaveAsTemplateModal
+        open={saveTemplateModalOpen}
+        onClose={() => {
+          setSaveTemplateModalOpen(false);
+          setLastCreatedPrescription(null);
+          onClose();
+        }}
+        prescriptionData={lastCreatedPrescription}
+        onSuccess={() => {
+          // Opcional: recarregar templates se necessário
+        }}
+      />
     </Dialog>
   );
 };
