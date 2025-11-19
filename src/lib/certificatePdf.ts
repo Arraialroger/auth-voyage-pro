@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { generateDigitalSignature, generateQRCodeDataURL, formatDateFull, formatCPF } from './pdfHelpers';
+import { VALIDATION_BASE_URL } from './constants';
 
 interface CertificateData {
   id: string;
@@ -187,7 +188,7 @@ export const generateCertificatePDF = async (certificate: CertificateData) => {
   });
 
   const qrCodeUrl = await generateQRCodeDataURL(
-    `${window.location.origin}/validate?hash=${signatureData}&type=certificate`
+    `${VALIDATION_BASE_URL}/validate?hash=${signatureData}&type=certificate`
   );
 
   // QR Code and hash
