@@ -558,26 +558,44 @@ export type Database = {
       }
       professionals: {
         Row: {
+          clinic_address: string | null
+          clinic_cnpj: string | null
+          clinic_name: string | null
+          clinic_phone: string | null
           contact_phone: string | null
           created_at: string
           full_name: string
           id: string
+          professional_registry: string | null
+          registry_uf: string | null
           specialization: Database["public"]["Enums"]["specialization_enum"]
           user_id: string | null
         }
         Insert: {
+          clinic_address?: string | null
+          clinic_cnpj?: string | null
+          clinic_name?: string | null
+          clinic_phone?: string | null
           contact_phone?: string | null
           created_at?: string
           full_name: string
           id?: string
+          professional_registry?: string | null
+          registry_uf?: string | null
           specialization: Database["public"]["Enums"]["specialization_enum"]
           user_id?: string | null
         }
         Update: {
+          clinic_address?: string | null
+          clinic_cnpj?: string | null
+          clinic_name?: string | null
+          clinic_phone?: string | null
           contact_phone?: string | null
           created_at?: string
           full_name?: string
           id?: string
+          professional_registry?: string | null
+          registry_uf?: string | null
           specialization?: Database["public"]["Enums"]["specialization_enum"]
           user_id?: string | null
         }

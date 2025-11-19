@@ -58,7 +58,19 @@ Deno.serve(async (req) => {
     }
 
     // Get request body
-    const { full_name, specialization, email, password, contact_phone } = await req.json();
+    const { 
+      full_name, 
+      specialization, 
+      email, 
+      password, 
+      contact_phone,
+      professional_registry,
+      registry_uf,
+      clinic_name,
+      clinic_address,
+      clinic_phone,
+      clinic_cnpj
+    } = await req.json();
 
     // Validate payload
     if (!full_name || !specialization || !email || !password) {
@@ -95,6 +107,12 @@ Deno.serve(async (req) => {
         full_name,
         specialization,
         contact_phone: contact_phone || null,
+        professional_registry: professional_registry || null,
+        registry_uf: registry_uf || null,
+        clinic_name: clinic_name || null,
+        clinic_address: clinic_address || null,
+        clinic_phone: clinic_phone || null,
+        clinic_cnpj: clinic_cnpj || null,
       })
       .select()
       .single();
