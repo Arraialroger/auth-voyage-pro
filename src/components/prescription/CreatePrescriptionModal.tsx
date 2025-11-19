@@ -221,8 +221,8 @@ export const CreatePrescriptionModal = ({
           <DialogTitle>Nova Receita</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
-          <ScrollArea className="flex-1 pr-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden min-h-0">
+          <ScrollArea className="flex-1 pr-4 min-h-0">
             <div className="space-y-6 pb-4">
               {/* Tipo de Receita */}
               <div className="space-y-2">
