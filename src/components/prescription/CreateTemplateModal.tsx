@@ -73,7 +73,12 @@ export const CreateTemplateModal = ({
   };
 
   const onSubmit = async (data: TemplateFormData) => {
+    console.log('=== DEBUG onSubmit ===');
+    console.log('Form data:', JSON.stringify(data, null, 2));
+    console.log('professionalId:', professionalId);
+    
     if (!professionalId) {
+      console.error('Erro: professionalId não encontrado');
       toast({
         title: 'Erro',
         description: 'Profissional não identificado',
@@ -84,6 +89,7 @@ export const CreateTemplateModal = ({
 
     setIsSubmitting(true);
     try {
+      console.log('Tentando criar template...');
       // Criar template
       const { data: template, error: templateError } = await supabase
         .from('prescription_templates')
@@ -98,7 +104,12 @@ export const CreateTemplateModal = ({
         .select()
         .single();
 
-      if (templateError) throw templateError;
+      if (templateError) {
+        console.error('Erro ao criar template:', templateError);
+        throw templateError;
+      }
+
+      console.log('Template criado com sucesso:', template);
 
       // Criar itens do template
       const itemsWithOrder = data.items.map((item, index) => ({
@@ -111,11 +122,18 @@ export const CreateTemplateModal = ({
         item_order: index + 1,
       }));
 
+      console.log('Criando itens do template:', itemsWithOrder);
+
       const { error: itemsError } = await supabase
         .from('prescription_template_items')
         .insert(itemsWithOrder);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.error('Erro ao criar itens do template:', itemsError);
+        throw itemsError;
+      }
+
+      console.log('Itens criados com sucesso');
 
       toast({
         title: 'Sucesso',
@@ -126,10 +144,15 @@ export const CreateTemplateModal = ({
       onClose();
       onSuccess?.();
     } catch (error) {
-      console.error('Erro ao criar template:', error);
+      console.error('=== ERRO CAPTURADO ===');
+      console.error('Tipo do erro:', typeof error);
+      console.error('Erro completo:', error);
+      console.error('Mensagem:', error instanceof Error ? error.message : 'Erro desconhecido');
+      console.error('Stack:', error instanceof Error ? error.stack : 'N/A');
+      
       toast({
-        title: 'Erro',
-        description: 'Não foi possível criar o template',
+        title: 'Erro ao criar template',
+        description: error instanceof Error ? error.message : 'Não foi possível criar o template',
         variant: 'destructive',
       });
     } finally {
