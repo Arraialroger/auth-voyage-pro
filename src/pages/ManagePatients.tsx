@@ -74,9 +74,14 @@ export default function ManagePatients() {
     birth_date: '',
     medical_history_notes: ''
   });
-  const [cpfError, setCpfError] = useState<string>('');
+  const [cpfValidationError, setCpfValidationError] = useState<string>('');
   const [cpfSuggestion, setCpfSuggestion] = useState<string>('');
   const [phoneError, setPhoneError] = useState<{
+    exists: boolean;
+    patient?: { full_name: string; created_at: string; id: string };
+  } | null>(null);
+
+  const [cpfDuplicateError, setCpfDuplicateError] = useState<{
     exists: boolean;
     patient?: { full_name: string; created_at: string; id: string };
   } | null>(null);
@@ -331,6 +336,28 @@ export default function ManagePatients() {
       });
       return;
     }
+
+    // ✅ Bloquear submit se telefone duplicado detectado
+    if (phoneError?.exists) {
+      toast({
+        title: "Telefone já cadastrado",
+        description: `Este telefone pertence a: ${phoneError.patient?.full_name}. Verifique os dados ou edite o paciente existente.`,
+        variant: "destructive",
+        duration: 8000
+      });
+      return;
+    }
+
+    // ✅ Bloquear submit se CPF duplicado detectado
+    if (cpfDuplicateError?.exists) {
+      toast({
+        title: "CPF já cadastrado",
+        description: `Este CPF pertence a: ${cpfDuplicateError.patient?.full_name}. Verifique os dados ou edite o paciente existente.`,
+        variant: "destructive",
+        duration: 8000
+      });
+      return;
+    }
     
     // Validate CPF if provided
     if (formData.cpf && !validateCPF(formData.cpf)) {
@@ -343,7 +370,7 @@ export default function ManagePatients() {
         variant: "destructive",
         duration: 5000
       });
-      setCpfError(suggestion 
+      setCpfValidationError(suggestion 
         ? `CPF inválido. Você quis dizer ${suggestion}?` 
         : "CPF inválido");
       setCpfSuggestion(suggestion || '');
@@ -414,6 +441,17 @@ export default function ManagePatients() {
       });
       return;
     }
+
+    // ✅ Block submission if duplicate CPF detected (excluding current patient)
+    if (cpfDuplicateError?.exists && cpfDuplicateError.patient?.id !== editingPatient.id) {
+      toast({
+        title: "CPF já cadastrado",
+        description: `Este CPF pertence a: ${cpfDuplicateError.patient?.full_name}. Verifique os dados ou edite o paciente existente.`,
+        variant: "destructive",
+        duration: 8000
+      });
+      return;
+    }
     
     // Validate CPF if provided
     if (formData.cpf && !validateCPF(formData.cpf)) {
@@ -426,7 +464,7 @@ export default function ManagePatients() {
         variant: "destructive",
         duration: 5000
       });
-      setCpfError(suggestion 
+      setCpfValidationError(suggestion 
         ? `CPF inválido. Você quis dizer ${suggestion}?` 
         : "CPF inválido");
       setCpfSuggestion(suggestion || '');
@@ -591,10 +629,66 @@ export default function ManagePatients() {
     }
   };
 
+  // ✅ Validação onBlur para CPF duplicado (modo criação)
+  const handleCPFBlur = async (cpf: string) => {
+    if (!cpf || cpf.replace(/\D/g, '').length !== 11) {
+      setCpfDuplicateError(null);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .select('id, full_name, created_at')
+        .eq('cpf', cpf)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setCpfDuplicateError({ exists: true, patient: data });
+      } else {
+        setCpfDuplicateError(null);
+      }
+    } catch (error) {
+      logger.error('Erro ao verificar CPF:', error);
+      setCpfDuplicateError(null);
+    }
+  };
+
+  // ✅ Validação onBlur para CPF duplicado (modo edição)
+  const handleCPFBlurEdit = async (cpf: string) => {
+    if (!cpf || cpf.replace(/\D/g, '').length !== 11 || !editingPatient) {
+      setCpfDuplicateError(null);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .select('id, full_name, created_at')
+        .eq('cpf', cpf)
+        .neq('id', editingPatient.id) // Exclude current patient
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setCpfDuplicateError({ exists: true, patient: data });
+      } else {
+        setCpfDuplicateError(null);
+      }
+    } catch (error) {
+      logger.error('Erro ao verificar CPF:', error);
+      setCpfDuplicateError(null);
+    }
+  };
+
   const openEditDialog = (patient: Patient) => {
     setEditingPatient(patient);
     setPhoneError(null);
-    setCpfError('');
+    setCpfDuplicateError(null);
+    setCpfValidationError('');
     setCpfSuggestion('');
     setFormData({
       full_name: patient.full_name,
@@ -614,7 +708,8 @@ export default function ManagePatients() {
       medical_history_notes: ''
     });
     setPhoneError(null);
-    setCpfError('');
+    setCpfDuplicateError(null);
+    setCpfValidationError('');
     setCpfSuggestion('');
     setIsCreateDialogOpen(true);
   };
@@ -725,24 +820,29 @@ export default function ManagePatients() {
                         onChange={e => {
                           const masked = formatCPFMask(e.target.value);
                           setFormData({...formData, cpf: masked});
-                          setCpfError('');
+                          setCpfDuplicateError(null);
+                          setCpfValidationError('');
                           setCpfSuggestion('');
                         }}
-                        onBlur={() => {
-                          if (formData.cpf && !validateCPF(formData.cpf)) {
-                            const suggestion = suggestCorrectCPF(formData.cpf);
-                            setCpfError(suggestion 
+                        onBlur={async (e) => {
+                          const cpfValue = e.target.value;
+                          // Validação de formato CPF
+                          if (cpfValue && !validateCPF(cpfValue)) {
+                            const suggestion = suggestCorrectCPF(cpfValue);
+                            setCpfValidationError(suggestion 
                               ? `CPF inválido. Você quis dizer ${suggestion}?` 
                               : "CPF inválido");
                             setCpfSuggestion(suggestion || '');
                           } else {
-                            setCpfError('');
+                            setCpfValidationError('');
                             setCpfSuggestion('');
+                            // ✅ Validação de CPF duplicado
+                            await handleCPFBlur(cpfValue);
                           }
                         }}
                         placeholder="000.000.000-00"
-                        error={!!cpfError}
-                        errorMessage={cpfError}
+                        error={!!cpfValidationError || !!cpfDuplicateError?.exists}
+                        errorMessage={cpfValidationError || (cpfDuplicateError?.exists ? `⚠️ CPF já cadastrado para: ${cpfDuplicateError.patient?.full_name}` : undefined)}
                         maxLength={14}
                       />
                       {cpfSuggestion && (
@@ -753,11 +853,25 @@ export default function ManagePatients() {
                           className="mt-1 h-auto p-0 text-xs text-primary"
                           onClick={() => {
                             setFormData({...formData, cpf: cpfSuggestion});
-                            setCpfError('');
+                            setCpfValidationError('');
                             setCpfSuggestion('');
                           }}
                         >
                           ✓ Aplicar sugestão: {cpfSuggestion}
+                        </Button>
+                      )}
+                      {cpfDuplicateError?.exists && cpfDuplicateError.patient && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                          onClick={() => {
+                            setIsCreateDialogOpen(false);
+                            navigate(`/admin/patient-details?id=${cpfDuplicateError.patient.id}`);
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Ver Paciente Existente
                         </Button>
                       )}
                     </div>
@@ -944,25 +1058,30 @@ export default function ManagePatients() {
                                         onChange={e => {
                                           const masked = formatCPFMask(e.target.value);
                                           setFormData(prev => ({...prev, cpf: masked}));
-                                          setCpfError('');
+                                          setCpfDuplicateError(null);
+                                          setCpfValidationError('');
                                           setCpfSuggestion('');
                                         }}
-                                        onBlur={() => {
-                                          if (formData.cpf && !validateCPF(formData.cpf)) {
-                                            const suggestion = suggestCorrectCPF(formData.cpf);
-                                            setCpfError(suggestion 
+                                        onBlur={async (e) => {
+                                          const cpfValue = e.target.value;
+                                          // Validação de formato CPF
+                                          if (cpfValue && !validateCPF(cpfValue)) {
+                                            const suggestion = suggestCorrectCPF(cpfValue);
+                                            setCpfValidationError(suggestion 
                                               ? `CPF inválido. Você quis dizer ${suggestion}?` 
                                               : "CPF inválido");
                                             setCpfSuggestion(suggestion || '');
                                           } else {
-                                            setCpfError('');
+                                            setCpfValidationError('');
                                             setCpfSuggestion('');
+                                            // ✅ Validação de CPF duplicado
+                                            await handleCPFBlurEdit(cpfValue);
                                           }
                                         }}
                                         placeholder="000.000.000-00" 
                                         className="mt-2"
-                                        error={!!cpfError}
-                                        errorMessage={cpfError}
+                                        error={!!cpfValidationError || !!cpfDuplicateError?.exists}
+                                        errorMessage={cpfValidationError || (cpfDuplicateError?.exists ? `⚠️ CPF já cadastrado para: ${cpfDuplicateError.patient?.full_name}` : undefined)}
                                         maxLength={14}
                                       />
                                       {cpfSuggestion && (
@@ -973,11 +1092,25 @@ export default function ManagePatients() {
                                           className="mt-1 h-auto p-0 text-xs text-primary"
                                           onClick={() => {
                                             setFormData(prev => ({...prev, cpf: cpfSuggestion}));
-                                            setCpfError('');
+                                            setCpfValidationError('');
                                             setCpfSuggestion('');
                                           }}
                                         >
                                           ✓ Aplicar sugestão: {cpfSuggestion}
+                                        </Button>
+                                      )}
+                                      {cpfDuplicateError?.exists && cpfDuplicateError.patient && (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="mt-2"
+                                          onClick={() => {
+                                            setIsEditDialogOpen(false);
+                                            navigate(`/admin/patient-details?id=${cpfDuplicateError.patient.id}`);
+                                          }}
+                                        >
+                                          <Eye className="h-4 w-4 mr-2" />
+                                          Ver Paciente Existente
                                         </Button>
                                       )}
                                     </div>
