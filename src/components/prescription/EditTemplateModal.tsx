@@ -175,7 +175,7 @@ export const EditTemplateModal = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden min-h-0">
-          <ScrollArea className="flex-1 pr-4 min-h-0">
+          <div className="flex-1 overflow-y-auto pr-4 min-h-0">
             <div className="space-y-4 pb-4">
               {/* Nome do Template */}
               <div className="space-y-2">
@@ -338,7 +338,7 @@ export const EditTemplateModal = ({
                 />
               </div>
             </div>
-          </ScrollArea>
+          </div>
 
           <DialogFooter className="pt-4 border-t">
             <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
