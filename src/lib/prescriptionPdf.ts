@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { generateDigitalSignature, generateQRCodeDataURL, calculateAge } from './pdfHelpers';
+import { VALIDATION_BASE_URL } from './constants';
 
 interface PrescriptionItemData {
   medication_name: string;
@@ -238,7 +239,7 @@ export const generatePrescriptionPDF = async (prescription: PrescriptionData) =>
   });
 
   const qrCodeUrl = await generateQRCodeDataURL(
-    `${window.location.origin}/validate?hash=${signatureData}&type=prescription`
+    `${VALIDATION_BASE_URL}/validate?hash=${signatureData}&type=prescription`
   );
 
   // Signature section
