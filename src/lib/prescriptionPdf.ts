@@ -40,9 +40,32 @@ interface PrescriptionData {
 export const generatePrescriptionPDF = async (prescription: PrescriptionData) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
-  let yPosition = 15;
+  let yPosition = 0;
 
-  // Add logo
+  // Tipo-specific header styling (NO TOPO ABSOLUTO)
+  if (prescription.prescription_type === 'controlled') {
+    // Yellow warning band for controlled prescriptions
+    doc.setFillColor(255, 235, 59);
+    doc.rect(0, 0, pageWidth, 12, 'F');
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 0, 0);
+    doc.text('RECEITA DE CONTROLE ESPECIAL', pageWidth / 2, 8, { align: 'center' });
+    yPosition = 15;
+  } else if (prescription.prescription_type === 'special') {
+    // Red warning band for special prescriptions
+    doc.setFillColor(244, 67, 54);
+    doc.rect(0, 0, pageWidth, 12, 'F');
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text('MEDICAMENTO ESPECIAL', pageWidth / 2, 8, { align: 'center' });
+    yPosition = 15;
+  } else {
+    yPosition = 15;
+  }
+
+  // Add logo (ABAIXO da faixa)
   try {
     const logoPath = '/assets/arraial-odonto-logo.png';
     const img = new Image();
@@ -59,29 +82,7 @@ export const generatePrescriptionPDF = async (prescription: PrescriptionData) =>
     // Continue without logo
   }
 
-  // Tipo-specific header styling
-  yPosition = 20;
-  if (prescription.prescription_type === 'controlled') {
-    // Yellow warning band for controlled prescriptions
-    doc.setFillColor(255, 235, 59);
-    doc.rect(0, yPosition, pageWidth, 15, 'F');
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 0);
-    doc.text('⚠️ RECEITA DE CONTROLE ESPECIAL', pageWidth / 2, yPosition + 9, { align: 'center' });
-    yPosition += 18;
-  } else if (prescription.prescription_type === 'special') {
-    // Red warning band for special prescriptions
-    doc.setFillColor(244, 67, 54);
-    doc.rect(0, yPosition, pageWidth, 15, 'F');
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(255, 255, 255);
-    doc.text('⚠️ MEDICAMENTO ESPECIAL', pageWidth / 2, yPosition + 9, { align: 'center' });
-    yPosition += 18;
-  } else {
-    yPosition += 15;
-  }
+  yPosition += 25;
 
   // Title
   doc.setTextColor(0, 0, 0);
@@ -242,9 +243,6 @@ export const generatePrescriptionPDF = async (prescription: PrescriptionData) =>
 
   // Signature section
   yPosition += 10;
-  doc.setDrawColor(0);
-  doc.line(15, yPosition, pageWidth - 15, yPosition);
-  yPosition += 8;
   
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');

@@ -138,7 +138,7 @@ export const generateCertificatePDF = async (certificate: CertificateData) => {
   }
 
   const bodyLines = doc.splitTextToSize(bodyText, 170);
-  doc.text(bodyLines, pageWidth / 2, yPosition, { align: 'justify', maxWidth: 170 });
+  doc.text(bodyLines, 20, yPosition, { align: 'left', maxWidth: 170 });
   yPosition += (bodyLines.length * 6) + 10;
 
   // Additional notes
@@ -157,15 +157,12 @@ export const generateCertificatePDF = async (certificate: CertificateData) => {
   yPosition += 15;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(11);
-  const locationDate = `Arraial do Cabo, ${formatDateFull(new Date(certificate.created_at))}.`;
+  const locationDate = `Arraial D'ajuda, ${formatDateFull(new Date(certificate.created_at))}.`;
   doc.text(locationDate, pageWidth / 2, yPosition, { align: 'center' });
   
   yPosition += 25;
 
   // Professional signature section
-  doc.setDrawColor(0);
-  doc.line(pageWidth / 2 - 40, yPosition, pageWidth / 2 + 40, yPosition);
-  yPosition += 5;
   
   doc.setFont('helvetica', 'bold');
   doc.text(certificate.professional.full_name, pageWidth / 2, yPosition, { align: 'center' });
