@@ -247,16 +247,27 @@ export const generatePrescriptionPDF = async (prescription: PrescriptionData) =>
   yPosition += 8;
   
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('helvetica', 'bold');
   doc.text('ASSINATURA DIGITAL:', 15, yPosition);
   yPosition += 5;
-  doc.setFont('helvetica', 'italic');
+  
+  doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text(`Hash: ${signatureData.substring(0, 64)}...`, 15, yPosition);
+  doc.text('Hash SHA-256:', 15, yPosition);
+  yPosition += 4;
+  
+  // Quebrar hash em múltiplas linhas (32 caracteres por linha)
+  const hashLine1 = signatureData.substring(0, 32);
+  const hashLine2 = signatureData.substring(32, 64);
+  doc.setFont('helvetica', 'italic');
+  doc.text(hashLine1, 15, yPosition);
+  yPosition += 3;
+  doc.text(hashLine2, 15, yPosition);
   
   // QR Code
   doc.addImage(qrCodeUrl, 'PNG', pageWidth - 35, yPosition - 25, 25, 25);
   doc.setFontSize(6);
+  doc.setFont('helvetica', 'normal');
   doc.text('Escaneie para validar', pageWidth - 32, yPosition + 3);
 
   // Footer

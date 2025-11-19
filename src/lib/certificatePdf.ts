@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { generateDigitalSignature, generateQRCodeDataURL, formatDateFull } from './pdfHelpers';
+import { generateDigitalSignature, generateQRCodeDataURL, formatDateFull, formatCPF } from './pdfHelpers';
 
 interface CertificateData {
   id: string;
@@ -106,7 +106,7 @@ export const generateCertificatePDF = async (certificate: CertificateData) => {
   
   let bodyText = '';
   const patientName = certificate.patient.full_name;
-  const cpfText = certificate.patient.cpf ? `, CPF ${certificate.patient.cpf}` : '';
+  const cpfText = certificate.patient.cpf ? `, CPF: ${formatCPF(certificate.patient.cpf)}` : '';
   
   switch (certificate.certificate_type) {
     case 'attendance': {
@@ -195,15 +195,27 @@ export const generateCertificatePDF = async (certificate: CertificateData) => {
 
   // QR Code and hash
   yPosition += 15;
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'italic');
-  doc.text('Assinatura Digital:', 20, yPosition);
-  yPosition += 4;
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ASSINATURA DIGITAL:', 20, yPosition);
+  yPosition += 5;
+  
+  doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text(`Hash: ${signatureData.substring(0, 64)}...`, 20, yPosition);
+  doc.text('Hash SHA-256:', 20, yPosition);
+  yPosition += 4;
+  
+  // Quebrar hash em múltiplas linhas (32 caracteres por linha)
+  const hashLine1 = signatureData.substring(0, 32);
+  const hashLine2 = signatureData.substring(32, 64);
+  doc.setFont('helvetica', 'italic');
+  doc.text(hashLine1, 20, yPosition);
+  yPosition += 3;
+  doc.text(hashLine2, 20, yPosition);
   
   doc.addImage(qrCodeUrl, 'PNG', pageWidth - 40, yPosition - 20, 25, 25);
   doc.setFontSize(6);
+  doc.setFont('helvetica', 'normal');
   doc.text('Escaneie para', pageWidth - 37, yPosition + 8);
   doc.text('validar documento', pageWidth - 37, yPosition + 11);
 

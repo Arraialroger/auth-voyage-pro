@@ -61,3 +61,18 @@ export function calculateAge(birthDate: string): number {
 export function formatDateFull(date: Date): string {
   return format(date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
 }
+
+/**
+ * Formats CPF to standard Brazilian format (000.000.000-00)
+ */
+export function formatCPF(cpf: string): string {
+  // Remove tudo que não é dígito
+  const cleaned = cpf.replace(/\D/g, '');
+  
+  // Aplica a máscara 000.000.000-00
+  if (cleaned.length === 11) {
+    return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  }
+  
+  return cpf; // Retorna original se não tiver 11 dígitos
+}
