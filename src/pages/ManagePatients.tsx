@@ -17,7 +17,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PatientAppointmentHistory } from '@/components/PatientAppointmentHistory';
 import { logger } from '@/lib/logger';
-import { validateCPF, validatePhone, formatCPF, formatPhone } from '@/lib/validators';
+import { validateCPF, validatePhone, formatCPF, formatPhone, formatCPFMask, suggestCorrectCPF } from '@/lib/validators';
 import { BLOCK_PATIENT_ID } from '@/lib/constants';
 import { useUserProfile } from '@/hooks/useUserProfile';
 interface Patient {
@@ -74,6 +74,8 @@ export default function ManagePatients() {
     birth_date: '',
     medical_history_notes: ''
   });
+  const [cpfError, setCpfError] = useState<string>('');
+  const [cpfSuggestion, setCpfSuggestion] = useState<string>('');
   const {
     data: patients,
     isLoading
@@ -320,18 +322,27 @@ export default function ManagePatients() {
       toast({
         title: "Telefone inválido",
         description: "Digite um telefone válido com DDD (mínimo 10 dígitos).",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 5000
       });
       return;
     }
     
     // Validate CPF if provided
     if (formData.cpf && !validateCPF(formData.cpf)) {
+      const suggestion = suggestCorrectCPF(formData.cpf);
       toast({
         title: "CPF inválido",
-        description: "Digite um CPF válido no formato XXX.XXX.XXX-XX.",
-        variant: "destructive"
+        description: suggestion 
+          ? `O CPF digitado é inválido. Você quis dizer ${suggestion}?` 
+          : "Digite um CPF válido no formato XXX.XXX.XXX-XX.",
+        variant: "destructive",
+        duration: 5000
       });
+      setCpfError(suggestion 
+        ? `CPF inválido. Você quis dizer ${suggestion}?` 
+        : "CPF inválido");
+      setCpfSuggestion(suggestion || '');
       return;
     }
     try {
@@ -391,11 +402,19 @@ export default function ManagePatients() {
     
     // Validate CPF if provided
     if (formData.cpf && !validateCPF(formData.cpf)) {
+      const suggestion = suggestCorrectCPF(formData.cpf);
       toast({
         title: "CPF inválido",
-        description: "Digite um CPF válido no formato XXX.XXX.XXX-XX.",
-        variant: "destructive"
+        description: suggestion 
+          ? `O CPF digitado é inválido. Você quis dizer ${suggestion}?` 
+          : "Digite um CPF válido no formato XXX.XXX.XXX-XX.",
+        variant: "destructive",
+        duration: 5000
       });
+      setCpfError(suggestion 
+        ? `CPF inválido. Você quis dizer ${suggestion}?` 
+        : "CPF inválido");
+      setCpfSuggestion(suggestion || '');
       return;
     }
     try {
@@ -547,10 +566,47 @@ export default function ManagePatients() {
                     </div>
                     <div>
                       <Label htmlFor="cpf">CPF</Label>
-                      <Input id="cpf" value={formData.cpf} onChange={e => setFormData({
-                      ...formData,
-                      cpf: e.target.value
-                    })} placeholder="000.000.000-00" />
+                      <Input 
+                        id="cpf" 
+                        value={formData.cpf} 
+                        onChange={e => {
+                          const masked = formatCPFMask(e.target.value);
+                          setFormData({...formData, cpf: masked});
+                          setCpfError('');
+                          setCpfSuggestion('');
+                        }}
+                        onBlur={() => {
+                          if (formData.cpf && !validateCPF(formData.cpf)) {
+                            const suggestion = suggestCorrectCPF(formData.cpf);
+                            setCpfError(suggestion 
+                              ? `CPF inválido. Você quis dizer ${suggestion}?` 
+                              : "CPF inválido");
+                            setCpfSuggestion(suggestion || '');
+                          } else {
+                            setCpfError('');
+                            setCpfSuggestion('');
+                          }
+                        }}
+                        placeholder="000.000.000-00"
+                        error={!!cpfError}
+                        errorMessage={cpfError}
+                        maxLength={14}
+                      />
+                      {cpfSuggestion && (
+                        <Button
+                          type="button"
+                          variant="link"
+                          size="sm"
+                          className="mt-1 h-auto p-0 text-xs text-primary"
+                          onClick={() => {
+                            setFormData({...formData, cpf: cpfSuggestion});
+                            setCpfError('');
+                            setCpfSuggestion('');
+                          }}
+                        >
+                          ✓ Aplicar sugestão: {cpfSuggestion}
+                        </Button>
+                      )}
                     </div>
                   </div>
                   <div>
@@ -702,10 +758,48 @@ export default function ManagePatients() {
                                     </div>
                                     <div>
                                       <Label htmlFor="edit_cpf">CPF</Label>
-                                      <Input id="edit_cpf" value={formData.cpf} onChange={e => setFormData(prev => ({
-                                ...prev,
-                                cpf: e.target.value
-                              }))} placeholder="000.000.000-00" className="mt-2" />
+                                      <Input 
+                                        id="edit_cpf" 
+                                        value={formData.cpf} 
+                                        onChange={e => {
+                                          const masked = formatCPFMask(e.target.value);
+                                          setFormData(prev => ({...prev, cpf: masked}));
+                                          setCpfError('');
+                                          setCpfSuggestion('');
+                                        }}
+                                        onBlur={() => {
+                                          if (formData.cpf && !validateCPF(formData.cpf)) {
+                                            const suggestion = suggestCorrectCPF(formData.cpf);
+                                            setCpfError(suggestion 
+                                              ? `CPF inválido. Você quis dizer ${suggestion}?` 
+                                              : "CPF inválido");
+                                            setCpfSuggestion(suggestion || '');
+                                          } else {
+                                            setCpfError('');
+                                            setCpfSuggestion('');
+                                          }
+                                        }}
+                                        placeholder="000.000.000-00" 
+                                        className="mt-2"
+                                        error={!!cpfError}
+                                        errorMessage={cpfError}
+                                        maxLength={14}
+                                      />
+                                      {cpfSuggestion && (
+                                        <Button
+                                          type="button"
+                                          variant="link"
+                                          size="sm"
+                                          className="mt-1 h-auto p-0 text-xs text-primary"
+                                          onClick={() => {
+                                            setFormData(prev => ({...prev, cpf: cpfSuggestion}));
+                                            setCpfError('');
+                                            setCpfSuggestion('');
+                                          }}
+                                        >
+                                          ✓ Aplicar sugestão: {cpfSuggestion}
+                                        </Button>
+                                      )}
                                     </div>
                                     <div>
                                       <Label htmlFor="edit_birth_date">Data de Nascimento</Label>
