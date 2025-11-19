@@ -76,6 +76,10 @@ export default function ManagePatients() {
   });
   const [cpfError, setCpfError] = useState<string>('');
   const [cpfSuggestion, setCpfSuggestion] = useState<string>('');
+  const [phoneError, setPhoneError] = useState<{
+    exists: boolean;
+    patient?: { full_name: string; created_at: string; id: string };
+  } | null>(null);
   const {
     data: patients,
     isLoading

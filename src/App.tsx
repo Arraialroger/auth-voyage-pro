@@ -24,6 +24,7 @@ const ManageProfessionals = lazyWithRetry(() => import("./pages/ManageProfession
 const ManageTreatments = lazyWithRetry(() => import("./pages/ManageTreatments"));
 const ManageWaitingList = lazyWithRetry(() => import("./pages/ManageWaitingList"));
 const PatientDetails = lazyWithRetry(() => import("./pages/PatientDetails"));
+const DataCleanup = lazyWithRetry(() => import("./pages/DataCleanup"));
 
 // Componente de loading aprimorado para Suspense
 const PageLoader = () => (
@@ -90,6 +91,13 @@ const App = () => (
               <ProtectedRoute>
                 <RoleProtectedRoute allowedRoles={['receptionist', 'professional']}>
                   <ManageWaitingList />
+                </RoleProtectedRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/data-cleanup" element={
+              <ProtectedRoute>
+                <RoleProtectedRoute allowedRoles={['receptionist']}>
+                  <DataCleanup />
                 </RoleProtectedRoute>
               </ProtectedRoute>
             } />
