@@ -44,7 +44,7 @@ export const CreateTemplateModal = ({
   onClose,
   onSuccess,
 }: CreateTemplateModalProps) => {
-  const { professionalId } = useUserProfile();
+  const { professionalId, type: userType } = useUserProfile();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { register, handleSubmit, formState: { errors }, watch, setValue, reset } = useForm<TemplateFormData>({
@@ -73,23 +73,12 @@ export const CreateTemplateModal = ({
   };
 
   const onSubmit = async (data: TemplateFormData) => {
-    console.log('=== DEBUG onSubmit ===');
-    console.log('Form data:', JSON.stringify(data, null, 2));
-    console.log('professionalId:', professionalId);
-    
-    if (!professionalId) {
-      console.error('Erro: professionalId não encontrado');
-      toast({
-        title: 'Erro',
-        description: 'Profissional não identificado',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     setIsSubmitting(true);
     try {
-      console.log('Tentando criar template...');
+      // Determinar professional_id baseado no tipo de usuário
+      // Recepcionistas criam templates genéricos (NULL), profissionais criam templates pessoais
+      const templateProfessionalId = userType === 'professional' ? professionalId : null;
+
       // Criar template
       const { data: template, error: templateError } = await supabase
         .from('prescription_templates')
@@ -98,18 +87,13 @@ export const CreateTemplateModal = ({
           description: data.description || null,
           prescription_type: data.prescription_type,
           is_shared: data.is_shared,
-          professional_id: professionalId,
+          professional_id: templateProfessionalId,
           general_instructions: data.general_instructions || null,
         })
         .select()
         .single();
 
-      if (templateError) {
-        console.error('Erro ao criar template:', templateError);
-        throw templateError;
-      }
-
-      console.log('Template criado com sucesso:', template);
+      if (templateError) throw templateError;
 
       // Criar itens do template
       const itemsWithOrder = data.items.map((item, index) => ({
@@ -122,18 +106,11 @@ export const CreateTemplateModal = ({
         item_order: index + 1,
       }));
 
-      console.log('Criando itens do template:', itemsWithOrder);
-
       const { error: itemsError } = await supabase
         .from('prescription_template_items')
         .insert(itemsWithOrder);
 
-      if (itemsError) {
-        console.error('Erro ao criar itens do template:', itemsError);
-        throw itemsError;
-      }
-
-      console.log('Itens criados com sucesso');
+      if (itemsError) throw itemsError;
 
       toast({
         title: 'Sucesso',
@@ -144,15 +121,10 @@ export const CreateTemplateModal = ({
       onClose();
       onSuccess?.();
     } catch (error) {
-      console.error('=== ERRO CAPTURADO ===');
-      console.error('Tipo do erro:', typeof error);
-      console.error('Erro completo:', error);
-      console.error('Mensagem:', error instanceof Error ? error.message : 'Erro desconhecido');
-      console.error('Stack:', error instanceof Error ? error.stack : 'N/A');
-      
+      console.error('Erro ao criar template:', error);
       toast({
-        title: 'Erro ao criar template',
-        description: error instanceof Error ? error.message : 'Não foi possível criar o template',
+        title: 'Erro',
+        description: 'Não foi possível criar o template',
         variant: 'destructive',
       });
     } finally {

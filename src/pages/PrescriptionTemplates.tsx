@@ -33,7 +33,7 @@ interface Template {
 
 export default function PrescriptionTemplates() {
   const navigate = useNavigate();
-  const { professionalId } = useUserProfile();
+  const { professionalId, type: userType } = useUserProfile();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,24 +43,29 @@ export default function PrescriptionTemplates() {
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
 
   useEffect(() => {
-    if (professionalId) {
+    if (professionalId || userType === 'receptionist') {
       fetchTemplates();
     }
-  }, [professionalId]);
+  }, [professionalId, userType]);
 
   const fetchTemplates = async () => {
-    if (!professionalId) return;
-
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('prescription_templates')
         .select(`
           *,
           prescription_template_items (*)
-        `)
-        .or(`professional_id.eq.${professionalId},is_shared.eq.true`)
-        .order('created_at', { ascending: false });
+        `);
+
+      // Filtro baseado no tipo de usuário
+      if (userType === 'professional' && professionalId) {
+        // Profissionais veem: templates genéricos + compartilhados + próprios
+        query = query.or(`professional_id.is.null,professional_id.eq.${professionalId},is_shared.eq.true`);
+      }
+      // Recepcionistas veem todos (RLS já filtra adequadamente)
+
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
       setTemplates(data || []);
