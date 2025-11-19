@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Copy, Trash2, Share2, Lock, FileText } from 'lucide-react';
+import { Edit, Copy, Trash2, Share2, Lock, FileText, Building2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +20,7 @@ interface Template {
   description: string | null;
   prescription_type: 'simple' | 'controlled' | 'special';
   is_shared: boolean;
+  professional_id: string | null;
   prescription_template_items: Array<{
     id: string;
     medication_name: string;
@@ -53,6 +54,8 @@ export const TemplateCard = ({
   onDelete,
   isOwner,
 }: TemplateCardProps) => {
+  const isGenericTemplate = !template.professional_id;
+
   return (
     <Card className="hover:shadow-lg transition-shadow duration-200 border-border/50">
       <CardHeader>
@@ -68,17 +71,28 @@ export const TemplateCard = ({
               </CardDescription>
             )}
           </div>
-          {template.is_shared ? (
-            <Badge variant="outline" className="ml-2 border-primary/50 text-primary">
-              <Share2 className="h-3 w-3 mr-1" />
-              Compartilhado
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="ml-2">
-              <Lock className="h-3 w-3 mr-1" />
-              Pessoal
-            </Badge>
-          )}
+          <div className="flex gap-2">
+            {isGenericTemplate && (
+              <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                <Building2 className="h-3 w-3 mr-1" />
+                Clínica
+              </Badge>
+            )}
+            
+            {template.is_shared && !isGenericTemplate && (
+              <Badge variant="outline" className="border-primary/50 text-primary">
+                <Share2 className="h-3 w-3 mr-1" />
+                Compartilhado
+              </Badge>
+            )}
+            
+            {!template.is_shared && !isGenericTemplate && (
+              <Badge variant="outline">
+                <Lock className="h-3 w-3 mr-1" />
+                Pessoal
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
 

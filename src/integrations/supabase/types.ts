@@ -421,7 +421,7 @@ export type Database = {
           id: string
           is_shared: boolean | null
           prescription_type: Database["public"]["Enums"]["prescription_type_enum"]
-          professional_id: string
+          professional_id: string | null
           template_name: string
           updated_at: string
         }
@@ -432,7 +432,7 @@ export type Database = {
           id?: string
           is_shared?: boolean | null
           prescription_type?: Database["public"]["Enums"]["prescription_type_enum"]
-          professional_id: string
+          professional_id?: string | null
           template_name: string
           updated_at?: string
         }
@@ -443,7 +443,7 @@ export type Database = {
           id?: string
           is_shared?: boolean | null
           prescription_type?: Database["public"]["Enums"]["prescription_type_enum"]
-          professional_id?: string
+          professional_id?: string | null
           template_name?: string
           updated_at?: string
         }
