@@ -121,9 +121,9 @@ export const generateCertificatePDF = async (certificate: CertificateData) => {
     case 'medical_leave': {
       const startDateText = format(new Date(certificate.start_date), 'dd/MM/yyyy');
       const endDateText = certificate.end_date ? format(new Date(certificate.end_date), 'dd/MM/yyyy') : startDateText;
-      const daysText = certificate.days_count ? `${certificate.days_count} ${certificate.days_count === 1 ? 'dia' : 'dias'}` : 'período determinado';
+      const daysText = certificate.days_count ? `de ${certificate.days_count} ${certificate.days_count === 1 ? 'dia' : 'dias'}` : 'determinado';
       
-      bodyText = `Atesto que o(a) paciente ${patientName}${cpfText}, necessita afastar-se de suas atividades pelo período de ${daysText}, do dia ${startDateText} ao dia ${endDateText}, devido a ${certificate.reason}.`;
+      bodyText = `Atesto que o(a) paciente ${patientName}${cpfText}, necessita afastar-se de suas atividades pelo período ${daysText}, do dia ${startDateText} ao dia ${endDateText}, devido a ${certificate.reason}.`;
       
       if (certificate.cid_10_code) {
         bodyText += `\n\nCID-10: ${certificate.cid_10_code}`;
