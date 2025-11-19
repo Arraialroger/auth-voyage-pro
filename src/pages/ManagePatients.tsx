@@ -402,8 +402,54 @@ export default function ManagePatients() {
       queryClient.invalidateQueries({
         queryKey: ['patients']
       });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Erro ao criar paciente:', error);
+      
+      // ✅ Detect PostgreSQL unique constraint violation (error code 23505)
+      if (error?.code === '23505') {
+        const isDuplicatePhone = error.message?.includes('patients_contact_phone_key');
+        const isDuplicateCPF = error.message?.includes('patients_cpf_key');
+        
+        if (isDuplicatePhone) {
+          // Fetch existing patient with duplicate phone
+          const { data: existingPatient } = await supabase
+            .from('patients')
+            .select('full_name, created_at')
+            .eq('contact_phone', formData.contact_phone)
+            .maybeSingle();
+          
+          toast({
+            title: "Telefone já cadastrado",
+            description: existingPatient 
+              ? `Este telefone já está cadastrado para: ${existingPatient.full_name} (desde ${new Date(existingPatient.created_at).toLocaleDateString('pt-BR')})`
+              : "Este telefone já está cadastrado no sistema.",
+            variant: "destructive",
+            duration: 10000
+          });
+          return;
+        }
+        
+        if (isDuplicateCPF) {
+          // Fetch existing patient with duplicate CPF
+          const { data: existingPatient } = await supabase
+            .from('patients')
+            .select('full_name, created_at')
+            .eq('cpf', formData.cpf)
+            .maybeSingle();
+          
+          toast({
+            title: "CPF já cadastrado",
+            description: existingPatient 
+              ? `Este CPF já está cadastrado para: ${existingPatient.full_name} (desde ${new Date(existingPatient.created_at).toLocaleDateString('pt-BR')})`
+              : "Este CPF já está cadastrado no sistema.",
+            variant: "destructive",
+            duration: 10000
+          });
+          return;
+        }
+      }
+      
+      // Generic error for non-duplicate issues
       toast({
         title: "Erro ao criar paciente",
         description: "Ocorreu um erro ao salvar os dados.",
