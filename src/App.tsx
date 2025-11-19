@@ -25,6 +25,7 @@ const ManageTreatments = lazyWithRetry(() => import("./pages/ManageTreatments"))
 const ManageWaitingList = lazyWithRetry(() => import("./pages/ManageWaitingList"));
 const PatientDetails = lazyWithRetry(() => import("./pages/PatientDetails"));
 const DataCleanup = lazyWithRetry(() => import("./pages/DataCleanup"));
+const ValidateDocument = lazyWithRetry(() => import("./pages/ValidateDocument"));
 
 // Componente de loading aprimorado para Suspense
 const PageLoader = () => (
@@ -49,6 +50,7 @@ const App = () => (
               <Routes>
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/validate" element={<ValidateDocument />} />
             <Route path="/agenda" element={
               <ProtectedRoute>
                 <Agenda />
