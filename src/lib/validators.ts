@@ -96,3 +96,53 @@ export const formatPhone = (phone: string): string => {
   
   return phone;
 };
+
+/**
+ * Apply CPF mask while typing
+ */
+export const formatCPFMask = (value: string): string => {
+  const cleanValue = value.replace(/\D/g, '');
+  
+  if (cleanValue.length <= 3) {
+    return cleanValue;
+  } else if (cleanValue.length <= 6) {
+    return cleanValue.replace(/(\d{3})(\d{0,3})/, '$1.$2');
+  } else if (cleanValue.length <= 9) {
+    return cleanValue.replace(/(\d{3})(\d{3})(\d{0,3})/, '$1.$2.$3');
+  } else {
+    return cleanValue.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, '$1.$2.$3-$4');
+  }
+};
+
+/**
+ * Calculate correct CPF check digits and suggest the correct CPF
+ */
+export const suggestCorrectCPF = (cpf: string): string | null => {
+  const cleanCPF = cpf.replace(/\D/g, '');
+  
+  // Must have at least 9 digits to calculate check digits
+  if (cleanCPF.length < 9) return null;
+  
+  const first9 = cleanCPF.substring(0, 9);
+  
+  // Calculate first check digit
+  let sum = 0;
+  for (let i = 1; i <= 9; i++) {
+    sum += parseInt(first9.substring(i - 1, i)) * (11 - i);
+  }
+  let remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  const digit1 = remainder;
+  
+  // Calculate second check digit
+  sum = 0;
+  for (let i = 1; i <= 10; i++) {
+    sum += parseInt((first9 + digit1).substring(i - 1, i)) * (12 - i);
+  }
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  const digit2 = remainder;
+  
+  const correctCPF = first9 + digit1 + digit2;
+  return formatCPF(correctCPF);
+};
