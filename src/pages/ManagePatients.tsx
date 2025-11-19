@@ -17,7 +17,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PatientAppointmentHistory } from '@/components/PatientAppointmentHistory';
 import { logger } from '@/lib/logger';
-import { validateCPF, validatePhone, formatCPF, formatPhone, formatCPFMask, suggestCorrectCPF } from '@/lib/validators';
+import { validateCPF, validatePhone, formatCPF, formatPhone, formatCPFMask, suggestCorrectCPF, cleanPhone, cleanCPF } from '@/lib/validators';
 import { BLOCK_PATIENT_ID } from '@/lib/constants';
 import { useUserProfile } from '@/hooks/useUserProfile';
 interface Patient {
@@ -381,8 +381,8 @@ export default function ManagePatients() {
         error
       } = await supabase.from('patients').insert([{
         full_name: formData.full_name,
-        contact_phone: formData.contact_phone,
-        cpf: formData.cpf || null,
+        contact_phone: cleanPhone(formData.contact_phone),
+        cpf: formData.cpf ? cleanCPF(formData.cpf) : null,
         birth_date: formData.birth_date || null,
         medical_history_notes: formData.medical_history_notes || null
       }]);
@@ -412,10 +412,12 @@ export default function ManagePatients() {
         
         if (isDuplicatePhone) {
           // Fetch existing patient with duplicate phone
+          const cleanedPhone = cleanPhone(formData.contact_phone);
+          
           const { data: existingPatient } = await supabase
             .from('patients')
             .select('full_name, created_at')
-            .eq('contact_phone', formData.contact_phone)
+            .eq('contact_phone', cleanedPhone)
             .maybeSingle();
           
           toast({
@@ -431,10 +433,12 @@ export default function ManagePatients() {
         
         if (isDuplicateCPF) {
           // Fetch existing patient with duplicate CPF
+          const cleanedCPF = formData.cpf ? cleanCPF(formData.cpf) : '';
+          
           const { data: existingPatient } = await supabase
             .from('patients')
             .select('full_name, created_at')
-            .eq('cpf', formData.cpf)
+            .eq('cpf', cleanedCPF)
             .maybeSingle();
           
           toast({
@@ -521,8 +525,8 @@ export default function ManagePatients() {
         error
       } = await supabase.from('patients').update({
         full_name: formData.full_name,
-        contact_phone: formData.contact_phone,
-        cpf: formData.cpf || null,
+        contact_phone: cleanPhone(formData.contact_phone),
+        cpf: formData.cpf ? cleanCPF(formData.cpf) : null,
         birth_date: formData.birth_date || null,
         medical_history_notes: formData.medical_history_notes || null
       }).eq('id', editingPatient.id);
@@ -547,10 +551,12 @@ export default function ManagePatients() {
         
         if (isDuplicatePhone) {
           // Fetch existing patient with duplicate phone (excluding current patient)
+          const cleanedPhone = cleanPhone(formData.contact_phone);
+          
           const { data: existingPatient } = await supabase
             .from('patients')
             .select('full_name, created_at')
-            .eq('contact_phone', formData.contact_phone)
+            .eq('contact_phone', cleanedPhone)
             .neq('id', editingPatient.id)
             .maybeSingle();
           
@@ -567,10 +573,12 @@ export default function ManagePatients() {
         
         if (isDuplicateCPF) {
           // Fetch existing patient with duplicate CPF (excluding current patient)
+          const cleanedCPF = formData.cpf ? cleanCPF(formData.cpf) : '';
+          
           const { data: existingPatient } = await supabase
             .from('patients')
             .select('full_name, created_at')
-            .eq('cpf', formData.cpf)
+            .eq('cpf', cleanedCPF)
             .neq('id', editingPatient.id)
             .maybeSingle();
           
@@ -623,10 +631,12 @@ export default function ManagePatients() {
     }
 
     try {
+      const cleanedPhone = cleanPhone(phone);
+      
       const { data, error } = await supabase
         .from('patients')
         .select('id, full_name, created_at')
-        .eq('contact_phone', phone)
+        .eq('contact_phone', cleanedPhone)
         .maybeSingle();
 
       if (error) throw error;
@@ -652,10 +662,12 @@ export default function ManagePatients() {
     }
 
     try {
+      const cleanedPhone = cleanPhone(phone);
+      
       const { data, error } = await supabase
         .from('patients')
         .select('id, full_name, created_at')
-        .eq('contact_phone', phone)
+        .eq('contact_phone', cleanedPhone)
         .neq('id', editingPatient.id) // Exclude current patient
         .maybeSingle();
 
@@ -683,10 +695,12 @@ export default function ManagePatients() {
     }
 
     try {
+      const cleanedCPF = cleanCPF(cpf);
+      
       const { data, error } = await supabase
         .from('patients')
         .select('id, full_name, created_at')
-        .eq('cpf', cpf)
+        .eq('cpf', cleanedCPF)
         .maybeSingle();
 
       if (error) throw error;
@@ -710,10 +724,12 @@ export default function ManagePatients() {
     }
 
     try {
+      const cleanedCPF = cleanCPF(cpf);
+      
       const { data, error } = await supabase
         .from('patients')
         .select('id, full_name, created_at')
-        .eq('cpf', cpf)
+        .eq('cpf', cleanedCPF)
         .neq('id', editingPatient.id) // Exclude current patient
         .maybeSingle();
 

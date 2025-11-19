@@ -146,3 +146,19 @@ export const suggestCorrectCPF = (cpf: string): string | null => {
   const correctCPF = first9 + digit1 + digit2;
   return formatCPF(correctCPF);
 };
+
+/**
+ * Remove all non-digit characters from phone
+ * Used before saving to database
+ */
+export const cleanPhone = (phone: string): string => {
+  return phone.replace(/\D/g, '');
+};
+
+/**
+ * Remove all non-digit characters from CPF
+ * Used before saving to database
+ */
+export const cleanCPF = (cpf: string): string => {
+  return cpf.replace(/\D/g, '');
+};
