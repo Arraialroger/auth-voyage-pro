@@ -7,8 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileText, Plus, ArrowLeft, Search } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { CreateTemplateModal } from '@/components/prescription/CreateTemplateModal';
-import { EditTemplateModal } from '@/components/prescription/EditTemplateModal';
+import { TemplateFormModal } from '@/components/prescription/TemplateFormModal';
 import { TemplateCard } from '@/components/prescription/TemplateCard';
 
 interface Template {
@@ -271,23 +270,23 @@ export default function PrescriptionTemplates() {
       </main>
 
       {/* Modals */}
-      <CreateTemplateModal
+      <TemplateFormModal
         open={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         onSuccess={fetchTemplates}
+        mode="create"
       />
 
-      {selectedTemplate && (
-        <EditTemplateModal
-          open={editModalOpen}
-          onClose={() => {
-            setEditModalOpen(false);
-            setSelectedTemplate(null);
-          }}
-          template={selectedTemplate}
-          onSuccess={fetchTemplates}
-        />
-      )}
+      <TemplateFormModal
+        open={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false);
+          setSelectedTemplate(null);
+        }}
+        mode="edit"
+        initialData={selectedTemplate}
+        onSuccess={fetchTemplates}
+      />
     </div>
   );
 }
