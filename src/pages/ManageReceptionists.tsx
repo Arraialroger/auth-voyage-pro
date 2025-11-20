@@ -23,9 +23,37 @@ interface Receptionist {
 }
 
 const receptionistSchema = z.object({
-  email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
-  full_name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
+  full_name: z
+    .string()
+    .trim()
+    .min(3, 'Nome deve ter pelo menos 3 caracteres')
+    .max(100, 'Nome deve ter no máximo 100 caracteres')
+    .regex(/^[a-zA-ZÀ-ÿ\s'-]+$/, 'Nome deve conter apenas letras, espaços, hífens e apóstrofos')
+    .refine((val) => val.split(' ').length >= 2, {
+      message: 'Por favor, informe o nome completo (nome e sobrenome)',
+    }),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email('Email inválido')
+    .max(255, 'Email deve ter no máximo 255 caracteres')
+    .refine((val) => !val.includes(' '), {
+      message: 'Email não pode conter espaços',
+    }),
+  password: z
+    .string()
+    .min(8, 'Senha deve ter pelo menos 8 caracteres')
+    .max(72, 'Senha deve ter no máximo 72 caracteres')
+    .refine((val) => /[A-Z]/.test(val), {
+      message: 'Senha deve conter pelo menos uma letra maiúscula',
+    })
+    .refine((val) => /[a-z]/.test(val), {
+      message: 'Senha deve conter pelo menos uma letra minúscula',
+    })
+    .refine((val) => /[0-9]/.test(val), {
+      message: 'Senha deve conter pelo menos um número',
+    }),
 });
 
 type ReceptionistFormData = z.infer<typeof receptionistSchema>;
@@ -77,13 +105,16 @@ export default function ManageReceptionists() {
     try {
       setIsCreating(true);
 
+      // Sanitiza e normaliza os dados antes de enviar
+      const sanitizedData = {
+        email: data.email.trim().toLowerCase(),
+        password: data.password,
+        full_name: data.full_name.trim().replace(/\s+/g, ' '), // Remove espaços extras
+      };
+
       // Chamar edge function para criar recepcionista
       const { data: result, error } = await supabase.functions.invoke('create-receptionist', {
-        body: {
-          email: data.email,
-          password: data.password,
-          full_name: data.full_name,
-        },
+        body: sanitizedData,
       });
 
       if (error) throw error;
@@ -199,7 +230,11 @@ export default function ManageReceptionists() {
                       <FormItem>
                         <FormLabel>Senha</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="Mínimo 6 caracteres" {...field} />
+                          <Input 
+                            type="password" 
+                            placeholder="Mínimo 8 caracteres (maiúsculas, minúsculas e números)" 
+                            {...field} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
