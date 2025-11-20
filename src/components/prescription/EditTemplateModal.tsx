@@ -27,7 +27,6 @@ const templateSchema = z.object({
   description: z.string().optional(),
   prescription_type: z.enum(['simple', 'controlled', 'special']),
   general_instructions: z.string().optional(),
-  is_shared: z.boolean(),
   items: z.array(templateItemSchema).min(1, 'Adicione pelo menos um medicamento'),
 });
 
@@ -71,7 +70,6 @@ export const EditTemplateModal = ({
   });
 
   const items = watch('items') || [];
-  const isShared = watch('is_shared');
 
   useEffect(() => {
     if (template) {
@@ -80,7 +78,6 @@ export const EditTemplateModal = ({
         description: template.description || '',
         prescription_type: template.prescription_type,
         general_instructions: template.general_instructions || '',
-        is_shared: template.is_shared,
         items: template.prescription_template_items
           .sort((a, b) => a.item_order - b.item_order)
           .map((item) => ({
@@ -115,7 +112,7 @@ export const EditTemplateModal = ({
           template_name: data.template_name,
           description: data.description || null,
           prescription_type: data.prescription_type,
-          is_shared: data.is_shared,
+          is_shared: false,
           general_instructions: data.general_instructions || null,
         })
         .eq('id', template.id);
@@ -217,18 +214,6 @@ export const EditTemplateModal = ({
                     <SelectItem value="special">Especial</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              {/* Compartilhar */}
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="is_shared"
-                  checked={isShared}
-                  onCheckedChange={(checked) => setValue('is_shared', checked as boolean)}
-                />
-                <Label htmlFor="is_shared" className="cursor-pointer">
-                  Disponibilizar para outros profissionais da clínica
-                </Label>
               </div>
 
               {/* Medicamentos */}
