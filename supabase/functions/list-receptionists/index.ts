@@ -64,9 +64,13 @@ serve(async (req) => {
 
     console.log(`Encontrados ${receptionists?.length || 0} recepcionistas`)
 
+    // Filtra apenas recepcionistas com user_id válido
+    const validReceptionists = (receptionists || []).filter(r => r.user_id !== null)
+    console.log(`Recepcionistas válidos (com user_id): ${validReceptionists.length}`)
+
     // Para cada recepcionista, busca dados do auth.users
     const receptionistsWithDetails = await Promise.all(
-      (receptionists || []).map(async (recept) => {
+      validReceptionists.map(async (recept) => {
         const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(recept.user_id)
         return {
           id: recept.user_id,
