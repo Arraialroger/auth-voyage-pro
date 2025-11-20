@@ -112,6 +112,7 @@ export default function ManageReceptionists() {
       });
 
       if (error) throw error;
+      if (result?.error) throw new Error(result.error);
 
       toast({
         title: 'Recepcionista criado',
