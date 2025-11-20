@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { parseISO, isBefore, isAfter, addDays, differenceInHours, startOfDay, endOfDay } from "date-fns";
+import { logger } from "./logger";
 
 export interface ValidationResult {
   isValid: boolean;
@@ -66,7 +67,7 @@ export async function checkTimeConflict(
       });
     }
   } catch (error) {
-    console.error('Erro ao verificar conflitos de horário:', error);
+    logger.error('Erro ao verificar conflitos de horário:', error);
     result.isValid = false;
     result.errors.push('Erro ao verificar conflitos de horário');
   }
@@ -121,7 +122,7 @@ export async function checkProfessionalSchedule(
       );
     }
   } catch (error) {
-    console.error('Erro ao verificar expediente:', error);
+    logger.error('Erro ao verificar expediente:', error);
     result.warnings.push('Não foi possível verificar o expediente do profissional');
   }
 
@@ -168,7 +169,7 @@ export async function checkDailyAppointmentLimit(
       );
     }
   } catch (error) {
-    console.error('Erro ao verificar limite diário:', error);
+    logger.error('Erro ao verificar limite diário:', error);
     result.warnings.push('Não foi possível verificar limite diário de agendamentos');
   }
 
@@ -219,7 +220,7 @@ export async function checkDailyWorkload(
       );
     }
   } catch (error) {
-    console.error('Erro ao verificar carga horária:', error);
+    logger.error('Erro ao verificar carga horária:', error);
     result.warnings.push('Não foi possível verificar carga horária diária');
   }
 
@@ -273,7 +274,7 @@ export async function checkPatientSessionInterval(
       );
     }
   } catch (error) {
-    console.error('Erro ao verificar intervalo entre sessões:', error);
+    logger.error('Erro ao verificar intervalo entre sessões:', error);
     result.warnings.push('Não foi possível verificar intervalos entre sessões');
   }
 

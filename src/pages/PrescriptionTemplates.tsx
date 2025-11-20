@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { logger } from '@/lib/logger';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,7 +69,7 @@ export default function PrescriptionTemplates() {
       if (error) throw error;
       setTemplates(data || []);
     } catch (error) {
-      console.error('Erro ao carregar templates:', error);
+      logger.error('Erro ao carregar templates:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar os templates',
@@ -95,7 +96,7 @@ export default function PrescriptionTemplates() {
 
       fetchTemplates();
     } catch (error) {
-      console.error('Erro ao excluir template:', error);
+      logger.error('Erro ao excluir template:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível excluir o template',
@@ -151,7 +152,7 @@ export default function PrescriptionTemplates() {
 
       fetchTemplates();
     } catch (error) {
-      console.error('Erro ao duplicar template:', error);
+      logger.error('Erro ao duplicar template:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível duplicar o template',

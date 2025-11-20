@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/lib/logger';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -86,7 +87,7 @@ export const CreatePrescriptionModal = ({
         if (error) throw error;
         setTemplates(data || []);
       } catch (error) {
-        console.error('Erro ao carregar templates:', error);
+        logger.error('Erro ao carregar templates:', error);
       }
     };
 
@@ -122,7 +123,7 @@ export const CreatePrescriptionModal = ({
         description: `Template "${template.template_name}" carregado com sucesso`,
       });
     } catch (error) {
-      console.error('Erro ao aplicar template:', error);
+      logger.error('Erro ao aplicar template:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível aplicar o template',
@@ -212,7 +213,7 @@ export const CreatePrescriptionModal = ({
       onSuccess?.();
       onClose();
     } catch (error) {
-      console.error('Erro ao criar receita:', error);
+      logger.error('Erro ao criar receita:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível criar a receita',

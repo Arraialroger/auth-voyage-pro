@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/lib/logger';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -136,7 +137,7 @@ export const CreateCertificateModal = ({
       onSuccess?.();
       onClose();
     } catch (error) {
-      console.error('Erro ao criar atestado:', error);
+      logger.error('Erro ao criar atestado:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível criar o atestado',

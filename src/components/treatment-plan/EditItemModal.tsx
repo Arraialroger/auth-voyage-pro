@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 import { z } from "zod";
 
 const editItemSchema = z.object({
@@ -65,7 +66,7 @@ export function EditItemModal({ item, open, onOpenChange, onUpdate }: EditItemMo
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
       } else {
-        console.error("Erro ao atualizar procedimento:", error);
+        logger.error("Erro ao atualizar procedimento:", error);
         toast.error("Erro ao atualizar procedimento");
       }
     } finally {

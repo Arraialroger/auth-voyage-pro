@@ -535,7 +535,7 @@ export default function Agenda() {
         if (error) throw error;
         return data || [];
       } catch (error) {
-        console.error('Erro ao buscar profissionais:', error);
+        logger.error('Erro ao buscar profissionais:', error);
         return [];
       }
     },
