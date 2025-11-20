@@ -9,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
+import { TreatmentPlanItem } from "@/types/treatment-plan";
+import { isPostgresError, getErrorMessage } from "@/types/errors";
 
 const editItemSchema = z.object({
   procedure_description: z.string().trim().min(3, "Descrição muito curta").max(500, "Descrição muito longa"),
@@ -19,7 +21,7 @@ const editItemSchema = z.object({
 });
 
 interface EditItemModalProps {
-  item: any;
+  item: TreatmentPlanItem;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdate: () => void;
@@ -62,9 +64,11 @@ export function EditItemModal({ item, open, onOpenChange, onUpdate }: EditItemMo
       toast.success("Procedimento atualizado com sucesso");
       onUpdate();
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof z.ZodError) {
         toast.error(error.errors[0].message);
+      } else if (isPostgresError(error)) {
+        toast.error(getErrorMessage(error));
       } else {
         logger.error("Erro ao atualizar procedimento:", error);
         toast.error("Erro ao atualizar procedimento");

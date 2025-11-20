@@ -13,11 +13,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { logger } from "@/lib/logger";
 import { validateAppointment } from "@/lib/appointmentValidation";
+import { TreatmentPlan, PendingScheduleItem } from "@/types/treatment-plan";
 
 interface BulkScheduleModalProps {
   isOpen: boolean;
   onClose: () => void;
-  treatmentPlan: any;
+  treatmentPlan: TreatmentPlan;
   onSuccess: () => void;
 }
 
@@ -44,12 +45,12 @@ export const BulkScheduleModal = ({ isOpen, onClose, treatmentPlan, onSuccess }:
   const [suggestedSlots, setSuggestedSlots] = useState<SuggestedSlot[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
   const [isScheduling, setIsScheduling] = useState(false);
-  const [professionalSchedules, setProfessionalSchedules] = useState<any[]>([]);
-  const [existingAppointments, setExistingAppointments] = useState<any[]>([]);
+  const [professionalSchedules, setProfessionalSchedules] = useState<Array<{ day_of_week: number; start_time: string; end_time: string }>>([]);
+  const [existingAppointments, setExistingAppointments] = useState<Array<{ appointment_start_time: string; appointment_end_time: string }>>([]);
 
-  const pendingItems = treatmentPlan.items?.filter(
-    (item: any) => item.status === 'pending' && !item.appointment_id
-  ) || [];
+  const pendingItems: PendingScheduleItem[] = (treatmentPlan.items?.filter(
+    (item) => item.status === 'pending' && !item.appointment_id
+  ) || []).map(item => ({ ...item, selected: false }));
 
   useEffect(() => {
     if (isOpen && treatmentPlan.professional_id) {
@@ -85,7 +86,7 @@ export const BulkScheduleModal = ({ isOpen, onClose, treatmentPlan, onSuccess }:
     }
   };
 
-  const handleItemToggle = async (item: any, checked: boolean) => {
+  const handleItemToggle = async (item: PendingScheduleItem, checked: boolean) => {
     if (checked) {
       // Fetch treatment duration if available
       let duration = 60; // default
@@ -304,7 +305,7 @@ export const BulkScheduleModal = ({ isOpen, onClose, treatmentPlan, onSuccess }:
 
             <ScrollArea className="h-[400px] pr-4">
               <div className="space-y-2">
-                {pendingItems.map((item: any) => (
+                {pendingItems.map((item: PendingScheduleItem) => (
                   <div
                     key={item.id}
                     className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"

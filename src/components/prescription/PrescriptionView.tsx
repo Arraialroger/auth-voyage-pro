@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { logger } from '@/lib/logger';
+import { Prescription, PrescriptionItem } from '@/types/prescription';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -215,7 +216,7 @@ export const PrescriptionView = ({ patientId }: PrescriptionViewProps) => {
                     Medicamentos ({prescription.prescription_items?.length || 0})
                   </div>
                   <div className="space-y-3 pl-6">
-                    {prescription.prescription_items?.map((item: any, index: number) => (
+                    {prescription.prescription_items?.map((item: PrescriptionItem, index: number) => (
                       <div key={item.id} className="space-y-1">
                         <div className="flex items-baseline gap-2">
                           <span className="text-sm font-medium">{index + 1}.</span>
