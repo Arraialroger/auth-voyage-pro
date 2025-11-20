@@ -5,6 +5,7 @@ import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/lib/logger';
+import { PrescriptionTemplate, PrescriptionTemplateItem, Prescription } from '@/types/prescription';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -52,9 +53,9 @@ export const CreatePrescriptionModal = ({
   const { professionalId } = useUserProfile();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
-  const [templates, setTemplates] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<PrescriptionTemplate[]>([]);
   const [saveTemplateModalOpen, setSaveTemplateModalOpen] = useState(false);
-  const [lastCreatedPrescription, setLastCreatedPrescription] = useState<any>(null);
+  const [lastCreatedPrescription, setLastCreatedPrescription] = useState<PrescriptionFormData | null>(null);
 
   const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm<PrescriptionFormData>({
     resolver: zodResolver(prescriptionSchema),
@@ -107,8 +108,8 @@ export const CreatePrescriptionModal = ({
 
       // Pré-preencher medicamentos
       const medications = template.prescription_template_items
-        .sort((a: any, b: any) => a.item_order - b.item_order)
-        .map((item: any) => ({
+        .sort((a: PrescriptionTemplateItem, b: PrescriptionTemplateItem) => a.item_order - b.item_order)
+        .map((item: PrescriptionTemplateItem) => ({
           medication_name: item.medication_name,
           dosage: item.dosage,
           frequency: item.frequency,
@@ -187,7 +188,7 @@ export const CreatePrescriptionModal = ({
       if (itemsError) throw itemsError;
 
       // Armazenar dados da receita para toast com ação
-      const prescriptionData = {
+      const prescriptionData: PrescriptionFormData = {
         prescription_type: data.prescription_type,
         general_instructions: data.general_instructions || '',
         items: data.items,
@@ -431,7 +432,7 @@ export const CreatePrescriptionModal = ({
           setLastCreatedPrescription(null);
         }}
         mode="save-from-prescription"
-        initialData={lastCreatedPrescription}
+        initialData={lastCreatedPrescription as any}
         onSuccess={() => {
           setSaveTemplateModalOpen(false);
           setLastCreatedPrescription(null);

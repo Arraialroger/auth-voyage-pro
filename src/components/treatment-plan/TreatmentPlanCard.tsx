@@ -29,9 +29,10 @@ import { generateTreatmentPlanPDF } from "@/lib/pdfGenerator";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { logger } from "@/lib/logger";
+import { TreatmentPlan, TreatmentPlanItem } from "@/types/treatment-plan";
 
 interface TreatmentPlanCardProps {
-  plan: any;
+  plan: TreatmentPlan;
   onUpdate: () => void;
   isReceptionist: boolean;
 }
@@ -59,9 +60,9 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
   const statusConfig = getStatusConfig(plan.status);
   const StatusIcon = statusConfig.icon;
 
-  const completedItems = plan.items?.filter((item: any) => item.status === 'completed').length || 0;
+  const completedItems = plan.items?.filter((item: TreatmentPlanItem) => item.status === 'completed').length || 0;
   const totalItems = plan.items?.length || 0;
-  const pendingItems = plan.items?.filter((item: any) => item.status === 'pending' && !item.appointment_id).length || 0;
+  const pendingItems = plan.items?.filter((item: TreatmentPlanItem) => item.status === 'pending' && !item.appointment_id).length || 0;
   const progress = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
 
   const handleGeneratePDF = async () => {
@@ -77,7 +78,13 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
       
       if (error) throw error;
       
-      await generateTreatmentPlanPDF(plan, patient);
+      // Ensure professional data exists for PDF generation
+      if (!plan.professional) {
+        throw new Error('Dados do profissional não encontrados');
+      }
+      
+      // PDF generator has its own type definitions
+      await generateTreatmentPlanPDF(plan as any, patient);
       
       toast({
         title: "PDF gerado com sucesso",
@@ -116,7 +123,7 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
       
       // Copy all items to new plan (reset status to pending)
       if (plan.items && plan.items.length > 0) {
-        const itemsToCopy = plan.items.map((item: any) => ({
+        const itemsToCopy = plan.items.map((item: TreatmentPlanItem) => ({
           treatment_plan_id: newPlan.id,
           procedure_description: item.procedure_description,
           tooth_number: item.tooth_number,
@@ -124,7 +131,7 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
           priority: item.priority,
           notes: item.notes,
           treatment_id: item.treatment_id,
-          status: 'pending', // Reset status
+          status: 'pending' as const, // Reset status to pending
         }));
         
         const { error: itemsError } = await supabase
@@ -279,7 +286,7 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
                 </Alert>
               ) : (
                 <div className="space-y-2">
-                  {plan.items.map((item: any) => (
+                  {plan.items.map((item: TreatmentPlanItem) => (
                     <TreatmentPlanItemRow
                       key={item.id}
                       item={item}

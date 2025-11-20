@@ -5,6 +5,7 @@ import { CheckCircle2, Clock, XCircle, Trash2, Pencil, Calendar, ExternalLink } 
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { logger } from "@/lib/logger";
+import { TreatmentPlanItem } from "@/types/treatment-plan";
 import { EditItemModal } from "./EditItemModal";
 import { NewAppointmentModal } from "../NewAppointmentModal";
 import { format } from "date-fns";
@@ -21,7 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface TreatmentPlanItemRowProps {
-  item: any;
+  item: TreatmentPlanItem;
   onUpdate: () => void;
   isReceptionist: boolean;
   patientId: string;
@@ -55,7 +56,7 @@ export const TreatmentPlanItemRow = ({ item, onUpdate, isReceptionist, patientId
     const newStatus = item.status === 'completed' ? 'pending' : 'completed';
     
     try {
-      const updateData: any = {
+      const updateData: Partial<TreatmentPlanItem> = {
         status: newStatus,
       };
 

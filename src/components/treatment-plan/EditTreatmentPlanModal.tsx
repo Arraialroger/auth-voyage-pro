@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { TreatmentPlan, TreatmentPlanStatus } from "@/types/treatment-plan";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -23,7 +24,7 @@ import { logger } from "@/lib/logger";
 interface EditTreatmentPlanModalProps {
   isOpen: boolean;
   onClose: () => void;
-  plan: any;
+  plan: TreatmentPlan;
   onSuccess: () => void;
 }
 
@@ -35,7 +36,7 @@ export const EditTreatmentPlanModal = ({
 }: EditTreatmentPlanModalProps) => {
   const { toast } = useToast();
   const [title, setTitle] = useState(plan.title || "");
-  const [status, setStatus] = useState(plan.status);
+  const [status, setStatus] = useState<string>(plan.status);
   const [notes, setNotes] = useState(plan.notes || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -52,7 +53,7 @@ export const EditTreatmentPlanModal = ({
         .from('treatment_plans')
         .update({
           title: title || null,
-          status,
+          status: status as TreatmentPlanStatus,
           notes: notes || null,
         })
         .eq('id', plan.id);
