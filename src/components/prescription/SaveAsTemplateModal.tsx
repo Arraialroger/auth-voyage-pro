@@ -53,7 +53,7 @@ export const SaveAsTemplateModal = ({
   prescriptionData,
   onSuccess,
 }: SaveAsTemplateModalProps) => {
-  const { professionalId } = useUserProfile();
+  const { professionalId, type: userType } = useUserProfile();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { register, handleSubmit, formState: { errors }, watch, setValue, reset } = useForm<SaveTemplateFormData>({
@@ -68,7 +68,7 @@ export const SaveAsTemplateModal = ({
   const isShared = watch('is_shared');
 
   const onSubmit = async (data: SaveTemplateFormData) => {
-    if (!professionalId || !prescriptionData) {
+    if (!prescriptionData) {
       toast({
         title: 'Erro',
         description: 'Dados incompletos para salvar template',
@@ -76,6 +76,10 @@ export const SaveAsTemplateModal = ({
       });
       return;
     }
+
+    // Recepcionistas criam templates genéricos (professional_id = null)
+    // Profissionais criam templates pessoais (professional_id = seu ID)
+    const templateProfessionalId = userType === 'receptionist' ? null : professionalId;
 
     setIsSubmitting(true);
     try {
@@ -86,8 +90,8 @@ export const SaveAsTemplateModal = ({
           template_name: data.template_name,
           description: data.description || null,
           prescription_type: prescriptionData.prescription_type,
-          is_shared: data.is_shared,
-          professional_id: professionalId,
+          is_shared: userType === 'receptionist' ? false : data.is_shared,
+          professional_id: templateProfessionalId,
           general_instructions: prescriptionData.general_instructions || null,
         })
         .select()
@@ -171,16 +175,18 @@ export const SaveAsTemplateModal = ({
             />
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="is_shared"
-              checked={isShared}
-              onCheckedChange={(checked) => setValue('is_shared', checked as boolean)}
-            />
-            <Label htmlFor="is_shared" className="cursor-pointer text-sm">
-              Disponibilizar para outros profissionais da clínica
-            </Label>
-          </div>
+          {userType === 'professional' && (
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="is_shared"
+                checked={isShared}
+                onCheckedChange={(checked) => setValue('is_shared', checked as boolean)}
+              />
+              <Label htmlFor="is_shared" className="cursor-pointer text-sm">
+                Disponibilizar para outros profissionais da clínica
+              </Label>
+            </div>
+          )}
 
           <AlertDialogFooter>
             <AlertDialogCancel type="button" onClick={handleClose} disabled={isSubmitting}>

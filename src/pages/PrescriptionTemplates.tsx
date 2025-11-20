@@ -60,8 +60,8 @@ export default function PrescriptionTemplates() {
 
       // Filtro baseado no tipo de usuário
       if (userType === 'professional' && professionalId) {
-        // Profissionais veem: templates genéricos + compartilhados + próprios
-        query = query.or(`professional_id.is.null,and(professional_id.eq.${professionalId}),and(is_shared.eq.true,professional_id.neq.${professionalId})`);
+        // Profissionais veem: templates genéricos + próprios + compartilhados por outros
+        query = query.or(`professional_id.is.null,professional_id.eq.${professionalId},and(is_shared.eq.true,professional_id.neq.${professionalId})`);
       }
       // Recepcionistas veem todos (RLS já filtra adequadamente)
 
@@ -120,7 +120,7 @@ export default function PrescriptionTemplates() {
           template_name: `${template.template_name} (Cópia)`,
           description: template.description,
           prescription_type: template.prescription_type,
-          is_shared: userType === 'receptionist' ? true : false, // Genéricos são sempre compartilhados
+          is_shared: false, // Templates duplicados sempre começam como não compartilhados
           professional_id: newTemplateProfessionalId,
           general_instructions: template.general_instructions,
         })

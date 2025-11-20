@@ -79,7 +79,7 @@ export const CreatePrescriptionModal = ({
             *,
             prescription_template_items (*)
           `)
-          .or(`professional_id.is.null,and(professional_id.eq.${professionalId}),and(is_shared.eq.true,professional_id.neq.${professionalId})`)
+          .or(`professional_id.is.null,professional_id.eq.${professionalId},and(is_shared.eq.true,professional_id.neq.${professionalId})`)
           .eq('prescription_type', prescriptionType)
           .order('template_name');
 
@@ -259,20 +259,30 @@ export const CreatePrescriptionModal = ({
                       <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Selecione um template para pré-preencher..." />
                       </SelectTrigger>
-                      <SelectContent>
-                        {templates.map((template) => (
-                          <SelectItem key={template.id} value={template.id}>
-                            <div className="flex items-center gap-2">
-                              <FileText className="h-4 w-4" />
-                              <span>{template.template_name}</span>
-                              {template.is_shared && (
-                                <Badge variant="outline" className="ml-2 text-xs">
-                                  Compartilhado
-                                </Badge>
-                              )}
-                            </div>
-                          </SelectItem>
-                        ))}
+                      <SelectContent className="max-h-[300px]">
+                        {templates.map((template) => {
+                          const isGeneric = !template.professional_id;
+                          const isOwn = template.professional_id === professionalId;
+                          const isShared = template.professional_id && template.professional_id !== professionalId;
+                          
+                          return (
+                            <SelectItem key={template.id} value={template.id}>
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4" />
+                                <span>{template.template_name}</span>
+                                {isGeneric && (
+                                  <Badge variant="outline" className="ml-2 text-xs">Clínica</Badge>
+                                )}
+                                {isOwn && (
+                                  <Badge variant="secondary" className="ml-2 text-xs">Meu</Badge>
+                                )}
+                                {isShared && (
+                                  <Badge variant="default" className="ml-2 text-xs">Compartilhado</Badge>
+                                )}
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                     {selectedTemplate && (
