@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { logger } from '@/lib/logger';
 import { toast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -255,7 +256,7 @@ export const TemplateFormModal = ({
       onClose();
       onSuccess?.();
     } catch (error) {
-      console.error('Erro ao salvar template:', error);
+      logger.error('Erro ao salvar template:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível salvar o template',

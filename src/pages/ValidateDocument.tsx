@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { logger } from "@/lib/logger";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle2, XCircle, Shield, Loader2 } from "lucide-react";
@@ -101,7 +102,7 @@ const ValidateDocument = () => {
           setResult({ isValid: false });
         }
       } catch (error) {
-        console.error("Validation error:", error);
+        logger.error("Validation error:", error);
         setResult({ isValid: false });
       } finally {
         setLoading(false);
