@@ -63,24 +63,91 @@ Deno.serve(async (req) => {
     // Get request body
     const { email, password, full_name } = await req.json();
 
-    // Validate payload
-    if (!email || !password) {
+    // Validação server-side robusta
+    if (!email || !password || !full_name) {
       console.error('Dados incompletos fornecidos');
       return new Response(
-        JSON.stringify({ error: 'Dados incompletos. Forneça email e password.' }),
+        JSON.stringify({ error: 'Dados incompletos. Forneça email, password e full_name.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Iniciando criação de recepcionista: ${email}`);
+    // Sanitizar e normalizar dados
+    const sanitizedEmail = email.trim().toLowerCase();
+    const sanitizedFullName = full_name.trim().replace(/\s+/g, ' ');
 
-    // Create user in Auth with service client
+    // Validações de formato
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(sanitizedEmail)) {
+      console.error('Email inválido fornecido:', sanitizedEmail);
+      return new Response(
+        JSON.stringify({ error: 'Email inválido' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validação de comprimento
+    if (sanitizedEmail.length > 255) {
+      console.error('Email muito longo:', sanitizedEmail.length);
+      return new Response(
+        JSON.stringify({ error: 'Email deve ter no máximo 255 caracteres' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (sanitizedFullName.length < 3 || sanitizedFullName.length > 100) {
+      console.error('Nome inválido - comprimento:', sanitizedFullName.length);
+      return new Response(
+        JSON.stringify({ error: 'Nome deve ter entre 3 e 100 caracteres' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (password.length < 8 || password.length > 72) {
+      console.error('Senha com comprimento inválido');
+      return new Response(
+        JSON.stringify({ error: 'Senha deve ter entre 8 e 72 caracteres' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validação de complexidade da senha
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      console.error('Senha não atende aos requisitos de complexidade');
+      return new Response(
+        JSON.stringify({ error: 'Senha deve conter letras maiúsculas, minúsculas e números' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validação de caracteres no nome
+    const nameRegex = /^[a-zA-ZÀ-ÿ\s'-]+$/;
+    if (!nameRegex.test(sanitizedFullName)) {
+      console.error('Nome contém caracteres inválidos');
+      return new Response(
+        JSON.stringify({ error: 'Nome deve conter apenas letras, espaços, hífens e apóstrofos' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verificar se nome tem pelo menos 2 palavras (nome e sobrenome)
+    if (sanitizedFullName.split(' ').length < 2) {
+      console.error('Nome incompleto - faltando sobrenome');
+      return new Response(
+        JSON.stringify({ error: 'Por favor, informe o nome completo (nome e sobrenome)' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Iniciando criação de recepcionista: ${sanitizedEmail}`);
+
+    // Create user in Auth with service client using sanitized data
     const { data: newUser, error: createUserError } = await serviceClient.auth.admin.createUser({
-      email,
+      email: sanitizedEmail,
       password,
       email_confirm: true,
       user_metadata: {
-        full_name: full_name || email,
+        full_name: sanitizedFullName,
       }
     });
 
@@ -115,7 +182,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Recepcionista criado com sucesso:', email);
+    console.log('Recepcionista criado com sucesso:', sanitizedEmail);
 
     return new Response(
       JSON.stringify({ 
@@ -123,7 +190,7 @@ Deno.serve(async (req) => {
         receptionist: {
           id: staffRecord.id,
           email: newUser.user.email,
-          full_name: full_name || email,
+          full_name: sanitizedFullName,
         }
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
