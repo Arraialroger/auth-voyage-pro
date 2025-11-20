@@ -55,37 +55,12 @@ export default function ManageReceptionists() {
     try {
       setLoading(true);
       
-      // Buscar staff_profiles com role='receptionist'
-      const { data: staffProfiles, error: staffError } = await supabase
-        .from('staff_profiles')
-        .select('id, user_id, role')
-        .eq('role', 'receptionist');
+      const { data, error } = await supabase.functions.invoke('list-receptionists');
 
-      if (staffError) throw staffError;
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      // Buscar dados dos usuários de auth
-      const userIds: string[] = (staffProfiles?.map(s => s.user_id).filter((id): id is string => id !== null) || []);
-      
-      if (userIds.length === 0) {
-        setReceptionists([]);
-        return;
-      }
-
-      // Usar API admin para buscar usuários
-      const { data: authData, error: usersError } = await supabase.auth.admin.listUsers();
-      
-      if (usersError || !authData?.users) throw usersError;
-
-      const receptionistUsers: Receptionist[] = authData.users
-        .filter((user: any) => userIds.includes(user.id))
-        .map((user: any) => ({
-          id: user.id,
-          email: user.email || '',
-          full_name: user.user_metadata?.full_name || user.email || 'Sem nome',
-          created_at: user.created_at,
-        }));
-
-      setReceptionists(receptionistUsers);
+      setReceptionists(data.receptionists || []);
     } catch (error) {
       logger.error('Erro ao buscar recepcionistas:', error);
       toast({
@@ -136,10 +111,12 @@ export default function ManageReceptionists() {
 
   const handleDeleteReceptionist = async (receptionist: Receptionist) => {
     try {
-      // Deletar usuário do auth (isso vai cascatear para staff_profiles)
-      const { error: deleteError } = await supabase.auth.admin.deleteUser(receptionist.id);
+      const { data, error } = await supabase.functions.invoke('delete-receptionist', {
+        body: { receptionist_id: receptionist.id }
+      });
 
-      if (deleteError) throw deleteError;
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast({
         title: 'Recepcionista removido',

@@ -5,3 +5,9 @@ verify_jwt = true
 
 [functions.create-receptionist]
 verify_jwt = true
+
+[functions.list-receptionists]
+verify_jwt = true
+
+[functions.delete-receptionist]
+verify_jwt = true
