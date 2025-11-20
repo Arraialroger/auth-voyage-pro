@@ -225,6 +225,24 @@ WHERE au.email = 'email@exemplo.com';
 
 ---
 
+## 🏗️ Decisões de Arquitetura
+
+### Tabela n8n_chat_histories (Removida)
+
+**Data:** 2025-01-XX  
+**Decisão:** Tabela removida do banco de dados  
+**Motivo:** 
+- Não estava sendo utilizada no código da aplicação
+- Seguindo princípio YAGNI (You Ain't Gonna Need It)
+- Redução de superfície de ataque de segurança
+- Simplificação da arquitetura
+
+**Impacto:** Nenhum - tabela não estava em uso  
+**Reversibilidade:** 100% - pode ser recriada quando funcionalidades de IA forem implementadas  
+**Quando Recriar:** Apenas quando features de IA (WhatsApp AI Assistant, Chat Inteligente) forem desenvolvidas
+
+---
+
 ## 📝 Histórico de Versões
 
 | Data | Versão | Alterações |
