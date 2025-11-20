@@ -1,1 +1,7 @@
 project_id = "bacwlstdjceottxccrap"
+
+[functions.create-professional]
+verify_jwt = true
+
+[functions.create-receptionist]
+verify_jwt = true
