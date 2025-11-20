@@ -79,7 +79,7 @@ export const CreatePrescriptionModal = ({
             *,
             prescription_template_items (*)
           `)
-          .or(`professional_id.eq.${professionalId},is_shared.eq.true`)
+          .or(`professional_id.is.null,and(professional_id.eq.${professionalId}),and(is_shared.eq.true,professional_id.neq.${professionalId})`)
           .eq('prescription_type', prescriptionType)
           .order('template_name');
 
