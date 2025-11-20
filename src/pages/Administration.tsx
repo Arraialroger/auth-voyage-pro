@@ -49,6 +49,14 @@ export default function Administration() {
       bgColor: 'bg-purple-50'
     },
     {
+      title: 'Gerenciar Recepcionistas',
+      description: 'Adicionar e remover usuários recepcionistas',
+      icon: UserCheck,
+      route: '/admin/receptionists',
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50'
+    },
+    {
       title: 'Templates de Receitas',
       description: 'Criar e gerenciar templates de receitas médicas',
       icon: FileText,

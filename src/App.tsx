@@ -23,6 +23,7 @@ const ManagePatients = lazyWithRetry(() => import("./pages/ManagePatients"));
 const ManageProfessionals = lazyWithRetry(() => import("./pages/ManageProfessionals"));
 const ManageTreatments = lazyWithRetry(() => import("./pages/ManageTreatments"));
 const ManageWaitingList = lazyWithRetry(() => import("./pages/ManageWaitingList"));
+const ManageReceptionists = lazyWithRetry(() => import("./pages/ManageReceptionists"));
 const PatientDetails = lazyWithRetry(() => import("./pages/PatientDetails"));
 const DataCleanup = lazyWithRetry(() => import("./pages/DataCleanup"));
 const ValidateDocument = lazyWithRetry(() => import("./pages/ValidateDocument"));
@@ -87,6 +88,13 @@ const App = () => (
               <ProtectedRoute>
                 <RoleProtectedRoute allowedRoles={['receptionist']}>
                   <ManageTreatments />
+                </RoleProtectedRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/receptionists" element={
+              <ProtectedRoute>
+                <RoleProtectedRoute allowedRoles={['receptionist']}>
+                  <ManageReceptionists />
                 </RoleProtectedRoute>
               </ProtectedRoute>
             } />
