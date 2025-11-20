@@ -210,6 +210,7 @@ export const CreatePrescriptionModal = ({
       });
 
       onSuccess?.();
+      onClose();
     } catch (error) {
       console.error('Erro ao criar receita:', error);
       toast({
