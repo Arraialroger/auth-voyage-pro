@@ -60,8 +60,7 @@ export default function PrescriptionTemplates() {
 
       // Filtro baseado no tipo de usuário
       if (userType === 'professional' && professionalId) {
-        // Profissionais veem: templates genéricos + próprios + compartilhados por outros
-        query = query.or(`professional_id.is.null,professional_id.eq.${professionalId},and(is_shared.eq.true,professional_id.neq.${professionalId})`);
+        query = query.or(`professional_id.is.null,professional_id.eq.${professionalId}`);
       }
       // Recepcionistas veem todos (RLS já filtra adequadamente)
 

@@ -23,7 +23,6 @@ import { Textarea } from '@/components/ui/textarea';
 const saveTemplateSchema = z.object({
   template_name: z.string().min(1, 'Nome do template é obrigatório'),
   description: z.string().optional(),
-  is_shared: z.boolean(),
 });
 
 type SaveTemplateFormData = z.infer<typeof saveTemplateSchema>;
@@ -56,16 +55,13 @@ export const SaveAsTemplateModal = ({
   const { professionalId, type: userType } = useUserProfile();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { register, handleSubmit, formState: { errors }, watch, setValue, reset } = useForm<SaveTemplateFormData>({
+  const { register, handleSubmit, formState: { errors }, reset } = useForm<SaveTemplateFormData>({
     resolver: zodResolver(saveTemplateSchema),
     defaultValues: {
       template_name: '',
       description: '',
-      is_shared: false,
     },
   });
-
-  const isShared = watch('is_shared');
 
   const onSubmit = async (data: SaveTemplateFormData) => {
     if (!prescriptionData) {
@@ -90,7 +86,7 @@ export const SaveAsTemplateModal = ({
           template_name: data.template_name,
           description: data.description || null,
           prescription_type: prescriptionData.prescription_type,
-          is_shared: userType === 'receptionist' ? false : data.is_shared,
+          is_shared: false,
           professional_id: templateProfessionalId,
           general_instructions: prescriptionData.general_instructions || null,
         })
@@ -174,19 +170,6 @@ export const SaveAsTemplateModal = ({
               rows={2}
             />
           </div>
-
-          {userType === 'professional' && (
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="is_shared"
-                checked={isShared}
-                onCheckedChange={(checked) => setValue('is_shared', checked as boolean)}
-              />
-              <Label htmlFor="is_shared" className="cursor-pointer text-sm">
-                Disponibilizar para outros profissionais da clínica
-              </Label>
-            </div>
-          )}
 
           <AlertDialogFooter>
             <AlertDialogCancel type="button" onClick={handleClose} disabled={isSubmitting}>

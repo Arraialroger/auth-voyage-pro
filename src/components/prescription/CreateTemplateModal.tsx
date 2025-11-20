@@ -27,7 +27,6 @@ const templateSchema = z.object({
   description: z.string().optional(),
   prescription_type: z.enum(['simple', 'controlled', 'special']),
   general_instructions: z.string().optional(),
-  is_shared: z.boolean(),
   items: z.array(templateItemSchema).min(1, 'Adicione pelo menos um medicamento'),
 });
 
@@ -54,13 +53,11 @@ export const CreateTemplateModal = ({
       description: '',
       prescription_type: 'simple',
       general_instructions: '',
-      is_shared: false,
       items: [{ medication_name: '', dosage: '', frequency: '', duration: '', instructions: '' }],
     },
   });
 
   const items = watch('items') || [];
-  const isShared = watch('is_shared');
 
   const addMedication = () => {
     setValue('items', [...items, { medication_name: '', dosage: '', frequency: '', duration: '', instructions: '' }]);
@@ -86,7 +83,7 @@ export const CreateTemplateModal = ({
           template_name: data.template_name,
           description: data.description || null,
           prescription_type: data.prescription_type,
-          is_shared: data.is_shared,
+          is_shared: false,
           professional_id: templateProfessionalId,
           general_instructions: data.general_instructions || null,
         })
@@ -189,18 +186,6 @@ export const CreateTemplateModal = ({
                     <SelectItem value="special">Especial</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              {/* Compartilhar */}
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="is_shared"
-                  checked={isShared}
-                  onCheckedChange={(checked) => setValue('is_shared', checked as boolean)}
-                />
-                <Label htmlFor="is_shared" className="cursor-pointer">
-                  Disponibilizar para outros profissionais da clínica
-                </Label>
               </div>
 
               {/* Medicamentos */}

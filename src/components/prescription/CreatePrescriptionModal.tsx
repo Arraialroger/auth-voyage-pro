@@ -79,7 +79,7 @@ export const CreatePrescriptionModal = ({
             *,
             prescription_template_items (*)
           `)
-          .or(`professional_id.is.null,professional_id.eq.${professionalId},and(is_shared.eq.true,professional_id.neq.${professionalId})`)
+          .or(`professional_id.is.null,professional_id.eq.${professionalId}`)
           .eq('prescription_type', prescriptionType)
           .order('template_name');
 
@@ -263,7 +263,6 @@ export const CreatePrescriptionModal = ({
                         {templates.map((template) => {
                           const isGeneric = !template.professional_id;
                           const isOwn = template.professional_id === professionalId;
-                          const isShared = template.professional_id && template.professional_id !== professionalId;
                           
                           return (
                             <SelectItem key={template.id} value={template.id}>
@@ -275,9 +274,6 @@ export const CreatePrescriptionModal = ({
                                 )}
                                 {isOwn && (
                                   <Badge variant="secondary" className="ml-2 text-xs">Meu</Badge>
-                                )}
-                                {isShared && (
-                                  <Badge variant="default" className="ml-2 text-xs">Compartilhado</Badge>
                                 )}
                               </div>
                             </SelectItem>
