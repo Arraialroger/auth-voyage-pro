@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Trash2, Plus, FileText } from 'lucide-react';
-import { SaveAsTemplateModal } from './SaveAsTemplateModal';
+import { TemplateFormModal } from './TemplateFormModal';
 
 const prescriptionItemSchema = z.object({
   medication_name: z.string().min(1, 'Nome do medicamento é obrigatório'),
@@ -185,20 +185,29 @@ export const CreatePrescriptionModal = ({
 
       if (itemsError) throw itemsError;
 
-      // Armazenar dados da receita para possível salvamento como template
-      setLastCreatedPrescription({
+      // Armazenar dados da receita para toast com ação
+      const prescriptionData = {
         prescription_type: data.prescription_type,
         general_instructions: data.general_instructions || '',
         items: data.items,
-      });
+      };
+      setLastCreatedPrescription(prescriptionData);
 
+      // Toast com ação para salvar como template
       toast({
         title: 'Sucesso',
         description: 'Receita criada com sucesso',
+        action: (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setSaveTemplateModalOpen(true)}
+            className="ml-auto"
+          >
+            Salvar como Template
+          </Button>
+        ),
       });
-
-      // Mostrar opção de salvar como template
-      setSaveTemplateModalOpen(true);
 
       onSuccess?.();
     } catch (error) {
@@ -413,16 +422,17 @@ export const CreatePrescriptionModal = ({
       </DialogContent>
 
       {/* Modal para salvar como template */}
-      <SaveAsTemplateModal
+      <TemplateFormModal
         open={saveTemplateModalOpen}
         onClose={() => {
           setSaveTemplateModalOpen(false);
           setLastCreatedPrescription(null);
-          onClose();
         }}
-        prescriptionData={lastCreatedPrescription}
+        mode="save-from-prescription"
+        initialData={lastCreatedPrescription}
         onSuccess={() => {
-          // Opcional: recarregar templates se necessário
+          setSaveTemplateModalOpen(false);
+          setLastCreatedPrescription(null);
         }}
       />
     </Dialog>
