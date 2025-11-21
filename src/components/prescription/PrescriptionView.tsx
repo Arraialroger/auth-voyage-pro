@@ -14,6 +14,7 @@ import { ptBR } from 'date-fns/locale';
 import { CreatePrescriptionModal } from './CreatePrescriptionModal';
 import { generatePrescriptionPDF } from '@/lib/prescriptionPdf';
 import { useToast } from '@/hooks/use-toast';
+import { SendDocumentToWhatsAppButton } from '@/components/SendDocumentToWhatsAppButton';
 
 interface PrescriptionViewProps {
   patientId: string;
@@ -24,6 +25,21 @@ export const PrescriptionView = ({ patientId }: PrescriptionViewProps) => {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [selectedPrescription, setSelectedPrescription] = useState<string | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState<string | null>(null);
+
+  // Fetch patient data for WhatsApp
+  const { data: patientData } = useQuery({
+    queryKey: ['patient', patientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('patients')
+        .select('full_name, contact_phone')
+        .eq('id', patientId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { data: prescriptions, isLoading, refetch } = useQuery({
     queryKey: ['prescriptions', patientId],
@@ -205,6 +221,19 @@ export const PrescriptionView = ({ patientId }: PrescriptionViewProps) => {
                       <Download className="h-4 w-4 mr-2" />
                       {generatingPdf === prescription.id ? 'Gerando...' : 'Gerar PDF'}
                     </Button>
+                    {prescription.signature_hash && patientData && (
+                      <SendDocumentToWhatsAppButton
+                        patientPhone={patientData.contact_phone}
+                        patientName={patientData.full_name}
+                        documentType="prescription"
+                        documentId={prescription.id}
+                        documentDetails={{
+                          type: prescription.prescription_type,
+                          itemsCount: prescription.prescription_items?.length || 0,
+                          professionalName: prescription.professional?.full_name || 'N/A',
+                        }}
+                      />
+                    )}
                   </div>
                 </div>
               </CardHeader>
