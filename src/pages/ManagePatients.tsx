@@ -774,138 +774,132 @@ export default function ManagePatients() {
 
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
-          {/* Search and Create */}
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input placeholder="Buscar pacientes..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9" />
-            </div>
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={openCreateDialog} className="shrink-0">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Paciente
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Novo Paciente</DialogTitle>
-                  <DialogDescription>
-                    Adicione as informações do novo paciente.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
+          {/* Search */}
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input placeholder="Buscar pacientes..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9" />
+          </div>
+
+          {/* Create Patient Dialog */}
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Novo Paciente</DialogTitle>
+                <DialogDescription>
+                  Adicione as informações do novo paciente.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div>
+                  <Label htmlFor="full_name">Nome Completo *</Label>
+                  <Input id="full_name" value={formData.full_name} onChange={e => setFormData({
+                  ...formData,
+                  full_name: e.target.value
+                })} placeholder="Digite o nome completo" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="full_name">Nome Completo *</Label>
-                    <Input id="full_name" value={formData.full_name} onChange={e => setFormData({
-                    ...formData,
-                    full_name: e.target.value
-                  })} placeholder="Digite o nome completo" />
+                    <Label htmlFor="contact_phone">Telefone *</Label>
+                    <Input 
+                      id="contact_phone" 
+                      value={formData.contact_phone} 
+                      onChange={e => {
+                        const formatted = formatPhone(e.target.value);
+                        setFormData({ ...formData, contact_phone: formatted });
+                      }}
+                      onBlur={(e) => handlePhoneBlur(e.target.value)}
+                      placeholder="(00) 00000-0000"
+                    />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="contact_phone">Telefone *</Label>
-                      <Input 
-                        id="contact_phone" 
-                        value={formData.contact_phone} 
-                        onChange={e => {
-                          const formatted = formatPhone(e.target.value);
-                          setFormData({ ...formData, contact_phone: formatted });
-                        }}
-                        onBlur={(e) => handlePhoneBlur(e.target.value)}
-                        placeholder="(00) 00000-0000"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="cpf">CPF</Label>
-                      <Input 
-                        id="cpf" 
-                        value={formData.cpf} 
-                        onChange={e => {
-                          const masked = formatCPFMask(e.target.value);
-                          setFormData({...formData, cpf: masked});
-                          setCpfDuplicateError(null);
+                  <div>
+                    <Label htmlFor="cpf">CPF</Label>
+                    <Input 
+                      id="cpf" 
+                      value={formData.cpf} 
+                      onChange={e => {
+                        const masked = formatCPFMask(e.target.value);
+                        setFormData({...formData, cpf: masked});
+                        setCpfDuplicateError(null);
+                        setCpfValidationError('');
+                        setCpfSuggestion('');
+                      }}
+                      onBlur={async (e) => {
+                        const cpfValue = e.target.value;
+                        // Validação de formato CPF
+                        if (cpfValue && !validateCPF(cpfValue)) {
+                          const suggestion = suggestCorrectCPF(cpfValue);
+                          setCpfValidationError(suggestion 
+                            ? `CPF inválido. Você quis dizer ${suggestion}?` 
+                            : "CPF inválido");
+                          setCpfSuggestion(suggestion || '');
+                        } else {
+                          setCpfValidationError('');
+                          setCpfSuggestion('');
+                          // ✅ Validação de CPF duplicado
+                          await handleCPFBlur(cpfValue);
+                        }
+                      }}
+                      placeholder="000.000.000-00"
+                      error={!!cpfValidationError || !!cpfDuplicateError?.exists}
+                      errorMessage={cpfValidationError || (cpfDuplicateError?.exists ? `⚠️ CPF já cadastrado para: ${cpfDuplicateError.patient?.full_name}` : undefined)}
+                      maxLength={14}
+                    />
+                    {cpfSuggestion && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="mt-1 h-auto p-0 text-xs text-primary"
+                        onClick={() => {
+                          setFormData({...formData, cpf: cpfSuggestion});
                           setCpfValidationError('');
                           setCpfSuggestion('');
                         }}
-                        onBlur={async (e) => {
-                          const cpfValue = e.target.value;
-                          // Validação de formato CPF
-                          if (cpfValue && !validateCPF(cpfValue)) {
-                            const suggestion = suggestCorrectCPF(cpfValue);
-                            setCpfValidationError(suggestion 
-                              ? `CPF inválido. Você quis dizer ${suggestion}?` 
-                              : "CPF inválido");
-                            setCpfSuggestion(suggestion || '');
-                          } else {
-                            setCpfValidationError('');
-                            setCpfSuggestion('');
-                            // ✅ Validação de CPF duplicado
-                            await handleCPFBlur(cpfValue);
-                          }
+                      >
+                        ✓ Aplicar sugestão: {cpfSuggestion}
+                      </Button>
+                    )}
+                    {cpfDuplicateError?.exists && cpfDuplicateError.patient && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => {
+                          setIsCreateDialogOpen(false);
+                          navigate(`/patient/${cpfDuplicateError.patient.id}`);
                         }}
-                        placeholder="000.000.000-00"
-                        error={!!cpfValidationError || !!cpfDuplicateError?.exists}
-                        errorMessage={cpfValidationError || (cpfDuplicateError?.exists ? `⚠️ CPF já cadastrado para: ${cpfDuplicateError.patient?.full_name}` : undefined)}
-                        maxLength={14}
-                      />
-                      {cpfSuggestion && (
-                        <Button
-                          type="button"
-                          variant="link"
-                          size="sm"
-                          className="mt-1 h-auto p-0 text-xs text-primary"
-                          onClick={() => {
-                            setFormData({...formData, cpf: cpfSuggestion});
-                            setCpfValidationError('');
-                            setCpfSuggestion('');
-                          }}
-                        >
-                          ✓ Aplicar sugestão: {cpfSuggestion}
-                        </Button>
-                      )}
-                      {cpfDuplicateError?.exists && cpfDuplicateError.patient && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mt-2"
-                          onClick={() => {
-                            setIsCreateDialogOpen(false);
-                            navigate(`/patient/${cpfDuplicateError.patient.id}`);
-                          }}
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          Ver Paciente Existente
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="birth_date">Data de Nascimento</Label>
-                    <Input id="birth_date" type="date" value={formData.birth_date} onChange={e => setFormData({
-                    ...formData,
-                    birth_date: e.target.value
-                  })} />
-                  </div>
-                  <div>
-                    <Label htmlFor="medical_history_notes">Histórico Médico</Label>
-                    <Textarea id="medical_history_notes" value={formData.medical_history_notes} onChange={e => setFormData({
-                    ...formData,
-                    medical_history_notes: e.target.value
-                  })} placeholder="Informações relevantes do histórico médico..." rows={3} />
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        Ver Paciente Existente
+                      </Button>
+                    )}
                   </div>
                 </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button onClick={handleCreatePatient} disabled={!formData.full_name || !formData.contact_phone}>
-                    Criar Paciente
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
+                <div>
+                  <Label htmlFor="birth_date">Data de Nascimento</Label>
+                  <Input id="birth_date" type="date" value={formData.birth_date} onChange={e => setFormData({
+                  ...formData,
+                  birth_date: e.target.value
+                })} />
+                </div>
+                <div>
+                  <Label htmlFor="medical_history_notes">Histórico Médico</Label>
+                  <Textarea id="medical_history_notes" value={formData.medical_history_notes} onChange={e => setFormData({
+                  ...formData,
+                  medical_history_notes: e.target.value
+                })} placeholder="Informações relevantes do histórico médico..." rows={3} />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleCreatePatient} disabled={!formData.full_name || !formData.contact_phone}>
+                  Criar Paciente
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* Patients List */}
           {isLoading ? (
