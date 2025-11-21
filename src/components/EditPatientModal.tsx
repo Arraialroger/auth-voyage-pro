@@ -61,6 +61,8 @@ export function EditPatientModal({ patientId, open, onOpenChange, onSave }: Edit
     exists: boolean;
     patient?: { full_name: string; created_at: string; id: string };
   } | null>(null);
+  const [isCheckingPhone, setIsCheckingPhone] = useState(false);
+  const [isCheckingCPF, setIsCheckingCPF] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [viewingDocument, setViewingDocument] = useState<PatientDocument | null>(null);
@@ -133,6 +135,7 @@ export function EditPatientModal({ patientId, open, onOpenChange, onSave }: Edit
   const handlePhoneBlur = async (phone: string) => {
     if (!phone || !validatePhone(phone) || !patient) return;
 
+    setIsCheckingPhone(true);
     try {
       const cleanedPhone = cleanPhone(phone);
       const { data } = await supabase
@@ -152,6 +155,8 @@ export function EditPatientModal({ patientId, open, onOpenChange, onSave }: Edit
       }
     } catch (error) {
       logger.error('Erro ao verificar telefone:', error);
+    } finally {
+      setIsCheckingPhone(false);
     }
   };
 
@@ -161,6 +166,7 @@ export function EditPatientModal({ patientId, open, onOpenChange, onSave }: Edit
       return;
     }
 
+    setIsCheckingCPF(true);
     try {
       const cleanedCPF = cleanCPF(cpf);
       const { data, error } = await supabase
@@ -180,6 +186,8 @@ export function EditPatientModal({ patientId, open, onOpenChange, onSave }: Edit
     } catch (error) {
       logger.error('Erro ao verificar CPF:', error);
       setCpfDuplicateError(null);
+    } finally {
+      setIsCheckingCPF(false);
     }
   };
 
@@ -483,17 +491,25 @@ export function EditPatientModal({ patientId, open, onOpenChange, onSave }: Edit
                   </div>
                   <div>
                     <Label htmlFor="edit_phone">Telefone *</Label>
-                    <Input
-                      id="edit_phone"
-                      value={formData.contact_phone}
-                      onChange={e => {
-                        const formatted = formatPhone(e.target.value);
-                        setFormData(prev => ({ ...prev, contact_phone: formatted }));
-                      }}
-                      onBlur={e => handlePhoneBlur(e.target.value)}
-                      placeholder="(00) 00000-0000"
-                      className="mt-2"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="edit_phone"
+                        value={formData.contact_phone}
+                        onChange={e => {
+                          const formatted = formatPhone(e.target.value);
+                          setFormData(prev => ({ ...prev, contact_phone: formatted }));
+                        }}
+                        onBlur={e => handlePhoneBlur(e.target.value)}
+                        placeholder="(00) 00000-0000"
+                        className="mt-2"
+                        disabled={isCheckingPhone}
+                      />
+                      {isCheckingPhone && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 mt-1">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                        </div>
+                      )}
+                    </div>
                     {formData.contact_phone && (
                       <div className="flex flex-col gap-2 mt-1">
                         <a
@@ -523,34 +539,42 @@ export function EditPatientModal({ patientId, open, onOpenChange, onSave }: Edit
                   </div>
                   <div>
                     <Label htmlFor="edit_cpf">CPF</Label>
-                    <Input
-                      id="edit_cpf"
-                      value={formData.cpf}
-                      onChange={e => {
-                        const masked = formatCPFMask(e.target.value);
-                        setFormData(prev => ({ ...prev, cpf: masked }));
-                        setCpfDuplicateError(null);
-                        setCpfValidationError('');
-                        setCpfSuggestion('');
-                      }}
-                      onBlur={async e => {
-                        const cpfValue = e.target.value;
-                        if (cpfValue && !validateCPF(cpfValue)) {
-                          const suggestion = suggestCorrectCPF(cpfValue);
-                          setCpfValidationError(suggestion
-                            ? `CPF inválido. Você quis dizer ${suggestion}?`
-                            : "CPF inválido");
-                          setCpfSuggestion(suggestion || '');
-                        } else {
+                    <div className="relative">
+                      <Input
+                        id="edit_cpf"
+                        value={formData.cpf}
+                        onChange={e => {
+                          const masked = formatCPFMask(e.target.value);
+                          setFormData(prev => ({ ...prev, cpf: masked }));
+                          setCpfDuplicateError(null);
                           setCpfValidationError('');
                           setCpfSuggestion('');
-                          await handleCPFBlur(cpfValue);
-                        }
-                      }}
-                      placeholder="000.000.000-00"
-                      className="mt-2"
-                      maxLength={14}
-                    />
+                        }}
+                        onBlur={async e => {
+                          const cpfValue = e.target.value;
+                          if (cpfValue && !validateCPF(cpfValue)) {
+                            const suggestion = suggestCorrectCPF(cpfValue);
+                            setCpfValidationError(suggestion
+                              ? `CPF inválido. Você quis dizer ${suggestion}?`
+                              : "CPF inválido");
+                            setCpfSuggestion(suggestion || '');
+                          } else {
+                            setCpfValidationError('');
+                            setCpfSuggestion('');
+                            await handleCPFBlur(cpfValue);
+                          }
+                        }}
+                        placeholder="000.000.000-00"
+                        className="mt-2"
+                        maxLength={14}
+                        disabled={isCheckingCPF}
+                      />
+                      {isCheckingCPF && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 mt-1">
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                        </div>
+                      )}
+                    </div>
                     {cpfValidationError && (
                       <p className="text-sm text-destructive mt-1">{cpfValidationError}</p>
                     )}

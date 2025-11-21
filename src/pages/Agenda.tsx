@@ -831,11 +831,16 @@ export default function Agenda() {
                   </Button>
                   
                   <div className="flex-1 px-2 text-center">
-                    <h2 className="text-lg font-semibold truncate">
-                      {format(currentDay, "EEEE, dd 'de' MMMM", {
-                      locale: ptBR
-                    })}
-                    </h2>
+                    <div className="flex items-center justify-center gap-2">
+                      <h2 className="text-lg font-semibold truncate">
+                        {format(currentDay, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+                      </h2>
+                      {format(currentDay, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') && (
+                        <Badge variant="default" className="bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 font-bold">
+                          HOJE
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                   
                   <Button variant="outline" size="sm" onClick={() => setCurrentDay(addDays(currentDay, 1))} className="border-border/50 hover:bg-muted">
@@ -1039,10 +1044,10 @@ export default function Agenda() {
                                 }
                                 
                                 return <div key={`apt-${appointment.id}`} className={cn(
-                                  "relative p-3 rounded-md shadow-sm group",
+                                  "relative p-3 rounded-lg shadow-md border-2 group transition-all hover:shadow-lg",
                                   appointment.is_squeeze_in 
-                                    ? "bg-orange-50 dark:bg-orange-950 border-2 border-orange-300 dark:border-orange-700 text-foreground"
-                                    : "bg-primary text-primary-foreground"
+                                    ? "bg-orange-50 dark:bg-orange-950/50 border-orange-400 dark:border-orange-600 text-foreground"
+                                    : "bg-primary/95 dark:bg-primary border-primary-foreground/20 dark:border-primary text-primary-foreground"
                                 )}>
                                               {/* Indicador pulsante para "Patient Arrived" */}
                                               {appointment.status === 'Patient Arrived' && (
@@ -1056,24 +1061,30 @@ export default function Agenda() {
                                              <div className="flex justify-between items-start gap-2">
                                                <div className="flex-1 cursor-pointer" onClick={() => handleAppointmentClick(appointment)}>
                                                   <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                                    <div className="font-medium text-sm">
+                                                    <div className={cn(
+                                                      "font-semibold text-sm",
+                                                      appointment.is_squeeze_in ? "text-foreground" : "text-primary-foreground"
+                                                    )}>
                                                       {format(new Date(appointment.appointment_start_time), 'HH:mm')} - {format(new Date(appointment.appointment_end_time), 'HH:mm')}
                                                     </div>
                                                     {appointment.is_squeeze_in && (
-                                                      <Badge variant="warning" className="text-[10px] px-1.5 py-0">
+                                                      <Badge variant="warning" className="text-[10px] px-1.5 py-0 font-bold">
                                                         Encaixe
                                                       </Badge>
                                                     )}
-                                                    <Badge variant={getStatusBadgeVariant(appointment.status)} className="text-[10px] px-1.5 whitespace-nowrap">
+                                                    <Badge variant={getStatusBadgeVariant(appointment.status)} className="text-[10px] px-1.5 py-0.5 whitespace-nowrap font-medium">
                                                       {getStatusLabel(appointment.status)}
                                                     </Badge>
                                                   </div>
-                                                 <div className="text-sm">
+                                                 <div className={cn(
+                                                   "text-base font-medium",
+                                                   appointment.is_squeeze_in ? "text-foreground" : "text-primary-foreground"
+                                                 )}>
                                                    {appointment.patient?.full_name || 'Paciente não identificado'}
                                                  </div>
                                                  <div className={cn(
-                                                   "text-xs mt-1",
-                                                   appointment.is_squeeze_in ? "text-muted-foreground" : "text-primary-foreground/80"
+                                                   "text-sm mt-1",
+                                                   appointment.is_squeeze_in ? "text-muted-foreground" : "text-primary-foreground/75"
                                                  )}>
                                                    {appointment.treatment?.treatment_name || 'Tratamento não identificado'}
                                                  </div>
