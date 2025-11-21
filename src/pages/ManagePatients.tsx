@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Users, Plus, Edit, Trash2, ArrowLeft, Search, Upload, Download, FileText, X, Eye, Image, MessageCircle, CheckCircle2 } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -913,328 +914,352 @@ export default function ManagePatients() {
           </div>
 
           {/* Patients List */}
-          {isLoading ? <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {[1, 2, 3, 4, 5, 6].map(index => <div key={index} className="border rounded-lg p-6 space-y-4 animate-pulse">
-                  <div className="space-y-2">
-                    <div className="h-6 w-3/4 bg-muted/60 rounded animate-pulse" />
-                    <div className="h-4 w-1/2 bg-muted/60 rounded animate-pulse" />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="h-4 w-full bg-muted/60 rounded animate-pulse" />
-                    <div className="h-4 w-2/3 bg-muted/60 rounded animate-pulse" />
-                  </div>
-                  <div className="flex justify-end space-x-2 pt-4">
-                    <div className="h-8 w-8 bg-muted/60 rounded animate-pulse" />
-                    <div className="h-8 w-8 bg-muted/60 rounded animate-pulse" />
-                  </div>
-                </div>)}
-            </div> : <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {filteredPatients.map((patient, index) => <Card key={patient.id} className="bg-card/80 backdrop-blur-sm border-border/50 hover:border-primary/20 shadow-soft hover:shadow-elegant group animate-scale-in transition-all duration-300" style={{
-            animationDelay: `${index * 50}ms`
-          }}>
-                  <CardHeader className="pb-4">
-                    <CardTitle className="text-lg font-semibold group-hover:text-primary transition-colors">
-                      {patient.full_name}
-                    </CardTitle>
-                    <CardDescription className="flex items-center space-x-2">
-                      <a href={formatWhatsAppLink(patient.contact_phone)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:text-primary/80 transition-colors group">
-                        <MessageCircle className="h-4 w-4 group-hover:scale-110 transition-transform" />
-                        <span className="underline-offset-4 group-hover:underline">
-                          {patient.contact_phone}
-                        </span>
-                      </a>
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {patient.birth_date && <div className="text-sm">
-                        <span className="font-medium">Nascimento: </span>
-                        {(() => {
-                  try {
-                    const date = new Date(patient.birth_date);
-                    return !isNaN(date.getTime()) ? format(date, 'dd/MM/yyyy', {
-                      locale: ptBR
-                    }) : 'Data inválida';
-                  } catch {
-                    return 'Data inválida';
-                  }
-                })()}
-                      </div>}
-                    {patient.medical_history_notes && <div className="text-sm">
-                        <span className="font-medium">Histórico: </span>
-                        <span className="text-muted-foreground line-clamp-2">
-                          {patient.medical_history_notes}
-                        </span>
-                      </div>}
-                    <div className="text-xs text-muted-foreground">
-                      Cadastrado em {(() => {
-                  try {
-                    const date = new Date(patient.created_at);
-                    return !isNaN(date.getTime()) ? format(date, 'dd/MM/yyyy', {
-                      locale: ptBR
-                    }) : 'Data inválida';
-                  } catch {
-                    return 'Data inválida';
-                  }
-                })()}
-                    </div>
-                    
-                    <div className="flex justify-end space-x-2 pt-4">
-                      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => openEditDialog(patient)} className="hover:border-info hover:text-info hover:bg-info/10 transition-all">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-4xl max-h-[90vh] w-full flex flex-col min-h-0">
-                            <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b border-border/50">
-                              <DialogTitle className="text-xl">Editar Paciente</DialogTitle>
-                              <DialogDescription>
-                                Visualize e atualize as informações do paciente.
-                              </DialogDescription>
-                            </DialogHeader>
-                            
-                            <Tabs defaultValue="info" className="flex-1 flex flex-col min-h-0">
-                              <TabsList className="mx-6 mt-4 grid w-auto grid-cols-3 shrink-0">
-                                <TabsTrigger value="info">Informações</TabsTrigger>
-                                <TabsTrigger value="documents">Documentos</TabsTrigger>
-                                <TabsTrigger value="history">Histórico</TabsTrigger>
-                              </TabsList>
-
-                              <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-4">
-                                {/* Tab: Informações do Paciente */}
-                                <TabsContent value="info" className="space-y-6 mt-6">
-                                  {/* Campos básicos em linha horizontal */}
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    <div>
-                                      <Label htmlFor="edit_name">Nome Completo *</Label>
-                                      <Input id="edit_name" value={formData.full_name} onChange={e => setFormData(prev => ({
-                                ...prev,
-                                full_name: e.target.value
-                              }))} placeholder="Digite o nome completo" className="mt-2" />
-                                    </div>
-                                    <div>
-                                      <Label htmlFor="edit_phone">Telefone *</Label>
-                                      <Input 
-                                        id="edit_phone" 
-                                        value={formData.contact_phone} 
-                                        onChange={e => {
-                                          const formatted = formatPhone(e.target.value);
-                                          setFormData(prev => ({ ...prev, contact_phone: formatted }));
-                                        }}
-                                        onBlur={(e) => handlePhoneBlurEdit(e.target.value)}
-                                        placeholder="(00) 00000-0000" 
-                                        className="mt-2"
-                                      />
-                                      {formData.contact_phone && <div className="flex flex-col gap-2 mt-1">
-                                          <a href={formatWhatsAppLink(formData.contact_phone)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors group">
-                                            <MessageCircle className="h-3 w-3 group-hover:scale-110 transition-transform" />
-                                            <span className="underline-offset-4 group-hover:underline">
-                                              Abrir no WhatsApp
-                                            </span>
-                                          </a>
-                                          
-                                          <a href={formatWhatsAppLink(formData.contact_phone, CONFIRMATION_MESSAGE)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-green-600 hover:text-green-700 group">
-                                            <CheckCircle2 className="h-3 w-3 group-hover:scale-110 transition-transform" />
-                                            <span className="underline-offset-4 group-hover:underline">
-                                              Mensagem de Confirmação
-                                            </span>
-                                          </a>
-                                        </div>}
-                                    </div>
-                                    <div>
-                                      <Label htmlFor="edit_cpf">CPF</Label>
-                                      <Input 
-                                        id="edit_cpf" 
-                                        value={formData.cpf} 
-                                        onChange={e => {
-                                          const masked = formatCPFMask(e.target.value);
-                                          setFormData(prev => ({...prev, cpf: masked}));
-                                          setCpfDuplicateError(null);
-                                          setCpfValidationError('');
-                                          setCpfSuggestion('');
-                                        }}
-                                        onBlur={async (e) => {
-                                          const cpfValue = e.target.value;
-                                          // Validação de formato CPF
-                                          if (cpfValue && !validateCPF(cpfValue)) {
-                                            const suggestion = suggestCorrectCPF(cpfValue);
-                                            setCpfValidationError(suggestion 
-                                              ? `CPF inválido. Você quis dizer ${suggestion}?` 
-                                              : "CPF inválido");
-                                            setCpfSuggestion(suggestion || '');
-                                          } else {
-                                            setCpfValidationError('');
-                                            setCpfSuggestion('');
-                                            // ✅ Validação de CPF duplicado
-                                            await handleCPFBlurEdit(cpfValue);
-                                          }
-                                        }}
-                                        placeholder="000.000.000-00" 
-                                        className="mt-2"
-                                        error={!!cpfValidationError || !!cpfDuplicateError?.exists}
-                                        errorMessage={cpfValidationError || (cpfDuplicateError?.exists ? `⚠️ CPF já cadastrado para: ${cpfDuplicateError.patient?.full_name}` : undefined)}
-                                        maxLength={14}
-                                      />
-                                      {cpfSuggestion && (
-                                        <Button
-                                          type="button"
-                                          variant="link"
-                                          size="sm"
-                                          className="mt-1 h-auto p-0 text-xs text-primary"
-                                          onClick={() => {
-                                            setFormData(prev => ({...prev, cpf: cpfSuggestion}));
-                                            setCpfValidationError('');
-                                            setCpfSuggestion('');
-                                          }}
-                                        >
-                                          ✓ Aplicar sugestão: {cpfSuggestion}
-                                        </Button>
-                                      )}
-                                      {cpfDuplicateError?.exists && cpfDuplicateError.patient && (
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          className="mt-2"
-                                          onClick={() => {
-                                            setIsEditDialogOpen(false);
-                                            navigate(`/patient/${cpfDuplicateError.patient.id}`);
-                                          }}
-                                        >
-                                          <Eye className="h-4 w-4 mr-2" />
-                                          Ver Paciente Existente
-                                        </Button>
-                                      )}
-                                    </div>
-                                    <div>
-                                      <Label htmlFor="edit_birth_date">Data de Nascimento</Label>
-                                      <Input id="edit_birth_date" type="date" value={formData.birth_date} onChange={e => setFormData(prev => ({
-                                ...prev,
-                                birth_date: e.target.value
-                              }))} className="mt-2" />
-                                    </div>
-                                  </div>
-
-                                  {/* Textarea do histórico médico em largura total */}
-                                  <div>
-                                    <Label htmlFor="edit_medical_history">Histórico Médico</Label>
-                                    <Textarea id="edit_medical_history" value={formData.medical_history_notes} onChange={e => setFormData(prev => ({
-                              ...prev,
-                              medical_history_notes: e.target.value
-                            }))} placeholder="Informações relevantes do histórico médico..." className="mt-2 min-h-[150px] resize-none" />
-                                  </div>
-                                </TabsContent>
-
-                                {/* Tab: Documentos Médicos */}
-                                <TabsContent value="documents" className="space-y-4 mt-6">
-                                  <div className="flex items-center gap-2">
-                                    <FileText className="h-5 w-5 text-muted-foreground" />
-                                    <Label className="text-base font-medium">Documentos Médicos</Label>
-                                  </div>
-
-                                  {/* Upload Section */}
-                                  <div className="space-y-3">
-                                    <div className="flex items-center gap-2">
-                                      <Input id="document-upload" type="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={handleFileSelect} className="flex-1" ref={fileInputRef} />
-                                      <Button onClick={handleUploadDocuments} disabled={!selectedFiles || isUploading} size="sm" className="shrink-0">
-                                        {isUploading ? "Enviando..." : <>
-                                            <Upload className="h-4 w-4 mr-1" />
-                                            Upload
-                                          </>}
-                                      </Button>
-                                    </div>
-                                    {selectedFiles && <div className="text-sm text-muted-foreground">
-                                        {selectedFiles.length} arquivo(s) selecionado(s)
-                                      </div>}
-                                  </div>
-
-                                  {/* Documents List */}
-                                  <div className="max-h-96 overflow-y-auto space-y-2">
-                                    {patientDocuments?.map(doc => {
-                              const FileIcon = getFileIcon(doc.mime_type);
-                              return <div key={doc.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted/70 transition-colors">
-                                          <div className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer" onClick={() => handleViewDocument(doc)}>
-                                            <FileIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-                                            <div className="min-w-0 flex-1">
-                                              <p className="text-sm font-medium truncate hover:text-primary transition-colors">{doc.file_name}</p>
-                                              <p className="text-xs text-muted-foreground">
-                                                {new Date(doc.created_at).toLocaleDateString('pt-BR')}
-                                                {doc.file_size && ` • ${Math.round(doc.file_size / 1024)} KB`}
-                                              </p>
-                                            </div>
-                                          </div>
-                                          <div className="flex items-center gap-1 shrink-0">
-                                            <Button variant="ghost" size="sm" onClick={() => handleViewDocument(doc)} className="h-8 w-8 p-0 text-primary hover:text-primary" title="Visualizar documento">
-                                              <Eye className="h-4 w-4" />
-                                            </Button>
-                                            <Button variant="ghost" size="sm" onClick={() => handleDownloadDocument(doc)} className="h-8 w-8 p-0" title="Baixar documento">
-                                              <Download className="h-4 w-4" />
-                                            </Button>
-                                            <Button variant="ghost" size="sm" onClick={() => handleDeleteDocument(doc)} className="h-8 w-8 p-0 text-destructive hover:text-destructive" title="Excluir documento">
-                                              <X className="h-4 w-4" />
-                                            </Button>
-                                          </div>
-                                        </div>;
-                            })}
-                                    {(!patientDocuments || patientDocuments.length === 0) && <div className="text-center py-8 text-sm text-muted-foreground">
-                                        Nenhum documento encontrado
-                                      </div>}
-                                  </div>
-                                </TabsContent>
-
-                                {/* Tab: Histórico de Consultas */}
-                                <TabsContent value="history" className="mt-6 space-y-4">
-                                  {editingPatient && <PatientAppointmentHistory patientId={editingPatient.id} />}
-                                </TabsContent>
-                              </div>
-                            </Tabs>
-                            
-                            <DialogFooter className="flex-shrink-0 p-6 pt-4 border-t border-border/50">
-                              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                                Cancelar
-                              </Button>
-                              <Button onClick={handleEditPatient} disabled={!formData.full_name || !formData.contact_phone}>
-                                 Salvar Alterações
-                               </Button>
-                             </DialogFooter>
-                         </DialogContent>
-                      </Dialog>
-
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="text-destructive hover:text-destructive hover:border-destructive hover:bg-destructive/10 transition-all">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Tem certeza que deseja excluir o paciente <strong>{patient.full_name}</strong>? 
-                              Esta ação não pode ser desfeita.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDeletePatient(patient.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                              Excluir
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </CardContent>
-                </Card>)}
-            </div>}
-
-          {filteredPatients.length === 0 && !isLoading && <div className="text-center py-12">
-              <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">
+          {isLoading ? (
+            <div className="border rounded-lg p-8 space-y-4">
+              <div className="h-10 w-full bg-muted/60 rounded animate-pulse" />
+              {[1, 2, 3, 4, 5].map(index => (
+                <div key={index} className="h-16 w-full bg-muted/60 rounded animate-pulse" />
+              ))}
+            </div>
+          ) : filteredPatients.length === 0 ? (
+            <div className="text-center py-12 border rounded-lg">
+              <Users className="h-12 w-12 mx-auto mb-4 opacity-50 text-muted-foreground" />
+              <p className="text-muted-foreground">
                 {searchTerm ? 'Nenhum paciente encontrado' : 'Nenhum paciente cadastrado'}
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                {searchTerm ? 'Tente ajustar os termos de busca.' : 'Clique no botão "Novo Paciente" para cadastrar o primeiro paciente.'}
               </p>
-            </div>}
+            </div>
+          ) : (
+            <div className="border rounded-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Telefone</TableHead>
+                      <TableHead className="hidden md:table-cell">Nascimento</TableHead>
+                      <TableHead className="hidden lg:table-cell">CPF</TableHead>
+                      <TableHead className="hidden xl:table-cell">Cadastrado em</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPatients.map(patient => (
+                      <TableRow key={patient.id}>
+                        <TableCell className="font-medium">{patient.full_name}</TableCell>
+                        <TableCell>
+                          <a 
+                            href={formatWhatsAppLink(patient.contact_phone)} 
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 text-primary hover:underline transition-colors"
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                            {formatPhone(patient.contact_phone)}
+                          </a>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {patient.birth_date 
+                            ? (() => {
+                                try {
+                                  const date = new Date(patient.birth_date);
+                                  return !isNaN(date.getTime()) 
+                                    ? format(date, 'dd/MM/yyyy', { locale: ptBR })
+                                    : '-';
+                                } catch {
+                                  return '-';
+                                }
+                              })()
+                            : '-'
+                          }
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          {patient.cpf ? formatCPF(patient.cpf) : '-'}
+                        </TableCell>
+                        <TableCell className="hidden xl:table-cell text-muted-foreground">
+                          {(() => {
+                            try {
+                              const date = new Date(patient.created_at);
+                              return !isNaN(date.getTime())
+                                ? format(date, 'dd/MM/yyyy', { locale: ptBR })
+                                : '-';
+                            } catch {
+                              return '-';
+                            }
+                          })()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                              <DialogTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => openEditDialog(patient)}
+                                  className="hover:bg-primary/10 hover:text-primary"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-4xl max-h-[90vh] w-full flex flex-col min-h-0">
+                                <DialogHeader className="flex-shrink-0 p-6 pb-4 border-b border-border/50">
+                                  <DialogTitle className="text-xl">Editar Paciente</DialogTitle>
+                                  <DialogDescription>
+                                    Visualize e atualize as informações do paciente.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                
+                                <Tabs defaultValue="info" className="flex-1 flex flex-col min-h-0">
+                                  <TabsList className="mx-6 mt-4 grid w-auto grid-cols-3 shrink-0">
+                                    <TabsTrigger value="info">Informações</TabsTrigger>
+                                    <TabsTrigger value="documents">Documentos</TabsTrigger>
+                                    <TabsTrigger value="history">Histórico</TabsTrigger>
+                                  </TabsList>
+
+                                  <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-4">
+                                    {/* Tab: Informações do Paciente */}
+                                    <TabsContent value="info" className="space-y-6 mt-6">
+                                      {/* Campos básicos em linha horizontal */}
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        <div>
+                                          <Label htmlFor="edit_name">Nome Completo *</Label>
+                                          <Input id="edit_name" value={formData.full_name} onChange={e => setFormData(prev => ({
+                                    ...prev,
+                                    full_name: e.target.value
+                                  }))} placeholder="Digite o nome completo" className="mt-2" />
+                                        </div>
+                                        <div>
+                                          <Label htmlFor="edit_phone">Telefone *</Label>
+                                          <Input 
+                                            id="edit_phone" 
+                                            value={formData.contact_phone} 
+                                            onChange={e => {
+                                              const formatted = formatPhone(e.target.value);
+                                              setFormData(prev => ({ ...prev, contact_phone: formatted }));
+                                            }}
+                                            onBlur={(e) => handlePhoneBlurEdit(e.target.value)}
+                                            placeholder="(00) 00000-0000" 
+                                            className="mt-2"
+                                          />
+                                          {formData.contact_phone && <div className="flex flex-col gap-2 mt-1">
+                                              <a href={formatWhatsAppLink(formData.contact_phone)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-primary hover:text-primary/80 transition-colors group">
+                                                <MessageCircle className="h-3 w-3 group-hover:scale-110 transition-transform" />
+                                                <span className="underline-offset-4 group-hover:underline">
+                                                  Abrir no WhatsApp
+                                                </span>
+                                              </a>
+                                              
+                                              <a href={formatWhatsAppLink(formData.contact_phone, CONFIRMATION_MESSAGE)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-green-600 hover:text-green-700 group">
+                                                <CheckCircle2 className="h-3 w-3 group-hover:scale-110 transition-transform" />
+                                                <span className="underline-offset-4 group-hover:underline">
+                                                  Mensagem de Confirmação
+                                                </span>
+                                              </a>
+                                            </div>}
+                                        </div>
+                                        <div>
+                                          <Label htmlFor="edit_cpf">CPF</Label>
+                                          <Input 
+                                            id="edit_cpf" 
+                                            value={formData.cpf} 
+                                            onChange={e => {
+                                              const masked = formatCPFMask(e.target.value);
+                                              setFormData(prev => ({...prev, cpf: masked}));
+                                              setCpfDuplicateError(null);
+                                              setCpfValidationError('');
+                                              setCpfSuggestion('');
+                                            }}
+                                            onBlur={async (e) => {
+                                              const cpfValue = e.target.value;
+                                              // Validação de formato CPF
+                                              if (cpfValue && !validateCPF(cpfValue)) {
+                                                const suggestion = suggestCorrectCPF(cpfValue);
+                                                setCpfValidationError(suggestion 
+                                                  ? `CPF inválido. Você quis dizer ${suggestion}?` 
+                                                  : "CPF inválido");
+                                                setCpfSuggestion(suggestion || '');
+                                              } else {
+                                                setCpfValidationError('');
+                                                setCpfSuggestion('');
+                                                // ✅ Validação de CPF duplicado
+                                                await handleCPFBlurEdit(cpfValue);
+                                              }
+                                            }}
+                                            placeholder="000.000.000-00" 
+                                            className="mt-2"
+                                            error={!!cpfValidationError || !!cpfDuplicateError?.exists}
+                                            errorMessage={cpfValidationError || (cpfDuplicateError?.exists ? `⚠️ CPF já cadastrado para: ${cpfDuplicateError.patient?.full_name}` : undefined)}
+                                            maxLength={14}
+                                          />
+                                          {cpfSuggestion && (
+                                            <Button
+                                              type="button"
+                                              variant="link"
+                                              size="sm"
+                                              className="mt-1 h-auto p-0 text-xs text-primary"
+                                              onClick={() => {
+                                                setFormData(prev => ({...prev, cpf: cpfSuggestion}));
+                                                setCpfValidationError('');
+                                                setCpfSuggestion('');
+                                              }}
+                                            >
+                                              ✓ Aplicar sugestão: {cpfSuggestion}
+                                            </Button>
+                                          )}
+                                          {cpfDuplicateError?.exists && cpfDuplicateError.patient && (
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="mt-2"
+                                              onClick={() => {
+                                                setIsEditDialogOpen(false);
+                                                navigate(`/patient/${cpfDuplicateError.patient.id}`);
+                                              }}
+                                            >
+                                              <Eye className="h-4 w-4 mr-2" />
+                                              Ver Paciente Existente
+                                            </Button>
+                                          )}
+                                        </div>
+                                        <div>
+                                          <Label htmlFor="edit_birth_date">Data de Nascimento</Label>
+                                          <Input id="edit_birth_date" type="date" value={formData.birth_date} onChange={e => setFormData(prev => ({
+                                    ...prev,
+                                    birth_date: e.target.value
+                                  }))} className="mt-2" />
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Histórico médico em linha separada, largura total */}
+                                      <div>
+                                        <Label htmlFor="edit_medical_history">Histórico Médico</Label>
+                                        <Textarea id="edit_medical_history" value={formData.medical_history_notes} onChange={e => setFormData(prev => ({
+                                    ...prev,
+                                    medical_history_notes: e.target.value
+                                  }))} placeholder="Informações relevantes do histórico médico..." rows={3} className="mt-2" />
+                                      </div>
+                                    </TabsContent>
+
+                                    {/* Tab: Documentos do Paciente */}
+                                    <TabsContent value="documents" className="space-y-6 mt-6">
+                                      <div className="space-y-4">
+                                        <div>
+                                          <Label htmlFor="file-upload">Enviar Documentos</Label>
+                                          <div className="flex gap-2 mt-2">
+                                            <Input id="file-upload" type="file" multiple onChange={handleFileSelect} ref={fileInputRef} className="flex-1" />
+                                            <Button onClick={handleUploadDocuments} disabled={isUploading || !selectedFiles}>
+                                              {isUploading ? 'Enviando...' : 'Enviar'}
+                                            </Button>
+                                          </div>
+                                        </div>
+                                        
+                                        <div className="border rounded-lg p-4">
+                                          <h4 className="font-semibold mb-3">Documentos Enviados</h4>
+                                          {patientDocuments && patientDocuments.length > 0 ? <div className="space-y-2">
+                                              {patientDocuments.map(doc => {
+                                        const IconComponent = getFileIcon(doc.mime_type);
+                                        return <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                      <IconComponent className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                                                      <div className="flex-1 min-w-0">
+                                                        <p className="font-medium truncate">{doc.file_name}</p>
+                                                        <p className="text-xs text-muted-foreground">
+                                                          {format(new Date(doc.created_at), "dd/MM/yyyy 'às' HH:mm", {
+                                              locale: ptBR
+                                            })}
+                                                          {doc.file_size && ` • ${(doc.file_size / 1024).toFixed(1)} KB`}
+                                                        </p>
+                                                      </div>
+                                                    </div>
+                                                    <div className="flex gap-1 flex-shrink-0">
+                                                      <Button variant="ghost" size="icon" onClick={() => handleViewDocument(doc)} title="Visualizar">
+                                                        <Eye className="h-4 w-4" />
+                                                      </Button>
+                                                      <Button variant="ghost" size="icon" onClick={() => handleDownloadDocument(doc)} title="Baixar">
+                                                        <Download className="h-4 w-4" />
+                                                      </Button>
+                                                      <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                          <Button variant="ghost" size="icon" title="Excluir">
+                                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                                          </Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                          <AlertDialogHeader>
+                                                            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                              Tem certeza que deseja excluir este documento? Esta ação não pode ser desfeita.
+                                                            </AlertDialogDescription>
+                                                          </AlertDialogHeader>
+                                                          <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => handleDeleteDocument(doc)}>
+                                                              Excluir
+                                                            </AlertDialogAction>
+                                                          </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                      </AlertDialog>
+                                                    </div>
+                                                  </div>;
+                                      })}
+                                            </div> : <p className="text-sm text-muted-foreground text-center py-8">
+                                              Nenhum documento enviado ainda.
+                                            </p>}
+                                        </div>
+                                      </div>
+                                    </TabsContent>
+
+                                    {/* Tab: Histórico de Consultas */}
+                                    <TabsContent value="history" className="mt-6">
+                                      <PatientAppointmentHistory patientId={editingPatient?.id || ''} />
+                                    </TabsContent>
+                                  </div>
+
+                                  <DialogFooter className="flex-shrink-0 p-6 pt-4 border-t border-border/50">
+                                    <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                                      Cancelar
+                                    </Button>
+                                    <Button onClick={handleEditPatient} disabled={!formData.full_name || !formData.contact_phone}>
+                                      Salvar Alterações
+                                    </Button>
+                                  </DialogFooter>
+                                </Tabs>
+                              </DialogContent>
+                            </Dialog>
+                            
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  className="hover:bg-destructive/10 hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Tem certeza que deseja excluir {patient.full_name}? Esta ação não pode ser desfeita.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDeletePatient(patient.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                    Excluir
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
