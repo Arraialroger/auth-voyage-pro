@@ -11,6 +11,7 @@ import { ptBR } from 'date-fns/locale';
 import { CreateCertificateModal } from './CreateCertificateModal';
 import { generateCertificatePDF } from '@/lib/certificatePdf';
 import { useToast } from '@/hooks/use-toast';
+import { SendDocumentToWhatsAppButton } from '@/components/SendDocumentToWhatsAppButton';
 
 interface CertificateViewProps {
   patientId: string;
@@ -20,6 +21,21 @@ export const CertificateView = ({ patientId }: CertificateViewProps) => {
   const { toast } = useToast();
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState<string | null>(null);
+
+  // Fetch patient data for WhatsApp
+  const { data: patientData } = useQuery({
+    queryKey: ['patient', patientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('patients')
+        .select('full_name, contact_phone')
+        .eq('id', patientId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { data: certificates, isLoading, refetch } = useQuery({
     queryKey: ['medical_certificates', patientId],
@@ -199,6 +215,20 @@ export const CertificateView = ({ patientId }: CertificateViewProps) => {
                       <Download className="h-4 w-4 mr-2" />
                       {generatingPdf === certificate.id ? 'Gerando...' : 'Gerar PDF'}
                     </Button>
+                    {certificate.signature_hash && patientData && (
+                      <SendDocumentToWhatsAppButton
+                        patientPhone={patientData.contact_phone}
+                        patientName={patientData.full_name}
+                        documentType="certificate"
+                        documentId={certificate.id}
+                        documentDetails={{
+                          certificateType: certificate.certificate_type,
+                          startDate: certificate.start_date,
+                          endDate: certificate.end_date,
+                          professionalName: certificate.professional?.full_name || 'N/A',
+                        }}
+                      />
+                    )}
                   </div>
                 </div>
               </CardHeader>
