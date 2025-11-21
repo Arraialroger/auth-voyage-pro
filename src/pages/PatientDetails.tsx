@@ -64,29 +64,7 @@ export default function PatientDetails() {
 
   const isReceptionist = userProfile.type === 'receptionist';
 
-  // ✅ NOVO: Bloquear acesso de recepcionistas
-  useEffect(() => {
-    if (!userProfile.loading && isReceptionist) {
-      toast({
-        title: "Acesso Restrito",
-        description: "Esta página é exclusiva para profissionais. Você pode editar dados cadastrais pela lista de pacientes.",
-        variant: "destructive",
-        duration: 5000
-      });
-      navigate('/admin/patients', { replace: true });
-    }
-  }, [userProfile, isReceptionist, navigate, toast]);
-
-  // Mostrar loading enquanto verifica permissões
-  if (userProfile.loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // Fetch patient data
+  // Fetch patient data - HOOKS DEVEM SER CHAMADOS PRIMEIRO
   const { data: patient, isLoading } = useQuery({
     queryKey: ['patient', patientId],
     queryFn: async () => {
@@ -120,6 +98,33 @@ export default function PatientDetails() {
     },
     enabled: !!patientId
   });
+
+  // ✅ Bloquear acesso de recepcionistas APÓS todos os hooks
+  useEffect(() => {
+    if (!userProfile.loading && isReceptionist) {
+      toast({
+        title: "Acesso Restrito",
+        description: "Esta página é exclusiva para profissionais. Você pode editar dados cadastrais pela lista de pacientes.",
+        variant: "destructive",
+        duration: 5000
+      });
+      navigate('/admin/patients', { replace: true });
+    }
+  }, [userProfile, isReceptionist, navigate, toast]);
+
+  // Mostrar loading enquanto verifica permissões ou carrega dados
+  if (userProfile.loading || isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Componente vazio enquanto redireciona recepcionista
+  if (isReceptionist) {
+    return null;
+  }
 
   const formatWhatsAppLink = (phone: string) => {
     if (!phone) return '#';
@@ -312,14 +317,6 @@ export default function PatientDetails() {
   const isImageFile = (mimeType?: string) => {
     return mimeType?.startsWith('image/') || false;
   };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Carregando...</p>
-      </div>
-    );
-  }
 
   if (!patient) {
     return (
