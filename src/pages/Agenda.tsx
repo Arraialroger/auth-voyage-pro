@@ -16,6 +16,7 @@ import { NewAppointmentModal } from '@/components/NewAppointmentModal';
 import { EditAppointmentModal } from '@/components/EditAppointmentModal';
 import { AddToWaitingListModal } from '@/components/AddToWaitingListModal';
 import { AppointmentReminderButton } from '@/components/AppointmentReminderButton';
+import { EditPatientModal } from '@/components/EditPatientModal';
 
 import { BlockTimeModal } from '@/components/BlockTimeModal';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -117,6 +118,8 @@ export default function Agenda() {
     editingBlockId?: string;
   }>({});
   const [blockToDelete, setBlockToDelete] = useState<string | null>(null);
+  const [editPatientModalOpen, setEditPatientModalOpen] = useState(false);
+  const [selectedPatientId, setSelectedPatientId] = useState<string>('');
 
   // Configuração mínima de intervalo para considerar slot disponível
   const MIN_GAP_MINUTES = 30;
@@ -557,7 +560,16 @@ export default function Agenda() {
       });
       return;
     }
-    navigate(`/patient/${appointment.patient_id}`);
+
+    // ✅ NOVO: Verificar tipo de usuário
+    if (userProfile.type === 'receptionist') {
+      // Recepcionistas: abrir modal de edição (apenas dados cadastrais)
+      setSelectedPatientId(appointment.patient_id);
+      setEditPatientModalOpen(true);
+    } else {
+      // Profissionais: navegar para página completa (informações clínicas)
+      navigate(`/patient/${appointment.patient_id}`);
+    }
   };
 
   // Apply filters to appointments
@@ -1477,5 +1489,19 @@ export default function Agenda() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Patient Modal (Receptionists only) */}
+      <EditPatientModal
+        patientId={selectedPatientId}
+        open={editPatientModalOpen}
+        onOpenChange={setEditPatientModalOpen}
+        onSave={() => {
+          queryClient.invalidateQueries({ queryKey: ['appointments'] });
+          toast({
+            title: "Paciente atualizado",
+            description: "As informações foram salvas com sucesso."
+          });
+        }}
+      />
     </div>;
 }
