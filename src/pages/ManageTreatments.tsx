@@ -231,30 +231,24 @@ export default function ManageTreatments() {
     <div className="min-h-screen bg-gradient-subtle">
       {/* Header */}
       <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-3 lg:py-4">
-          <div className={`${isMobile ? 'space-y-4' : 'flex justify-between items-center'}`}>
-            <div className="flex items-center space-x-2 lg:space-x-3">
-              <Button 
-                variant="ghost" 
-                onClick={() => navigate('/admin')}
-                className="p-2 hover:bg-background/50"
-              >
-                <ArrowLeft className="h-4 w-4 lg:h-5 lg:w-5" />
-              </Button>
-              <Stethoscope className="h-6 w-6 lg:h-8 lg:w-8 text-primary" />
-              <h1 className="text-lg lg:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                {isMobile ? 'Tratamentos' : 'Gerenciar Tratamentos'}
-              </h1>
-            </div>
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/admin')}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <Stethoscope className="h-6 w-6 text-primary" />
+            <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+              Gerenciar Tratamentos
+            </h1>
           </div>
-          
+
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-primary hover:bg-primary/90 w-full sm:w-auto">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Tratamento
-                </Button>
-              </DialogTrigger>
+            <DialogTrigger asChild>
+              <Button variant="gradient">
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Tratamento
+              </Button>
+            </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>Criar Novo Tratamento</DialogTitle>

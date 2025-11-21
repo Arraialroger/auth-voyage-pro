@@ -329,45 +329,38 @@ export default function ManageProfessionals() {
       </div>;
   }
   return <div className="min-h-screen bg-gradient-subtle">
-      <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-3 lg:py-4">
-          <div className="flex items-center space-x-2 lg:space-x-3">
-            <Button variant="ghost" onClick={() => navigate('/admin')} className="p-2 lg:mr-2">
-              <ArrowLeft className="h-4 w-4 lg:h-5 lg:w-5" />
+      <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/admin')}>
+              <ArrowLeft className="h-4 w-4" />
             </Button>
-            <UserCheck className="h-6 w-6 lg:h-8 lg:w-8 text-primary" />
-            <h1 className="text-lg lg:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              {isMobile ? 'Profissionais' : 'Gerenciar Profissionais'}
+            <UserCheck className="h-6 w-6 text-primary" />
+            <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+              Gerenciar Profissionais
             </h1>
           </div>
-        </div>
-      </header>
-      
-      <main className="container mx-auto px-4 py-4 lg:py-8">
-        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-          <CardHeader>
-            <div className={`${isMobile ? 'space-y-4' : 'flex justify-between items-center'}`}>
-              <div>
-                <CardTitle className="text-lg lg:text-xl">Profissionais Cadastrados</CardTitle>
-                <CardDescription>Gerencie todos os profissionais do sistema</CardDescription>
-              </div>
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="gap-2"><Plus className="h-4 w-4" /> Novo Profissional</Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Criar Novo Profissional</DialogTitle>
-                    <DialogDescription>Preencha os dados do novo profissional</DialogDescription>
-                  </DialogHeader>
-                  <Form {...createForm}>
-                    <form onSubmit={createForm.handleSubmit(handleCreate)} className="space-y-6">
-                      <Tabs defaultValue="dados" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3">
-                          <TabsTrigger value="dados">Dados Básicos</TabsTrigger>
-                          <TabsTrigger value="clinica">Dados da Clínica</TabsTrigger>
-                          <TabsTrigger value="horarios">Horários</TabsTrigger>
-                        </TabsList>
+
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="gradient">
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Profissional
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Criar Novo Profissional</DialogTitle>
+                <DialogDescription>Preencha os dados do novo profissional</DialogDescription>
+              </DialogHeader>
+              <Form {...createForm}>
+                <form onSubmit={createForm.handleSubmit(handleCreate)} className="space-y-6">
+                  <Tabs defaultValue="dados" className="w-full">
+                    <TabsList className="grid w-full grid-cols-3">
+                      <TabsTrigger value="dados">Dados Básicos</TabsTrigger>
+                      <TabsTrigger value="clinica">Dados da Clínica</TabsTrigger>
+                      <TabsTrigger value="horarios">Horários</TabsTrigger>
+                    </TabsList>
                         
                         <TabsContent value="dados" className="space-y-4 mt-4">
                           <FormField control={createForm.control} name="full_name" render={({
@@ -437,17 +430,28 @@ export default function ManageProfessionals() {
                 </DialogContent>
               </Dialog>
             </div>
-            <div className="flex items-center space-x-2 mt-4">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Buscar..." 
-                value={searchTerm} 
-                onChange={e => setSearchTerm(e.target.value)} 
-                className={`bg-background/50 ${isMobile ? 'w-full' : 'max-w-sm'}`} 
-              />
-            </div>
-          </CardHeader>
-          <CardContent>
+          </header>
+
+          <main className="container mx-auto px-4 py-4 lg:py-8">
+            <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+              <CardHeader>
+                <div className={`${isMobile ? 'space-y-4' : 'flex justify-between items-center'}`}>
+                  <div>
+                    <CardTitle className="text-lg lg:text-xl">Profissionais Cadastrados</CardTitle>
+                    <CardDescription>Gerencie todos os profissionais do sistema</CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2 mt-4">
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="Buscar..." 
+                    value={searchTerm} 
+                    onChange={e => setSearchTerm(e.target.value)} 
+                    className={`bg-background/50 ${isMobile ? 'w-full' : 'max-w-sm'}`} 
+                  />
+                </div>
+              </CardHeader>
+              <CardContent>
             {isMobile ? (
               // Mobile: Cards view
               <div className="space-y-4">

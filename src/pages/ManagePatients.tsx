@@ -751,30 +751,24 @@ export default function ManagePatients() {
       }
     }
   }, [patientIdFromUrl, patients]);
-  return <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-gradient-subtle">
       {/* Header */}
-      <header className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" onClick={() => navigate(-1)} className="hover:bg-accent/80">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar
-              </Button>
-              <div className="flex items-center space-x-2">
-                <Users className="h-6 w-6 text-primary" />
-                <h1 className="text-xl sm:text-2xl font-bold">Gerenciar Pacientes</h1>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-muted-foreground hidden sm:inline">
-                {user?.email}
-              </span>
-              <Button variant="outline" onClick={signOut}>
-                Sair
-              </Button>
-            </div>
+      <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/admin')}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <Users className="h-6 w-6 text-primary" />
+            <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+              Gerenciar Pacientes
+            </h1>
           </div>
+
+          <Button variant="gradient" onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Paciente
+          </Button>
         </div>
       </header>
 
