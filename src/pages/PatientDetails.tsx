@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +14,7 @@ import { PrescriptionView } from '@/components/prescription/PrescriptionView';
 import { CertificateView } from '@/components/prescription/CertificateView';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, Upload, Download, FileText, Image, Trash2, Eye, MessageCircle, Save } from 'lucide-react';
+import { ArrowLeft, Upload, Download, FileText, Image, Trash2, Eye, MessageCircle, Save, Loader2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -63,6 +63,28 @@ export default function PatientDetails() {
   const [isDocumentPreviewOpen, setIsDocumentPreviewOpen] = useState(false);
 
   const isReceptionist = userProfile.type === 'receptionist';
+
+  // ✅ NOVO: Bloquear acesso de recepcionistas
+  useEffect(() => {
+    if (!userProfile.loading && isReceptionist) {
+      toast({
+        title: "Acesso Restrito",
+        description: "Esta página é exclusiva para profissionais. Você pode editar dados cadastrais pela lista de pacientes.",
+        variant: "destructive",
+        duration: 5000
+      });
+      navigate('/admin/patients', { replace: true });
+    }
+  }, [userProfile, isReceptionist, navigate, toast]);
+
+  // Mostrar loading enquanto verifica permissões
+  if (userProfile.loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   // Fetch patient data
   const { data: patient, isLoading } = useQuery({
