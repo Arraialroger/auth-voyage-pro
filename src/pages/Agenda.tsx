@@ -121,6 +121,8 @@ export default function Agenda() {
   const [editPatientModalOpen, setEditPatientModalOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string>('');
   const [quickSearch, setQuickSearch] = useState<string>('');
+  const todayColumnRef = useRef<HTMLDivElement>(null);
+  const [highlightToday, setHighlightToday] = useState(false);
 
   // Configuração mínima de intervalo para considerar slot disponível
   const MIN_GAP_MINUTES = 30;
@@ -634,6 +636,28 @@ export default function Agenda() {
   const weekDays = Array.from({
     length: 6
   }, (_, i) => addDays(weekStart, i));
+
+  // Auto-scroll to today on desktop
+  useEffect(() => {
+    const isDesktop = window.matchMedia('(min-width: 768px)').matches;
+    
+    if (isDesktop && todayColumnRef.current) {
+      // Small delay to ensure rendering is complete
+      const timer = setTimeout(() => {
+        todayColumnRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest',
+          inline: 'center'
+        });
+        
+        // Brief highlight animation
+        setHighlightToday(true);
+        setTimeout(() => setHighlightToday(false), 2000);
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [weekStart]);
   return <div className="min-h-screen bg-gradient-subtle">
       {/* Header */}
       <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm">
@@ -1223,12 +1247,31 @@ export default function Agenda() {
                       <div className="font-semibold text-sm text-muted-foreground p-2">
                         Profissional
                       </div>
-                      {weekDays.map(day => <div key={day.toISOString()} className="font-semibold text-sm text-center p-2">
-                          <div>{format(day, 'EEE', {
-                        locale: ptBR
-                      })}</div>
-                          <div className="text-xs text-muted-foreground">{format(day, 'dd/MM')}</div>
-                        </div>)}
+                      {weekDays.map(day => {
+                        const isToday = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+                        return (
+                          <div 
+                            key={day.toISOString()} 
+                            ref={isToday ? todayColumnRef : null}
+                            className={cn(
+                              "font-semibold text-sm text-center p-2 rounded-t-md transition-all",
+                              isToday && "bg-primary/10 ring-2 ring-primary/30",
+                              highlightToday && isToday && "animate-pulse"
+                            )}
+                          >
+                            <div className={cn(isToday && "text-primary font-bold")}>
+                              {format(day, 'EEE', { locale: ptBR })}
+                            </div>
+                            <div className={cn(
+                              "text-xs",
+                              isToday ? "text-primary font-semibold" : "text-muted-foreground"
+                            )}>
+                              {format(day, 'dd/MM')}
+                              {isToday && " (Hoje)"}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
 
                     {/* Calendar Body */}
@@ -1261,7 +1304,16 @@ export default function Agenda() {
                         const timeB = b.type === 'appointment' ? new Date(b.data.appointment_start_time).getTime() : b.data.start.getTime();
                         return timeA - timeB;
                       });
-                      return <div key={dayKey} className="min-h-[120px] p-1 border border-border/20 rounded-md bg-muted/20 hover:bg-muted/40 transition-colors space-y-1">
+                      const isToday = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+                      return <div 
+                        key={dayKey} 
+                        className={cn(
+                          "min-h-[120px] p-1 border rounded-md transition-colors space-y-1",
+                          isToday 
+                            ? "border-primary/40 bg-primary/5 hover:bg-primary/10" 
+                            : "border-border/20 bg-muted/20 hover:bg-muted/40"
+                        )}
+                      >
                                   {allItems.map((item, idx) => {
                           if (item.type === 'appointment') {
                             const appointment = item.data;
