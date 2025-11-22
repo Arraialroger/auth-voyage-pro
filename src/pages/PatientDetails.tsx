@@ -423,7 +423,7 @@ export default function PatientDetails() {
 
             {/* Conteúdo: Informações Pessoais */}
             {activeSubTab === 'info' && (
-              <div className="space-y-6">
+              <div className="space-y-6 animate-enter">
             <Card>
               <CardHeader>
                 <CardTitle>Dados Pessoais</CardTitle>
@@ -482,7 +482,7 @@ export default function PatientDetails() {
 
             {/* Conteúdo: Documentos */}
             {activeSubTab === 'documents' && (
-              <div className="space-y-6">
+              <div className="space-y-6 animate-enter">
             <Card>
               <CardHeader>
                 <CardTitle>Upload de Documentos</CardTitle>
@@ -596,7 +596,9 @@ export default function PatientDetails() {
 
             {/* Conteúdo: Histórico de Consultas */}
             {activeSubTab === 'history' && (
-              <PatientAppointmentHistory patientId={patientId!} />
+              <div className="animate-enter">
+                <PatientAppointmentHistory patientId={patientId!} />
+              </div>
             )}
           </TabsContent>
 
@@ -629,17 +631,21 @@ export default function PatientDetails() {
 
             {/* Conteúdo: Odontograma */}
             {activeSubTab === 'odontogram' && (
-              <OdontogramView patientId={patientId!} />
+              <div className="animate-enter">
+                <OdontogramView patientId={patientId!} />
+              </div>
             )}
 
             {/* Conteúdo: Plano de Tratamento */}
             {activeSubTab === 'treatment-plan' && (
-              <TreatmentPlanView patientId={patientId!} />
+              <div className="animate-enter">
+                <TreatmentPlanView patientId={patientId!} />
+              </div>
             )}
 
             {/* Conteúdo: Receitas e Atestados */}
             {activeSubTab === 'prescriptions' && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-enter">
                 <div>
                   <PrescriptionView patientId={patientId!} />
                 </div>
@@ -651,7 +657,7 @@ export default function PatientDetails() {
           </TabsContent>
 
           {/* GRUPO 3: ACOMPANHAMENTO (Progresso) */}
-          <TabsContent value="acompanhamento" className="mt-6">
+          <TabsContent value="acompanhamento" className="mt-6 animate-enter">
             <TreatmentPlanProgressDashboard 
               plans={queryClient.getQueryData(['treatment-plans', patientId]) || []} 
             />
