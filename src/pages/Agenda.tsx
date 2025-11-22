@@ -121,6 +121,7 @@ export default function Agenda() {
   const [editPatientModalOpen, setEditPatientModalOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string>('');
   const [quickSearch, setQuickSearch] = useState<string>('');
+  const [globalPatientSearch, setGlobalPatientSearch] = useState<string>('');
   const todayColumnRef = useRef<HTMLDivElement>(null);
   const [highlightToday, setHighlightToday] = useState(false);
 
@@ -243,6 +244,35 @@ export default function Agenda() {
         return [];
       }
     }
+  });
+
+  // Fetch patients for global search (professionals only)
+  const {
+    data: globalSearchPatients = []
+  } = useQuery({
+    queryKey: ['patients-global-search', globalPatientSearch, userProfile.professionalId],
+    queryFn: async () => {
+      if (!globalPatientSearch.trim() || userProfile.type !== 'professional') {
+        return [];
+      }
+
+      try {
+        const searchTerm = globalPatientSearch.toLowerCase().trim();
+        const { data, error } = await supabase
+          .from('patients')
+          .select('id, full_name, contact_phone')
+          .or(`full_name.ilike.%${searchTerm}%,contact_phone.ilike.%${searchTerm}%`)
+          .order('full_name')
+          .limit(10);
+        
+        if (error) throw error;
+        return data || [];
+      } catch (error) {
+        logger.error('Erro ao buscar pacientes globalmente:', error);
+        return [];
+      }
+    },
+    enabled: globalPatientSearch.trim().length > 0 && userProfile.type === 'professional'
   });
 
   // Fetch professional schedules
@@ -521,6 +551,24 @@ export default function Agenda() {
     return gaps;
   };
 
+  // Função para navegar para página do paciente (Fase 1)
+  const handlePatientNameClick = (e: React.MouseEvent, patientId: string | null) => {
+    e.stopPropagation();
+    if (userProfile.type === 'professional' && patientId) {
+      navigate(`/patient/${patientId}`);
+    }
+  };
+
+  // Função para abrir modal de novo agendamento para paciente (Fase 2)
+  const handleScheduleForPatient = (patient: { id: string; full_name: string }) => {
+    setModalInitialValues({
+      professional_id: userProfile.professionalId || undefined,
+    });
+    setModalOpen(true);
+    setFilterPatient(patient.id);
+    setGlobalPatientSearch('');
+  };
+
   // Get professionals based on user profile
   const {
     data: allProfessionals = []
@@ -721,22 +769,98 @@ export default function Agenda() {
           <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-elegant">
             <CardContent className="p-4 space-y-4">
               {/* Quick Search Section */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar por paciente, telefone ou tratamento..."
-                  value={quickSearch}
-                  onChange={(e) => setQuickSearch(e.target.value)}
-                  className="w-full h-10 pl-10 pr-10 rounded-md border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-shadow"
-                />
-                {quickSearch && (
-                  <button
-                    onClick={() => setQuickSearch('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+              <div className="flex gap-3 flex-col sm:flex-row">
+                {/* Busca Rápida de Agendamentos */}
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Buscar agendamentos..."
+                    value={quickSearch}
+                    onChange={(e) => setQuickSearch(e.target.value)}
+                    className="w-full h-10 pl-10 pr-10 rounded-md border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-shadow"
+                  />
+                  {quickSearch && (
+                    <button
+                      onClick={() => setQuickSearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Busca Global de Pacientes (Fase 2 - Apenas Profissionais) */}
+                {userProfile.type === 'professional' && (
+                  <div className="relative flex-1">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Buscar qualquer paciente..."
+                      value={globalPatientSearch}
+                      onChange={(e) => setGlobalPatientSearch(e.target.value)}
+                      className="w-full h-10 pl-10 pr-10 rounded-md border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-shadow"
+                    />
+                    {globalPatientSearch && (
+                      <button
+                        onClick={() => setGlobalPatientSearch('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+
+                    {/* Resultados da Busca Global */}
+                    {globalPatientSearch && globalSearchPatients.length > 0 && (
+                      <Card className="absolute top-full mt-2 w-full z-50 max-h-96 overflow-y-auto shadow-lg">
+                        <CardContent className="p-0">
+                          {globalSearchPatients.map((patient) => (
+                            <div 
+                              key={patient.id}
+                              className="border-b last:border-0 p-3 flex items-center justify-between hover:bg-muted/50 transition-colors"
+                            >
+                              <div>
+                                <p className="font-semibold">{patient.full_name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {patient.contact_phone ? 
+                                    patient.contact_phone.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') 
+                                    : 'Sem telefone'}
+                                </p>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => navigate(`/patient/${patient.id}`)}
+                                  className="gap-1"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                  Ver Página
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={() => handleScheduleForPatient(patient)}
+                                  className="gap-1"
+                                >
+                                  <Calendar className="h-4 w-4" />
+                                  Agendar
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Mensagem quando não há resultados */}
+                    {globalPatientSearch && globalSearchPatients.length === 0 && (
+                      <Card className="absolute top-full mt-2 w-full z-50 shadow-lg">
+                        <CardContent className="p-4 text-center text-sm text-muted-foreground">
+                          Nenhum paciente encontrado
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -1136,12 +1260,21 @@ export default function Agenda() {
                                                       {getStatusLabel(appointment.status)}
                                                     </Badge>
                                                   </div>
-                                                 <div className={cn(
-                                                   "text-base font-medium",
-                                                   appointment.is_squeeze_in ? "text-foreground" : "text-primary-foreground"
-                                                 )}>
-                                                   {appointment.patient?.full_name || 'Paciente não identificado'}
-                                                 </div>
+                                                  <div className={cn(
+                                                    "text-base font-medium",
+                                                    appointment.is_squeeze_in ? "text-foreground" : "text-primary-foreground"
+                                                  )}>
+                                                    {userProfile.type === 'professional' ? (
+                                                      <button
+                                                        onClick={(e) => handlePatientNameClick(e, appointment.patient_id)}
+                                                        className="hover:underline cursor-pointer text-left"
+                                                      >
+                                                        {appointment.patient?.full_name || 'Paciente não identificado'}
+                                                      </button>
+                                                    ) : (
+                                                      appointment.patient?.full_name || 'Paciente não identificado'
+                                                    )}
+                                                  </div>
                                                  <div className={cn(
                                                    "text-sm mt-1",
                                                    appointment.is_squeeze_in ? "text-muted-foreground" : "text-primary-foreground/75"
@@ -1394,9 +1527,18 @@ export default function Agenda() {
                                                     {getStatusLabel(appointment.status)}
                                                   </Badge>
                                                 </div>
-                                               <div className="truncate">
-                                                 {appointment.patient?.full_name || 'Paciente não identificado'}
-                                               </div>
+                                                <div className="truncate">
+                                                  {userProfile.type === 'professional' ? (
+                                                    <button
+                                                      onClick={(e) => handlePatientNameClick(e, appointment.patient_id)}
+                                                      className="hover:underline cursor-pointer text-left"
+                                                    >
+                                                      {appointment.patient?.full_name || 'Paciente não identificado'}
+                                                    </button>
+                                                  ) : (
+                                                    appointment.patient?.full_name || 'Paciente não identificado'
+                                                  )}
+                                                </div>
                                                <div className={cn(
                                                  "truncate",
                                                  appointment.is_squeeze_in ? "text-muted-foreground" : "text-primary-foreground/80"
