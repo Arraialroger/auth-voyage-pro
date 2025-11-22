@@ -2,7 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, LogOut, User, Clock, ChevronLeft, ChevronRight, Plus, Settings, Menu, MoreVertical, Edit, Trash2, Eye, Filter, X, Ban, Check, ChevronsUpDown, Bell } from 'lucide-react';
+import { Calendar, LogOut, User, Clock, ChevronLeft, ChevronRight, Plus, Settings, Menu, MoreVertical, Edit, Trash2, Eye, Filter, X, Ban, Check, ChevronsUpDown, Bell, Search } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { useNavigate } from 'react-router-dom';
@@ -120,6 +120,7 @@ export default function Agenda() {
   const [blockToDelete, setBlockToDelete] = useState<string | null>(null);
   const [editPatientModalOpen, setEditPatientModalOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string>('');
+  const [quickSearch, setQuickSearch] = useState<string>('');
 
   // Configuração mínima de intervalo para considerar slot disponível
   const MIN_GAP_MINUTES = 30;
@@ -574,6 +575,21 @@ export default function Agenda() {
 
   // Apply filters to appointments
   const filteredAppointments = appointments.filter(apt => {
+    // Quick search filter (busca rápida por nome, telefone ou tratamento)
+    if (quickSearch.trim()) {
+      const searchLower = quickSearch.toLowerCase().trim();
+      const patientName = apt.patient?.full_name?.toLowerCase() || '';
+      const patientPhone = apt.patient?.contact_phone || '';
+      const treatmentName = apt.treatment?.treatment_name?.toLowerCase() || '';
+      
+      const matchesSearch = 
+        patientName.includes(searchLower) ||
+        patientPhone.includes(searchLower) ||
+        treatmentName.includes(searchLower);
+      
+      if (!matchesSearch) return false;
+    }
+
     // Filter by status
     if (filterStatus !== 'all' && apt.status !== filterStatus) {
       return false;
@@ -680,6 +696,26 @@ export default function Agenda() {
           {/* Navigation */}
           <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-elegant">
             <CardContent className="p-4 space-y-4">
+              {/* Quick Search Section */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Buscar por paciente, telefone ou tratamento..."
+                  value={quickSearch}
+                  onChange={(e) => setQuickSearch(e.target.value)}
+                  className="w-full h-10 pl-10 pr-10 rounded-md border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-shadow"
+                />
+                {quickSearch && (
+                  <button
+                    onClick={() => setQuickSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
               {/* Filters Section */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
