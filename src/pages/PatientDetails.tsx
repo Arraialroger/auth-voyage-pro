@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Badge } from '@/components/ui/badge';
 import { OdontogramView } from '@/components/odontogram/OdontogramView';
 import { TreatmentPlanView } from '@/components/treatment-plan/TreatmentPlanView';
 import { TreatmentPlanProgressDashboard } from '@/components/treatment-plan/TreatmentPlanProgressDashboard';
@@ -61,6 +63,7 @@ export default function PatientDetails() {
   const [viewingDocument, setViewingDocument] = useState<PatientDocument | null>(null);
   const [documentPreviewUrl, setDocumentPreviewUrl] = useState<string | null>(null);
   const [isDocumentPreviewOpen, setIsDocumentPreviewOpen] = useState(false);
+  const [activeSubTab, setActiveSubTab] = useState<string>('info');
 
   const isReceptionist = userProfile.type === 'receptionist';
 
@@ -367,19 +370,60 @@ export default function PatientDetails() {
           }}
         />
 
-        <Tabs defaultValue="info" className="w-full">
-          <TabsList className="grid w-full grid-cols-7">
-            <TabsTrigger value="info">Informações</TabsTrigger>
-            <TabsTrigger value="odontogram">Odontograma</TabsTrigger>
-            <TabsTrigger value="treatment-plan">Plano de Tratamento</TabsTrigger>
-            <TabsTrigger value="prescriptions">Receitas</TabsTrigger>
-            <TabsTrigger value="progress">Progresso</TabsTrigger>
-            <TabsTrigger value="history">Histórico</TabsTrigger>
-            <TabsTrigger value="documents">Documentos</TabsTrigger>
+        <Tabs defaultValue="dados" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 h-auto">
+            <TabsTrigger value="dados" className="flex items-center gap-2">
+              📋 DADOS
+              {patientDocuments && patientDocuments.length > 0 && (
+                <Badge variant="secondary" className="ml-1 px-1.5 py-0 text-xs">
+                  {patientDocuments.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="clinico" className="flex items-center gap-2">
+              🦷 CLÍNICO
+            </TabsTrigger>
+            <TabsTrigger value="acompanhamento" className="flex items-center gap-2">
+              📊 ACOMPANHAMENTO
+            </TabsTrigger>
           </TabsList>
 
-          {/* Tab 1: Informações */}
-          <TabsContent value="info" className="space-y-6">
+          {/* GRUPO 1: DADOS (Info + Documentos + Histórico) */}
+          <TabsContent value="dados" className="space-y-6 mt-6">
+            {/* Sub-navegação dentro de DADOS */}
+            <div className="flex gap-2 border-b border-border/40 pb-2">
+              <Button
+                variant={activeSubTab === 'info' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveSubTab('info')}
+              >
+                Informações Pessoais
+              </Button>
+              <Button
+                variant={activeSubTab === 'documents' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveSubTab('documents')}
+                className="flex items-center gap-2"
+              >
+                Documentos
+                {patientDocuments && patientDocuments.length > 0 && (
+                  <Badge variant="secondary" className="px-1.5 py-0 text-xs">
+                    {patientDocuments.length}
+                  </Badge>
+                )}
+              </Button>
+              <Button
+                variant={activeSubTab === 'history' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveSubTab('history')}
+              >
+                Histórico de Consultas
+              </Button>
+            </div>
+
+            {/* Conteúdo: Informações Pessoais */}
+            {activeSubTab === 'info' && (
+              <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Dados Pessoais</CardTitle>
@@ -433,44 +477,12 @@ export default function PatientDetails() {
                 </Button>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          {/* Tab 2: Odontograma */}
-          <TabsContent value="odontogram">
-            <OdontogramView patientId={patientId!} />
-          </TabsContent>
-
-          {/* Tab 3: Plano de Tratamento */}
-          <TabsContent value="treatment-plan">
-            <TreatmentPlanView patientId={patientId!} />
-          </TabsContent>
-
-          {/* Tab 4: Receitas e Atestados */}
-          <TabsContent value="prescriptions" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <PrescriptionView patientId={patientId!} />
               </div>
-              <div>
-                <CertificateView patientId={patientId!} />
-              </div>
-            </div>
-          </TabsContent>
+            )}
 
-          {/* Tab 5: Dashboard de Progresso */}
-          <TabsContent value="progress">
-            <TreatmentPlanProgressDashboard 
-              plans={queryClient.getQueryData(['treatment-plans', patientId]) || []} 
-            />
-          </TabsContent>
-
-          {/* Tab 6: Histórico */}
-          <TabsContent value="history">
-            <PatientAppointmentHistory patientId={patientId!} />
-          </TabsContent>
-
-          {/* Tab 7: Documentos */}
-          <TabsContent value="documents" className="space-y-6">
+            {/* Conteúdo: Documentos */}
+            {activeSubTab === 'documents' && (
+              <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Upload de Documentos</CardTitle>
@@ -579,6 +591,70 @@ export default function PatientDetails() {
                 )}
               </CardContent>
             </Card>
+              </div>
+            )}
+
+            {/* Conteúdo: Histórico de Consultas */}
+            {activeSubTab === 'history' && (
+              <PatientAppointmentHistory patientId={patientId!} />
+            )}
+          </TabsContent>
+
+          {/* GRUPO 2: CLÍNICO (Odontograma + Plano de Tratamento + Receitas) */}
+          <TabsContent value="clinico" className="space-y-6 mt-6">
+            {/* Sub-navegação dentro de CLÍNICO */}
+            <div className="flex gap-2 border-b border-border/40 pb-2">
+              <Button
+                variant={activeSubTab === 'odontogram' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveSubTab('odontogram')}
+              >
+                Odontograma
+              </Button>
+              <Button
+                variant={activeSubTab === 'treatment-plan' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveSubTab('treatment-plan')}
+              >
+                Plano de Tratamento
+              </Button>
+              <Button
+                variant={activeSubTab === 'prescriptions' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveSubTab('prescriptions')}
+              >
+                Receitas e Atestados
+              </Button>
+            </div>
+
+            {/* Conteúdo: Odontograma */}
+            {activeSubTab === 'odontogram' && (
+              <OdontogramView patientId={patientId!} />
+            )}
+
+            {/* Conteúdo: Plano de Tratamento */}
+            {activeSubTab === 'treatment-plan' && (
+              <TreatmentPlanView patientId={patientId!} />
+            )}
+
+            {/* Conteúdo: Receitas e Atestados */}
+            {activeSubTab === 'prescriptions' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <PrescriptionView patientId={patientId!} />
+                </div>
+                <div>
+                  <CertificateView patientId={patientId!} />
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* GRUPO 3: ACOMPANHAMENTO (Progresso) */}
+          <TabsContent value="acompanhamento" className="mt-6">
+            <TreatmentPlanProgressDashboard 
+              plans={queryClient.getQueryData(['treatment-plans', patientId]) || []} 
+            />
           </TabsContent>
         </Tabs>
       </main>
