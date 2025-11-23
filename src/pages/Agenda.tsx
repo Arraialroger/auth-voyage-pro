@@ -685,11 +685,15 @@ export default function Agenda() {
     length: 6
   }, (_, i) => addDays(weekStart, i));
 
-  // Auto-scroll to today on desktop
+  // Auto-scroll to today on desktop (once only)
+  const hasScrolledToToday = useRef(false);
+  
   useEffect(() => {
     const isDesktop = window.matchMedia('(min-width: 768px)').matches;
     
-    if (isDesktop && todayColumnRef.current) {
+    if (isDesktop && todayColumnRef.current && !hasScrolledToToday.current) {
+      hasScrolledToToday.current = true;
+      
       // Small delay to ensure rendering is complete
       const timer = setTimeout(() => {
         todayColumnRef.current?.scrollIntoView({
@@ -705,7 +709,7 @@ export default function Agenda() {
       
       return () => clearTimeout(timer);
     }
-  }, [weekStart]);
+  }, []);
   return <div className="min-h-screen bg-gradient-subtle">
       {/* Header */}
       <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm">
@@ -771,7 +775,7 @@ export default function Agenda() {
               {/* Quick Search Section */}
               <div className="flex gap-3 flex-col sm:flex-row">
                 {/* Busca Rápida de Agendamentos */}
-                <div className="relative flex-1">
+                <div className="relative flex-1 max-w-md">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                   <input
                     type="text"
@@ -1293,16 +1297,12 @@ export default function Agenda() {
                                                      <MoreVertical className="h-4 w-4" />
                                                    </Button>
                                                  </DropdownMenuTrigger>
-                                                  <DropdownMenuContent align="end" className="w-48">
-                                                    <DropdownMenuItem onClick={() => handleEditAppointment(appointment.id)}>
-                                                      <Edit className="mr-2 h-4 w-4" />
-                                                      Editar Agendamento
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={() => handleAppointmentClick(appointment)}>
-                                                      <Eye className="mr-2 h-4 w-4" />
-                                                      Ver Paciente
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
+                                                 <DropdownMenuContent align="end" className="w-48">
+                                                   <DropdownMenuItem onClick={() => handleEditAppointment(appointment.id)}>
+                                                     <Edit className="mr-2 h-4 w-4" />
+                                                     Editar Agendamento
+                                                   </DropdownMenuItem>
+                                                   <DropdownMenuSeparator />
                                                     <DropdownMenuSub>
                                                       <DropdownMenuSubTrigger>
                                                         Alterar Status
@@ -1557,16 +1557,12 @@ export default function Agenda() {
                                                    <MoreVertical className="h-3 w-3" />
                                                  </Button>
                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-48">
-                                                  <DropdownMenuItem onClick={() => handleEditAppointment(appointment.id)}>
-                                                    <Edit className="mr-2 h-4 w-4" />
-                                                    Editar
-                                                  </DropdownMenuItem>
-                                                   <DropdownMenuItem onClick={() => handleAppointmentClick(appointment)}>
-                                                     <Eye className="mr-2 h-4 w-4" />
-                                                     Ver Paciente
+                                                 <DropdownMenuContent align="end" className="w-48">
+                                                   <DropdownMenuItem onClick={() => handleEditAppointment(appointment.id)}>
+                                                     <Edit className="mr-2 h-4 w-4" />
+                                                     Editar
                                                    </DropdownMenuItem>
-                                                   <DropdownMenuSeparator />
+                                                    <DropdownMenuSeparator />
                                                   <DropdownMenuItem asChild>
                                                     <div className="w-full">
                                                       <AppointmentReminderButton appointmentId={appointment.id} patientPhone={appointment.patient?.contact_phone || ''} patientName={appointment.patient?.full_name || ''} appointmentDate={appointment.appointment_start_time} treatmentName={appointment.treatment?.treatment_name || ''} lastReminderSent={appointment.last_reminder_sent_at} />
