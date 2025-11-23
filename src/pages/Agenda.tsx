@@ -29,10 +29,9 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useState } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { startOfWeek, endOfWeek, format, addDays, addWeeks, subWeeks } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useEffect, useRef } from "react";
 import { NewAppointmentModal } from "@/components/NewAppointmentModal";
 import { EditAppointmentModal } from "@/components/EditAppointmentModal";
 import { AddToWaitingListModal } from "@/components/AddToWaitingListModal";
@@ -660,37 +659,39 @@ export default function Agenda() {
     }
   };
 
-  // Apply filters to appointments
-  const filteredAppointments = appointments.filter((apt) => {
-    // Quick search filter (busca rápida por nome, telefone ou tratamento)
-    if (quickSearch.trim()) {
-      const searchLower = quickSearch.toLowerCase().trim();
-      const patientName = apt.patient?.full_name?.toLowerCase() || "";
-      const patientPhone = apt.patient?.contact_phone || "";
-      const treatmentName = apt.treatment?.treatment_name?.toLowerCase() || "";
+  // Apply filters to appointments (optimized with useMemo)
+  const filteredAppointments = useMemo(() => {
+    return appointments.filter((apt) => {
+      // Quick search filter (busca rápida por nome, telefone ou tratamento)
+      if (quickSearch.trim()) {
+        const searchLower = quickSearch.toLowerCase().trim();
+        const patientName = apt.patient?.full_name?.toLowerCase() || "";
+        const patientPhone = apt.patient?.contact_phone || "";
+        const treatmentName = apt.treatment?.treatment_name?.toLowerCase() || "";
 
-      const matchesSearch =
-        patientName.includes(searchLower) || patientPhone.includes(searchLower) || treatmentName.includes(searchLower);
+        const matchesSearch =
+          patientName.includes(searchLower) || patientPhone.includes(searchLower) || treatmentName.includes(searchLower);
 
-      if (!matchesSearch) return false;
-    }
+        if (!matchesSearch) return false;
+      }
 
-    // Filter by status
-    if (filterStatus !== "all" && apt.status !== filterStatus) {
-      return false;
-    }
+      // Filter by status
+      if (filterStatus !== "all" && apt.status !== filterStatus) {
+        return false;
+      }
 
-    // Filter by treatment
-    if (filterTreatment !== "all" && apt.treatment?.id !== filterTreatment) {
-      return false;
-    }
+      // Filter by treatment
+      if (filterTreatment !== "all" && apt.treatment?.id !== filterTreatment) {
+        return false;
+      }
 
-    // Filter by patient name
-    if (filterPatient !== "all" && !apt.patient?.full_name.toLowerCase().includes(filterPatient.toLowerCase())) {
-      return false;
-    }
-    return true;
-  });
+      // Filter by patient name
+      if (filterPatient !== "all" && !apt.patient?.full_name.toLowerCase().includes(filterPatient.toLowerCase())) {
+        return false;
+      }
+      return true;
+    });
+  }, [appointments, quickSearch, filterStatus, filterTreatment, filterPatient]);
 
   // Count active filters
   const activeFiltersCount = [
@@ -700,22 +701,24 @@ export default function Agenda() {
     selectedProfessional !== "all" && userProfile.type === "receptionist",
   ].filter(Boolean).length;
 
-  // Group appointments by professional and day
-  const appointmentsByProfessional = filteredAppointments.reduce(
-    (acc, apt) => {
-      const professionalName = apt.professional?.full_name || "Profissional não identificado";
-      if (!acc[professionalName]) {
-        acc[professionalName] = {};
-      }
-      const dayKey = format(new Date(apt.appointment_start_time), "yyyy-MM-dd");
-      if (!acc[professionalName][dayKey]) {
-        acc[professionalName][dayKey] = [];
-      }
-      acc[professionalName][dayKey].push(apt);
-      return acc;
-    },
-    {} as Record<string, Record<string, Appointment[]>>,
-  );
+  // Group appointments by professional and day (optimized with useMemo)
+  const appointmentsByProfessional = useMemo(() => {
+    return filteredAppointments.reduce(
+      (acc, apt) => {
+        const professionalName = apt.professional?.full_name || "Profissional não identificado";
+        if (!acc[professionalName]) {
+          acc[professionalName] = {};
+        }
+        const dayKey = format(new Date(apt.appointment_start_time), "yyyy-MM-dd");
+        if (!acc[professionalName][dayKey]) {
+          acc[professionalName][dayKey] = [];
+        }
+        acc[professionalName][dayKey].push(apt);
+        return acc;
+      },
+      {} as Record<string, Record<string, Appointment[]>>,
+    );
+  }, [filteredAppointments]);
 
   // Use all professionals instead of just those with appointments
   const professionals = allProfessionals;
