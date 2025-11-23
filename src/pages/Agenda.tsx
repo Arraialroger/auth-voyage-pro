@@ -1374,9 +1374,9 @@ export default function Agenda() {
                   </div>
 
                   {/* Desktop: Grid view for full week */}
-                  <div className="hidden md:block overflow-x-auto">
+                  <div className="hidden md:block overflow-x-auto w-full max-w-full">
                     {/* Calendar Header */}
-                    <div className="grid grid-cols-7 gap-2 mb-4 min-w-[700px]">
+                    <div className="grid grid-cols-7 gap-2 mb-4">
                       <div className="font-semibold text-sm text-muted-foreground p-2">
                         Profissional
                       </div>
@@ -1389,7 +1389,7 @@ export default function Agenda() {
                             className={cn(
                               "font-semibold text-sm text-center p-2 rounded-t-md transition-all",
                               isToday && "bg-primary/10 ring-2 ring-primary/30",
-                              highlightToday && isToday && "animate-pulse"
+                              highlightToday && isToday && "animate-in fade-in duration-500"
                             )}
                           >
                             <div className={cn(isToday && "text-primary font-bold")}>
@@ -1414,7 +1414,7 @@ export default function Agenda() {
                         ? professionals 
                         : professionals.filter(p => p.id === selectedProfessional);
                       
-                      return visibleProfessionals.length > 0 ? <div className="min-w-[700px]">
+                      return visibleProfessionals.length > 0 ? <div>
                         {visibleProfessionals.map(professional => <div key={professional.id} className="grid grid-cols-7 gap-2 mb-4 border-b border-border/30 pb-4">
                             <div className="font-medium p-2 text-sm">
                               {professional.full_name}
