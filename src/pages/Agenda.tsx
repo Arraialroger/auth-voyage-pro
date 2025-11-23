@@ -767,7 +767,7 @@ export default function Agenda() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-4 lg:py-8 overflow-x-hidden bg-background">
+      <main className="container mx-auto px-4 py-4 lg:py-8 bg-background">
         <div className="max-w-7xl mx-auto space-y-4 lg:space-y-6">
           {/* Navigation */}
           <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-elegant">
@@ -796,7 +796,7 @@ export default function Agenda() {
 
                 {/* Busca Global de Pacientes (Fase 2 - Apenas Profissionais) */}
                 {userProfile.type === 'professional' && (
-                  <div className="relative flex-1">
+                  <div className="relative flex-1 max-w-md">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     <input
                       type="text"
