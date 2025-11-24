@@ -12,13 +12,12 @@ const TIMEZONE = 'America/Sao_Paulo';
  */
 export function createLocalDateTime(date: Date, time: string): Date {
   const [hour, minute] = time.split(':').map(Number);
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const day = date.getDate();
   
-  // Create a date in the local timezone
-  const localDate = new Date(date);
-  localDate.setHours(hour, minute, 0, 0);
-  
-  // Return date without timezone conversion - JavaScript Date already uses local timezone
-  return localDate;
+  // Create Date in UTC timezone with the literal time (no timezone conversion)
+  return new Date(Date.UTC(year, month, day, hour, minute, 0, 0));
 }
 
 /**
@@ -28,5 +27,7 @@ export function createLocalDateTime(date: Date, time: string): Date {
  * @returns Date object in the local timezone
  */
 export function parseLocalDateTime(isoString: string): Date {
-  return toZonedTime(new Date(isoString), TIMEZONE);
+  // Parse the ISO string directly without timezone conversion
+  // This ensures 09:00 UTC is displayed as 09:00 in the interface
+  return new Date(isoString);
 }
