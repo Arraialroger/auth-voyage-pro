@@ -17,8 +17,8 @@ export function createLocalDateTime(date: Date, time: string): Date {
   const localDate = new Date(date);
   localDate.setHours(hour, minute, 0, 0);
   
-  // Convert to the correct timezone
-  return fromZonedTime(localDate, TIMEZONE);
+  // Return date without timezone conversion - JavaScript Date already uses local timezone
+  return localDate;
 }
 
 /**
