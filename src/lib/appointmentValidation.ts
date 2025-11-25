@@ -76,6 +76,56 @@ export async function checkTimeConflict(
 }
 
 /**
+ * Verifica se há conflito com bloqueios de horário (time_blocks)
+ */
+export async function checkTimeBlockConflict(
+  professionalId: string,
+  startTime: Date,
+  endTime: Date
+): Promise<ValidationResult> {
+  const result: ValidationResult = {
+    isValid: true,
+    errors: [],
+    warnings: [],
+  };
+
+  try {
+    const { data: blocks, error } = await supabase
+      .from('time_blocks')
+      .select('id, start_time, end_time, reason, block_type')
+      .eq('professional_id', professionalId)
+      .or(`and(start_time.lt.${endTime.toISOString()},end_time.gt.${startTime.toISOString()})`);
+
+    if (error) throw error;
+
+    if (blocks && blocks.length > 0) {
+      result.isValid = false;
+      blocks.forEach((block: any) => {
+        const blockTypeLabel = {
+          'full_day': 'Dia inteiro',
+          'morning': 'Manhã',
+          'afternoon': 'Tarde',
+          'custom': 'Personalizado'
+        }[block.block_type] || 'Bloqueio';
+
+        const timeRange = `${new Date(block.start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - ${new Date(block.end_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+        
+        const reason = block.reason ? `: ${block.reason}` : '';
+        result.errors.push(
+          `Horário bloqueado - ${blockTypeLabel} (${timeRange})${reason}`
+        );
+      });
+    }
+  } catch (error) {
+    logger.error('Erro ao verificar bloqueios de horário:', error);
+    result.isValid = false;
+    result.errors.push('Erro ao verificar bloqueios de horário');
+  }
+
+  return result;
+}
+
+/**
  * Verifica se o horário está dentro do expediente do profissional
  */
 export async function checkProfessionalSchedule(
@@ -350,6 +400,7 @@ export async function validateAppointment(
 
   // Validações assíncronas
   results.push(await checkTimeConflict(professionalId, startTime, endTime, excludeAppointmentId));
+  results.push(await checkTimeBlockConflict(professionalId, startTime, endTime));
   results.push(await checkProfessionalSchedule(professionalId, startTime, endTime));
   results.push(await checkDailyAppointmentLimit(professionalId, startTime));
   
