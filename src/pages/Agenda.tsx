@@ -1809,6 +1809,7 @@ export default function Agenda() {
                                         );
                                       } else if (item.type === "appointment") {
                                         const appointment = item.data;
+                                        return (
                                           <div
                                             key={`apt-${appointment.id}`}
                                             className={cn(
@@ -1992,6 +1993,7 @@ export default function Agenda() {
                                           </div>
                                         );
                                       }
+                                      return null;
                                     })}
 
                                     {/* Empty slot click area */}
