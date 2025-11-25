@@ -13,7 +13,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { BLOCK_PATIENT_ID, BLOCK_TREATMENT_ID } from '@/lib/constants';
 import { logger } from '@/lib/logger';
 
 interface BlockTimeModalProps {
@@ -36,6 +35,7 @@ export function BlockTimeModal({ open, onOpenChange, professionals, onSuccess, i
   const [endTime, setEndTime] = useState('09:00');
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [blockType, setBlockType] = useState<'full_day' | 'morning' | 'afternoon' | 'custom'>('custom');
   const isEditing = !!initialData?.editingBlockId;
 
   // Load block data when editing
@@ -43,19 +43,20 @@ export function BlockTimeModal({ open, onOpenChange, professionals, onSuccess, i
     if (initialData?.editingBlockId && open) {
       const loadBlockData = async () => {
         const { data, error } = await supabase
-          .from('appointments')
+          .from('time_blocks')
           .select('*')
           .eq('id', initialData.editingBlockId)
           .single();
         
         if (data && !error) {
-          const start = parseLocalDateTime(data.appointment_start_time);
-          const end = parseLocalDateTime(data.appointment_end_time);
+          const start = parseLocalDateTime(data.start_time);
+          const end = parseLocalDateTime(data.end_time);
           setStartTime(format(start, 'HH:mm'));
           setEndTime(format(end, 'HH:mm'));
-          setReason(data.notes || '');
+          setReason(data.reason || '');
           setProfessionalId(data.professional_id || '');
           setSelectedDate(start);
+          setBlockType(data.block_type);
         }
       };
       loadBlockData();
@@ -66,6 +67,7 @@ export function BlockTimeModal({ open, onOpenChange, professionals, onSuccess, i
       setStartTime('08:00');
       setEndTime('09:00');
       setReason('');
+      setBlockType('custom');
     }
   }, [open, initialData?.editingBlockId, initialData?.professional_id, initialData?.date]);
 
@@ -73,12 +75,15 @@ export function BlockTimeModal({ open, onOpenChange, professionals, onSuccess, i
     if (type === 'full') {
       setStartTime('08:00');
       setEndTime('18:00');
+      setBlockType('full_day');
     } else if (type === 'morning') {
       setStartTime('08:00');
       setEndTime('12:00');
+      setBlockType('morning');
     } else if (type === 'afternoon') {
       setStartTime('13:00');
       setEndTime('18:00');
+      setBlockType('afternoon');
     }
   };
 
@@ -111,12 +116,13 @@ export function BlockTimeModal({ open, onOpenChange, professionals, onSuccess, i
       if (isEditing && initialData?.editingBlockId) {
         // Update existing block
         const { error } = await supabase
-          .from('appointments')
+          .from('time_blocks')
           .update({
             professional_id: professionalId,
-            appointment_start_time: startDateTime.toISOString(),
-            appointment_end_time: endDateTime.toISOString(),
-            notes: reason || 'Horário bloqueado',
+            start_time: startDateTime.toISOString(),
+            end_time: endDateTime.toISOString(),
+            reason: reason || null,
+            block_type: blockType,
           })
           .eq('id', initialData.editingBlockId);
 
@@ -128,14 +134,12 @@ export function BlockTimeModal({ open, onOpenChange, professionals, onSuccess, i
         });
       } else {
         // Create new block
-        const { error } = await supabase.from('appointments').insert({
+        const { error } = await supabase.from('time_blocks').insert({
           professional_id: professionalId,
-          patient_id: BLOCK_PATIENT_ID,
-          treatment_id: BLOCK_TREATMENT_ID,
-          appointment_start_time: startDateTime.toISOString(),
-          appointment_end_time: endDateTime.toISOString(),
-          status: 'Confirmed',
-          notes: reason || 'Horário bloqueado',
+          start_time: startDateTime.toISOString(),
+          end_time: endDateTime.toISOString(),
+          reason: reason || null,
+          block_type: blockType,
         });
 
         if (error) throw error;
