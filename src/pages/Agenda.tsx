@@ -66,7 +66,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-import { BLOCK_PATIENT_ID, BLOCK_TREATMENT_ID } from "@/lib/constants";
 import { logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 import { OptimizedImage } from "@/components/OptimizedImage";
@@ -107,6 +106,19 @@ interface AvailableSlot {
   duration: number;
   professionalId: string;
   professionalName: string;
+}
+
+interface TimeBlock {
+  id: string;
+  professional_id: string;
+  start_time: string;
+  end_time: string;
+  reason: string | null;
+  block_type: 'full_day' | 'morning' | 'afternoon' | 'custom';
+  professional?: {
+    full_name: string;
+    id: string;
+  } | null;
 }
 export default function Agenda() {
   const { user, signOut } = useAuth();
@@ -168,15 +180,10 @@ export default function Agenda() {
   // Configuração mínima de intervalo para considerar slot disponível
   const MIN_GAP_MINUTES = 30;
 
-  // Helper para identificar bloqueios
-  const isBlockedTime = (appointment: Appointment): boolean => {
-    return appointment.patient_id === BLOCK_PATIENT_ID;
-  };
-
   // Função para deletar bloqueio
   const handleDeleteBlock = async (blockId: string) => {
     try {
-      const { error } = await supabase.from("appointments").delete().eq("id", blockId);
+      const { error } = await supabase.from("time_blocks").delete().eq("id", blockId);
 
       if (error) throw error;
 
@@ -185,7 +192,7 @@ export default function Agenda() {
         description: "O horário foi desbloqueado com sucesso.",
       });
 
-      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["time_blocks"] });
     } catch (error) {
       logger.error("Erro ao deletar bloqueio:", error);
       toast({
@@ -198,11 +205,11 @@ export default function Agenda() {
   };
 
   // Função para editar bloqueio
-  const handleEditBlock = (appointment: Appointment) => {
+  const handleEditBlock = (block: TimeBlock) => {
     setBlockTimeInitialData({
-      professional_id: appointment.professional?.id,
-      date: new Date(appointment.appointment_start_time),
-      editingBlockId: appointment.id,
+      professional_id: block.professional_id,
+      date: new Date(block.start_time),
+      editingBlockId: block.id,
     });
     setBlockTimeModalOpen(true);
   };
@@ -379,6 +386,57 @@ export default function Agenda() {
       }
     },
   });
+
+  // Fetch time blocks
+  const { data: timeBlocks = [] } = useQuery({
+    queryKey: [
+      "time_blocks",
+      weekStart.toISOString(),
+      weekEnd.toISOString(),
+      userProfile.type,
+      userProfile.professionalId,
+    ],
+    queryFn: async () => {
+      try {
+        let query = supabase
+          .from("time_blocks")
+          .select(
+            `
+            id,
+            professional_id,
+            start_time,
+            end_time,
+            reason,
+            block_type,
+            professionals:professional_id (id, full_name)
+          `,
+          )
+          .gte("start_time", weekStart.toISOString())
+          .lte("start_time", weekEnd.toISOString())
+          .order("start_time");
+
+        // Se for profissional, filtrar apenas seus bloqueios
+        if (userProfile.type === "professional" && userProfile.professionalId) {
+          query = query.eq("professional_id", userProfile.professionalId);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        return (data || []).map((block: any) => ({
+          id: block.id,
+          professional_id: block.professional_id,
+          start_time: block.start_time,
+          end_time: block.end_time,
+          reason: block.reason,
+          block_type: block.block_type,
+          professional: block.professionals,
+        })) as TimeBlock[];
+      } catch (error) {
+        logger.error("Erro ao buscar bloqueios:", error);
+        return [];
+      }
+    },
+  });
   const handleLogout = async () => {
     await signOut();
     navigate("/");
@@ -502,6 +560,9 @@ export default function Agenda() {
       queryClient.invalidateQueries({
         queryKey: ["appointments"],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["time_blocks"],
+      });
       setStatusDialogOpen(false);
       setStatusChangeData(null);
     } catch (error) {
@@ -517,6 +578,7 @@ export default function Agenda() {
   // Função para calcular horários vagos baseado nos horários cadastrados
   const calculateAvailableSlots = (
     appointments: Appointment[],
+    blocks: TimeBlock[],
     date: Date,
     professionalId: string,
     professionalName: string,
@@ -530,12 +592,31 @@ export default function Agenda() {
     }
 
     const dayKey = format(date, "yyyy-MM-dd");
+    
+    // Combinar appointments e time_blocks em uma lista unificada de ocupações
     const dayAppointments = appointments
       .filter((apt) => {
         const aptDate = format(new Date(apt.appointment_start_time), "yyyy-MM-dd");
         return aptDate === dayKey && apt.professional?.id === professionalId;
       })
-      .sort((a, b) => new Date(a.appointment_start_time).getTime() - new Date(b.appointment_start_time).getTime());
+      .map(apt => ({
+        start: new Date(apt.appointment_start_time),
+        end: new Date(apt.appointment_end_time),
+      }));
+
+    const dayBlocks = blocks
+      .filter((block) => {
+        const blockDate = format(new Date(block.start_time), "yyyy-MM-dd");
+        return blockDate === dayKey && block.professional_id === professionalId;
+      })
+      .map(block => ({
+        start: new Date(block.start_time),
+        end: new Date(block.end_time),
+      }));
+
+    // Combinar e ordenar todas as ocupações
+    const allOccupations = [...dayAppointments, ...dayBlocks]
+      .sort((a, b) => a.start.getTime() - b.start.getTime());
 
     const gaps: AvailableSlot[] = [];
 
@@ -544,23 +625,20 @@ export default function Agenda() {
       let currentTime = new Date(period.start);
       const periodEnd = new Date(period.end);
 
-      // Processar agendamentos dentro deste período
-      for (const apt of dayAppointments) {
-        const aptStart = new Date(apt.appointment_start_time);
-        const aptEnd = new Date(apt.appointment_end_time);
-
-        // Ignorar agendamentos fora deste período
-        if (aptEnd <= period.start || aptStart >= period.end) {
+      // Processar ocupações dentro deste período
+      for (const occupation of allOccupations) {
+        // Ignorar ocupações fora deste período
+        if (occupation.end <= period.start || occupation.start >= period.end) {
           continue;
         }
 
-        // Gap antes do agendamento
-        if (aptStart.getTime() > currentTime.getTime()) {
-          const gapMinutes = (aptStart.getTime() - currentTime.getTime()) / 60000;
+        // Gap antes da ocupação
+        if (occupation.start.getTime() > currentTime.getTime()) {
+          const gapMinutes = (occupation.start.getTime() - currentTime.getTime()) / 60000;
           if (gapMinutes >= MIN_GAP_MINUTES) {
             gaps.push({
               start: new Date(currentTime),
-              end: new Date(aptStart),
+              end: new Date(occupation.start),
               duration: gapMinutes,
               professionalId,
               professionalName,
@@ -568,13 +646,13 @@ export default function Agenda() {
           }
         }
 
-        // Avançar currentTime para o fim do agendamento
-        if (aptEnd > currentTime) {
-          currentTime = new Date(aptEnd);
+        // Avançar currentTime para o fim da ocupação
+        if (occupation.end > currentTime) {
+          currentTime = new Date(occupation.end);
         }
       }
 
-      // Gap após último agendamento até o fim do período
+      // Gap após última ocupação até o fim do período
       if (currentTime.getTime() < periodEnd.getTime()) {
         const gapMinutes = (periodEnd.getTime() - currentTime.getTime()) / 60000;
         if (gapMinutes >= MIN_GAP_MINUTES) {
@@ -1255,6 +1333,7 @@ export default function Agenda() {
                               {dayAppointments.length > 0 ||
                               calculateAvailableSlots(
                                 filteredAppointments,
+                                timeBlocks,
                                 currentDay,
                                 professional.id,
                                 professional.full_name,
@@ -1263,17 +1342,30 @@ export default function Agenda() {
                                   {(() => {
                                     const slots = calculateAvailableSlots(
                                       filteredAppointments,
+                                      timeBlocks,
                                       currentDay,
                                       professional.id,
                                       professional.full_name,
                                     );
+                                    
+                                    // Buscar time blocks deste dia para este profissional
+                                    const dayBlocks = timeBlocks.filter((block) => {
+                                      const blockDate = format(new Date(block.start_time), "yyyy-MM-dd");
+                                      return blockDate === format(currentDay, "yyyy-MM-dd") && 
+                                             block.professional_id === professional.id;
+                                    });
+                                    
                                     const allItems: Array<{
-                                      type: "appointment" | "gap";
+                                      type: "appointment" | "gap" | "block";
                                       data: any;
                                     }> = [
                                       ...dayAppointments.map((apt) => ({
                                         type: "appointment" as const,
                                         data: apt,
+                                      })),
+                                      ...dayBlocks.map((block) => ({
+                                        type: "block" as const,
+                                        data: block,
                                       })),
                                       ...slots.map((slot) => ({
                                         type: "gap" as const,
@@ -1283,67 +1375,68 @@ export default function Agenda() {
                                       const timeA =
                                         a.type === "appointment"
                                           ? new Date(a.data.appointment_start_time).getTime()
-                                          : a.data.start.getTime();
+                                          : a.type === "block"
+                                            ? new Date(a.data.start_time).getTime()
+                                            : a.data.start.getTime();
                                       const timeB =
                                         b.type === "appointment"
                                           ? new Date(b.data.appointment_start_time).getTime()
-                                          : b.data.start.getTime();
+                                          : b.type === "block"
+                                            ? new Date(b.data.start_time).getTime()
+                                            : b.data.start.getTime();
                                       return timeA - timeB;
                                     });
                                     return allItems.map((item, idx) => {
-                                      if (item.type === "appointment") {
-                                        const appointment = item.data;
-                                        const isBlocked = isBlockedTime(appointment);
-
-                                        if (isBlocked) {
-                                          return (
-                                            <div
-                                              key={`apt-${appointment.id}`}
-                                              className="relative group bg-destructive/20 border-2 border-destructive/50 hover:border-destructive/70 text-destructive-foreground p-3 rounded-md shadow-sm transition-colors cursor-pointer"
-                                            >
-                                              <div className="flex items-center justify-between gap-2 mb-1">
-                                                <div className="flex items-center gap-2">
-                                                  <Ban className="h-4 w-4" />
-                                                  <div className="font-medium text-sm">
-                                                    {format(new Date(appointment.appointment_start_time), "HH:mm")} -{" "}
-                                                    {format(new Date(appointment.appointment_end_time), "HH:mm")}
-                                                  </div>
+                                      if (item.type === "block") {
+                                        const block = item.data as TimeBlock;
+                                        return (
+                                          <div
+                                            key={`block-${block.id}`}
+                                            className="relative group bg-destructive/20 border-2 border-destructive/50 hover:border-destructive/70 text-destructive-foreground p-3 rounded-md shadow-sm transition-colors cursor-pointer"
+                                          >
+                                            <div className="flex items-center justify-between gap-2 mb-1">
+                                              <div className="flex items-center gap-2">
+                                                <Ban className="h-4 w-4" />
+                                                <div className="font-medium text-sm">
+                                                  {format(new Date(block.start_time), "HH:mm")} -{" "}
+                                                  {format(new Date(block.end_time), "HH:mm")}
                                                 </div>
-                                                {userProfile.type === "receptionist" && (
-                                                  <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                      <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                      >
-                                                        <MoreVertical className="h-4 w-4" />
-                                                      </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-48">
-                                                      <DropdownMenuItem onClick={() => handleEditBlock(appointment)}>
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        Editar Bloqueio
-                                                      </DropdownMenuItem>
-                                                      <DropdownMenuItem
-                                                        onClick={() => setBlockToDelete(appointment.id)}
-                                                        className="text-destructive focus:text-destructive"
-                                                      >
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Remover Bloqueio
-                                                      </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                  </DropdownMenu>
-                                                )}
                                               </div>
-                                              <div className="text-sm font-medium">🚫 Horário Bloqueado</div>
-                                              {appointment.notes && (
-                                                <div className="text-xs mt-1 opacity-80">{appointment.notes}</div>
+                                              {userProfile.type === "receptionist" && (
+                                                <DropdownMenu>
+                                                  <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                      <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                  </DropdownMenuTrigger>
+                                                  <DropdownMenuContent align="end" className="w-48">
+                                                    <DropdownMenuItem onClick={() => handleEditBlock(block)}>
+                                                      <Edit className="mr-2 h-4 w-4" />
+                                                      Editar Bloqueio
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                      onClick={() => setBlockToDelete(block.id)}
+                                                      className="text-destructive focus:text-destructive"
+                                                    >
+                                                      <Trash2 className="mr-2 h-4 w-4" />
+                                                      Remover Bloqueio
+                                                    </DropdownMenuItem>
+                                                  </DropdownMenuContent>
+                                                </DropdownMenu>
                                               )}
                                             </div>
-                                          );
-                                        }
-
+                                            <div className="text-sm font-medium">🚫 Horário Bloqueado</div>
+                                            {block.reason && (
+                                              <div className="text-xs mt-1 opacity-80">{block.reason}</div>
+                                            )}
+                                          </div>
+                                        );
+                                      } else if (item.type === "appointment") {
+                                        const appointment = item.data;
                                         return (
                                           <div
                                             key={`apt-${appointment.id}`}
@@ -1496,7 +1589,7 @@ export default function Agenda() {
                                             </div>
                                           </div>
                                         );
-                                      } else {
+                                      } else if (item.type === "gap") {
                                         const gap = item.data;
                                         return (
                                           <div
@@ -1611,17 +1704,29 @@ export default function Agenda() {
                                   appointmentsByProfessional[professional.full_name]?.[dayKey] || [];
                                 const availableSlots = calculateAvailableSlots(
                                   filteredAppointments,
+                                  timeBlocks,
                                   day,
                                   professional.id,
                                   professional.full_name,
                                 );
+                                
+                                // Buscar time blocks deste dia para este profissional
+                                const dayTimeBlocks = timeBlocks.filter((block) => {
+                                  const blockDate = format(new Date(block.start_time), "yyyy-MM-dd");
+                                  return blockDate === dayKey && block.professional_id === professional.id;
+                                });
+                                
                                 const allItems: Array<{
-                                  type: "appointment" | "gap";
+                                  type: "appointment" | "gap" | "block";
                                   data: any;
                                 }> = [
                                   ...dayAppointments.map((apt) => ({
                                     type: "appointment" as const,
                                     data: apt,
+                                  })),
+                                  ...dayTimeBlocks.map((block) => ({
+                                    type: "block" as const,
+                                    data: block,
                                   })),
                                   ...availableSlots.map((slot) => ({
                                     type: "gap" as const,
@@ -1631,11 +1736,15 @@ export default function Agenda() {
                                   const timeA =
                                     a.type === "appointment"
                                       ? new Date(a.data.appointment_start_time).getTime()
-                                      : a.data.start.getTime();
+                                      : a.type === "block"
+                                        ? new Date(a.data.start_time).getTime()
+                                        : a.data.start.getTime();
                                   const timeB =
                                     b.type === "appointment"
                                       ? new Date(b.data.appointment_start_time).getTime()
-                                      : b.data.start.getTime();
+                                      : b.type === "block"
+                                        ? new Date(b.data.start_time).getTime()
+                                        : b.data.start.getTime();
                                   return timeA - timeB;
                                 });
                                 const isToday = format(day, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
@@ -1650,62 +1759,56 @@ export default function Agenda() {
                                     )}
                                   >
                                     {allItems.map((item, idx) => {
-                                      if (item.type === "appointment") {
-                                        const appointment = item.data;
-                                        const isBlocked = isBlockedTime(appointment);
-
-                                        if (isBlocked) {
-                                          return (
-                                            <div
-                                              key={`apt-${appointment.id}`}
-                                              className="relative group bg-destructive/20 border-2 border-destructive/50 hover:border-destructive/70 text-destructive-foreground p-2 rounded-md text-xs transition-colors cursor-pointer"
-                                            >
-                                              <div className="flex items-center justify-between gap-1 mb-0.5">
-                                                <div className="flex items-center gap-1">
-                                                  <Ban className="h-3 w-3" />
-                                                  <div className="font-medium">
-                                                    {format(new Date(appointment.appointment_start_time), "HH:mm")} -{" "}
-                                                    {format(new Date(appointment.appointment_end_time), "HH:mm")}
-                                                  </div>
+                                      if (item.type === "block") {
+                                        const block = item.data as TimeBlock;
+                                        return (
+                                          <div
+                                            key={`block-${block.id}`}
+                                            className="relative group bg-destructive/20 border-2 border-destructive/50 hover:border-destructive/70 text-destructive-foreground p-2 rounded-md text-xs transition-colors cursor-pointer"
+                                          >
+                                            <div className="flex items-center justify-between gap-1 mb-0.5">
+                                              <div className="flex items-center gap-1">
+                                                <Ban className="h-3 w-3" />
+                                                <div className="font-medium">
+                                                  {format(new Date(block.start_time), "HH:mm")} -{" "}
+                                                  {format(new Date(block.end_time), "HH:mm")}
                                                 </div>
-                                                {userProfile.type === "receptionist" && (
-                                                  <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                      <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                      >
-                                                        <MoreVertical className="h-3 w-3" />
-                                                      </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-48">
-                                                      <DropdownMenuItem onClick={() => handleEditBlock(appointment)}>
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        Editar Bloqueio
-                                                      </DropdownMenuItem>
-                                                      <DropdownMenuItem
-                                                        onClick={() => setBlockToDelete(appointment.id)}
-                                                        className="text-destructive focus:text-destructive"
-                                                      >
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Remover Bloqueio
-                                                      </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                  </DropdownMenu>
-                                                )}
                                               </div>
-                                              <div className="font-medium text-[10px]">🚫 Bloqueado</div>
-                                              {appointment.notes && (
-                                                <div className="text-[9px] mt-0.5 opacity-80 truncate">
-                                                  {appointment.notes}
-                                                </div>
+                                              {userProfile.type === "receptionist" && (
+                                                <DropdownMenu>
+                                                  <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                      <MoreVertical className="h-3 w-3" />
+                                                    </Button>
+                                                  </DropdownMenuTrigger>
+                                                  <DropdownMenuContent align="end" className="w-48">
+                                                    <DropdownMenuItem onClick={() => handleEditBlock(block)}>
+                                                      <Edit className="mr-2 h-4 w-4" />
+                                                      Editar Bloqueio
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                      onClick={() => setBlockToDelete(block.id)}
+                                                      className="text-destructive focus:text-destructive"
+                                                    >
+                                                      <Trash2 className="mr-2 h-4 w-4" />
+                                                      Remover Bloqueio
+                                                    </DropdownMenuItem>
+                                                  </DropdownMenuContent>
+                                                </DropdownMenu>
                                               )}
                                             </div>
-                                          );
-                                        }
-
-                                        return (
+                                            <div className="font-medium text-[10px]">🚫 Bloqueado</div>
+                                            {block.reason && (
+                                              <div className="text-[9px] mt-0.5 opacity-80 truncate">{block.reason}</div>
+                                            )}
+                                          </div>
+                                        );
+                                      } else if (item.type === "appointment") {
+                                        const appointment = item.data;
                                           <div
                                             key={`apt-${appointment.id}`}
                                             className={cn(
@@ -1860,7 +1963,7 @@ export default function Agenda() {
                                             </div>
                                           </div>
                                         );
-                                      } else {
+                                      } else if (item.type === "gap") {
                                         const gap = item.data;
                                         return (
                                           <div
