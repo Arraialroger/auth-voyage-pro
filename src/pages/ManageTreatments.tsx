@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { BLOCK_TREATMENT_ID } from '@/lib/constants';
 import { logger } from '@/lib/logger';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
@@ -55,6 +56,7 @@ export default function ManageTreatments() {
       const { data, error } = await supabase
         .from('treatments')
         .select('*')
+        .neq('id', BLOCK_TREATMENT_ID)
         .order('treatment_name');
 
       if (error) throw error;

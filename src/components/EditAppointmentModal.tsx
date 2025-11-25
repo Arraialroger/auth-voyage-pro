@@ -3,12 +3,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, Search, AlertTriangle } from 'lucide-react';
+import { CalendarIcon, Search } from 'lucide-react';
 import { createLocalDateTime, parseLocalDateTime } from '@/lib/dateUtils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { validateAppointment } from '@/lib/appointmentValidation';
 
 import {
   Dialog,
@@ -59,7 +58,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { logger } from '@/lib/logger';
 
@@ -89,8 +87,6 @@ export function EditAppointmentModal({ appointmentId, open, onOpenChange, onSucc
   const [patientSearchOpen, setPatientSearchOpen] = useState(false);
   const [cancelAndAddDialogOpen, setCancelAndAddDialogOpen] = useState(false);
   const [waitingListNotes, setWaitingListNotes] = useState('');
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
   const queryClient = useQueryClient();
 
   const form = useForm<AppointmentFormData>({
@@ -244,46 +240,41 @@ export function EditAppointmentModal({ appointmentId, open, onOpenChange, onSucc
   };
 
   const onSubmit = async (data: AppointmentFormData) => {
-    setValidationErrors([]);
-    setValidationWarnings([]);
-    
     try {
       // Combine date and time for start and end timestamps
       const startDateTime = createLocalDateTime(data.appointment_date, data.start_time);
       const endDateTime = createLocalDateTime(data.appointment_date, data.end_time);
 
-      // Run comprehensive validation (excluding current appointment)
-      const validation = await validateAppointment({
-        professionalId: data.professional_id,
-        patientId: data.patient_id,
-        startTime: startDateTime,
-        endTime: endDateTime,
-        excludeAppointmentId: appointmentId,
-      });
+      // Check for conflicting appointments (excluding current one)
+      const { data: conflictingAppointments, error: conflictError } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('professional_id', data.professional_id)
+        .neq('id', appointmentId)
+        .neq('status', 'Cancelled')
+        .lt('appointment_start_time', endDateTime.toISOString())
+        .gt('appointment_end_time', startDateTime.toISOString());
 
-      // If validation fails and it's not a squeeze-in, block submission
-      if (!validation.isValid && !data.is_squeeze_in) {
-        setValidationErrors(validation.errors);
-        setValidationWarnings(validation.warnings);
-        toast({
-          title: 'Erro de validação',
-          description: 'Corrija os erros antes de continuar ou marque como "Encaixe" para salvar mesmo assim.',
-          variant: 'destructive',
-        });
-        return;
-      }
+      if (conflictError) throw conflictError;
 
-      // If there are warnings, show them
-      if (validation.warnings.length > 0) {
-        setValidationWarnings(validation.warnings);
-      }
+      const isSqueezeIn = data.is_squeeze_in;
 
-      // If it's a squeeze-in and there are errors, show warning toast
-      if (!validation.isValid && data.is_squeeze_in) {
-        toast({
-          title: 'Encaixe atualizado',
-          description: 'Este agendamento foi atualizado como encaixe apesar dos conflitos.',
-        });
+      if (conflictingAppointments && conflictingAppointments.length > 0) {
+        if (!isSqueezeIn) {
+          // Se NÃO for encaixe, bloquear normalmente
+          toast({
+            title: 'Conflito de horário',
+            description: 'Este horário já está ocupado. Marque como "Encaixe" se desejar salvar mesmo assim.',
+            variant: 'destructive',
+          });
+          return;
+        } else {
+          // Se FOR encaixe, apenas avisar mas permitir
+          toast({
+            title: 'Encaixe atualizado',
+            description: 'Este agendamento está marcado como encaixe devido ao conflito de horário.',
+          });
+        }
       }
 
       const { error } = await supabase
@@ -358,33 +349,6 @@ export function EditAppointmentModal({ appointmentId, open, onOpenChange, onSucc
             <div className="flex-1 overflow-y-auto px-1">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" id="edit-appointment-form">
-                  {/* Validation Alerts */}
-                  {validationErrors.length > 0 && (
-                    <Alert variant="destructive">
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription>
-                        <ul className="list-disc list-inside text-sm">
-                          {validationErrors.map((error, idx) => (
-                            <li key={idx}>{error}</li>
-                          ))}
-                        </ul>
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  
-                  {validationWarnings.length > 0 && (
-                    <Alert>
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription>
-                        <ul className="list-disc list-inside text-sm">
-                          {validationWarnings.map((warning, idx) => (
-                            <li key={idx}>{warning}</li>
-                          ))}
-                        </ul>
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
                   <FormField
                     control={form.control}
                     name="patient_id"

@@ -219,27 +219,11 @@ export const BulkScheduleModal = ({ isOpen, onClose, treatmentPlan, onSuccess }:
 
     setIsScheduling(true);
     let successCount = 0;
-    let skipCount = 0;
 
     try {
       for (const slot of suggestedSlots) {
         const item = selectedItems.find(i => i.id === slot.itemId);
         if (!item) continue;
-
-        // Validate appointment before creating
-        const validation = await validateAppointment({
-          professionalId: treatmentPlan.professional_id,
-          patientId: treatmentPlan.patient_id,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-        });
-
-        // Skip this slot if validation fails (e.g., conflicts with time_blocks)
-        if (!validation.isValid) {
-          logger.error(`Slot validation failed for ${item.procedure_description}:`, validation.errors);
-          skipCount++;
-          continue;
-        }
 
         // Create appointment
         const { data: appointment, error: aptError } = await supabase
@@ -274,13 +258,9 @@ export const BulkScheduleModal = ({ isOpen, onClose, treatmentPlan, onSuccess }:
         successCount++;
       }
 
-      const message = skipCount > 0 
-        ? `${successCount} procedimentos agendados. ${skipCount} foram pulados devido a conflitos.`
-        : `${successCount} procedimentos agendados com sucesso.`;
-
       toast({
         title: "Agendamentos criados!",
-        description: message,
+        description: `${successCount} procedimentos agendados com sucesso.`,
       });
 
       onSuccess();

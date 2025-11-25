@@ -93,19 +93,7 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
   const queryClient = useQueryClient();
 
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
-  const setOpen = (value: boolean) => {
-    if (externalOnOpenChange) {
-      externalOnOpenChange(value);
-    } else {
-      setInternalOpen(value);
-    }
-    
-    // Clear validation states when closing
-    if (!value) {
-      setValidationErrors([]);
-      setValidationWarnings([]);
-    }
-  };
+  const setOpen = externalOnOpenChange || setInternalOpen;
 
   const form = useForm<AppointmentFormData>({
     resolver: zodResolver(appointmentSchema),
@@ -203,46 +191,41 @@ export function NewAppointmentModal({ trigger, onSuccess, open: externalOpen, on
 
   const onSubmit = async (data: AppointmentFormData) => {
     setIsSubmitting(true);
-    setValidationErrors([]);
-    setValidationWarnings([]);
-    
     try {
       // Combine date and time for start and end timestamps
       const startDateTime = createLocalDateTime(data.appointment_date, data.start_time);
       const endDateTime = createLocalDateTime(data.appointment_date, data.end_time);
 
-      // Run comprehensive validation
-      const validation = await validateAppointment({
-        professionalId: data.professional_id,
-        patientId: data.patient_id,
-        startTime: startDateTime,
-        endTime: endDateTime,
-      });
+      // Check for conflicting appointments
+      const { data: conflictingAppointments, error: conflictError } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('professional_id', data.professional_id)
+        .neq('status', 'Cancelled')
+        .lt('appointment_start_time', endDateTime.toISOString())
+        .gt('appointment_end_time', startDateTime.toISOString());
 
-      // If validation fails and it's not a squeeze-in, block submission
-      if (!validation.isValid && !data.is_squeeze_in) {
-        setValidationErrors(validation.errors);
-        setValidationWarnings(validation.warnings);
-        toast({
-          title: 'Erro de validação',
-          description: 'Corrija os erros antes de continuar ou marque como "Encaixe" para criar mesmo assim.',
-          variant: 'destructive',
-        });
-        setIsSubmitting(false);
-        return;
-      }
+      if (conflictError) throw conflictError;
 
-      // If there are warnings, show them
-      if (validation.warnings.length > 0) {
-        setValidationWarnings(validation.warnings);
-      }
+      const isSqueezeIn = data.is_squeeze_in;
 
-      // If it's a squeeze-in and there are errors, show warning toast
-      if (!validation.isValid && data.is_squeeze_in) {
-        toast({
-          title: 'Encaixe criado',
-          description: 'Este agendamento foi criado como encaixe apesar dos conflitos.',
-        });
+      if (conflictingAppointments && conflictingAppointments.length > 0) {
+        if (!isSqueezeIn) {
+          // Se NÃO for encaixe, bloquear normalmente
+          toast({
+            title: 'Conflito de horário',
+            description: 'Este horário já está ocupado. Marque como "Encaixe" se desejar criar mesmo assim.',
+            variant: 'destructive',
+          });
+          setIsSubmitting(false);
+          return;
+        } else {
+          // Se FOR encaixe, apenas avisar mas permitir
+          toast({
+            title: 'Encaixe criado',
+            description: 'Este agendamento será marcado como encaixe devido ao conflito de horário.',
+          });
+        }
       }
 
       // Create appointment
