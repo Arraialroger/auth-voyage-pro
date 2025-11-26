@@ -877,6 +877,7 @@ export type Database = {
         | "No-Show"
         | "Pending Confirmation"
         | "Patient Arrived"
+      block_type_enum: "full_day" | "morning" | "afternoon" | "custom"
       certificate_type_enum: "attendance" | "medical_leave" | "fitness"
       expense_category_enum:
         | "rent"
@@ -1072,6 +1073,7 @@ export const Constants = {
         "Pending Confirmation",
         "Patient Arrived",
       ],
+      block_type_enum: ["full_day", "morning", "afternoon", "custom"],
       certificate_type_enum: ["attendance", "medical_leave", "fitness"],
       expense_category_enum: [
         "rent",
