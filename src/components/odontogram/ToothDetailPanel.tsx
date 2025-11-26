@@ -59,15 +59,15 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
 
   // Buscar planos de tratamento do paciente
   const { data: treatmentPlans, refetch: refetchPlans } = useQuery({
-    queryKey: ['treatment-plans-active', patientId],
+    queryKey: ["treatment-plans-active", patientId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('treatment_plans')
-        .select('id, status, created_at, professional:professionals(full_name)')
-        .eq('patient_id', patientId)
-        .in('status', ['draft', 'approved', 'in_progress'])
-        .order('created_at', { ascending: false });
-      
+        .from("treatment_plans")
+        .select("id, status, created_at, professional:professionals(full_name)")
+        .eq("patient_id", patientId)
+        .in("status", ["draft", "approved", "in_progress"])
+        .order("created_at", { ascending: false });
+
       if (error) throw error;
       return data;
     },
@@ -86,75 +86,74 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
 
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       // Buscar professional_id se for profissional
       let professionalId = null;
       if (user) {
         const { data: professional } = await supabase
-          .from('professionals')
-          .select('id')
-          .eq('user_id', user.id)
+          .from("professionals")
+          .select("id")
+          .eq("user_id", user.id)
           .single();
         professionalId = professional?.id;
       }
 
       // Atualizar ou criar registro do odontograma
-      const { error: odontogramError } = await supabase
-        .from('odontogram_records')
-        .upsert({
+      const { error: odontogramError } = await supabase.from("odontogram_records").upsert(
+        {
           patient_id: patientId,
           tooth_number: toothNumber,
           status: newStatus as any,
           notes,
           last_updated_by: user?.id,
           last_updated_at: new Date().toISOString(),
-        }, { 
-          onConflict: 'patient_id,tooth_number' 
-        });
+        },
+        {
+          onConflict: "patient_id,tooth_number",
+        },
+      );
 
       if (odontogramError) throw odontogramError;
 
       // Registrar procedimento
-      const { error: procedureError } = await supabase
-        .from('tooth_procedures')
-        .insert({
-          patient_id: patientId,
-          tooth_number: toothNumber,
-          procedure_type: procedureType,
-          professional_id: professionalId,
-          notes,
-          faces: selectedFaces as any,
-          material_used: materialUsed || null,
-          status_before: currentStatus as any,
-          status_after: newStatus as any,
-        });
+      const { error: procedureError } = await supabase.from("tooth_procedures").insert({
+        patient_id: patientId,
+        tooth_number: toothNumber,
+        procedure_type: procedureType,
+        professional_id: professionalId,
+        notes,
+        faces: selectedFaces as any,
+        material_used: materialUsed || null,
+        status_before: currentStatus as any,
+        status_after: newStatus as any,
+      });
 
       if (procedureError) throw procedureError;
 
       // Adicionar ao plano de tratamento se selecionado
       if (addToPlan && selectedPlanId) {
-        const procedureDescription = `${procedureType} - Dente ${toothNumber}${selectedFaces.length > 0 ? ` (${selectedFaces.join(', ')})` : ''}`;
-        
-        const { error: planItemError } = await supabase
-          .from('treatment_plan_items')
-          .insert({
-            treatment_plan_id: selectedPlanId,
-            tooth_number: toothNumber,
-            procedure_description: procedureDescription,
-            estimated_cost: estimatedCost ? parseFloat(estimatedCost) : 0,
-            status: planItemStatus,
-            notes: notes || null,
-            completed_at: planItemStatus === 'completed' ? new Date().toISOString() : null,
-          });
+        const procedureDescription = `${procedureType} - Dente ${toothNumber}${selectedFaces.length > 0 ? ` (${selectedFaces.join(", ")})` : ""}`;
+
+        const { error: planItemError } = await supabase.from("treatment_plan_items").insert({
+          treatment_plan_id: selectedPlanId,
+          tooth_number: toothNumber,
+          procedure_description: procedureDescription,
+          estimated_cost: estimatedCost ? parseFloat(estimatedCost) : 0,
+          status: planItemStatus,
+          notes: notes || null,
+          completed_at: planItemStatus === "completed" ? new Date().toISOString() : null,
+        });
 
         if (planItemError) throw planItemError;
-        
+
         toast.success("Procedimento registrado e adicionado ao plano!");
       } else {
         toast.success("Procedimento registrado com sucesso!");
       }
-      
+
       // Limpar formulário
       setProcedureType("");
       setNotes("");
@@ -164,10 +163,10 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
       setSelectedPlanId("");
       setEstimatedCost("");
       setPlanItemStatus("pending");
-      
+
       onUpdate();
     } catch (error) {
-      logger.error('Erro ao salvar:', error);
+      logger.error("Erro ao salvar:", error);
       toast.error("Erro ao salvar procedimento");
     } finally {
       setSaving(false);
@@ -175,16 +174,12 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
   };
 
   const handleFaceToggle = (face: string) => {
-    setSelectedFaces(prev => 
-      prev.includes(face) 
-        ? prev.filter(f => f !== face)
-        : [...prev, face]
-    );
+    setSelectedFaces((prev) => (prev.includes(face) ? prev.filter((f) => f !== face) : [...prev, face]));
   };
 
   const handlePlanCreated = async () => {
     await refetchPlans();
-    
+
     // Automaticamente seleciona o plano mais recente
     const plans = await refetchPlans();
     if (plans.data && plans.data.length > 0) {
@@ -197,9 +192,7 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          Dente {toothNumber}
-        </CardTitle>
+        <CardTitle className="flex items-center gap-2">Dente {toothNumber}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
@@ -209,7 +202,7 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {statusOptions.map(opt => (
+              {statusOptions.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
                   {opt.label}
                 </SelectItem>
@@ -225,6 +218,8 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
               <SelectValue placeholder="Selecione..." />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="exame">Clareamento</SelectItem>
+              <SelectItem value="exame">limpeza de Tártaro</SelectItem>
               <SelectItem value="exame">Exame Inicial</SelectItem>
               <SelectItem value="restauracao">Restauração</SelectItem>
               <SelectItem value="extracao">Extração</SelectItem>
@@ -240,7 +235,7 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
         <div>
           <Label className="mb-2 block">Faces Afetadas</Label>
           <div className="grid grid-cols-2 gap-2">
-            {faceOptions.map(face => (
+            {faceOptions.map((face) => (
               <div key={face.value} className="flex items-center gap-2">
                 <Checkbox
                   id={`face-${face.value}`}
@@ -298,9 +293,15 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
                 <Info className="h-4 w-4" />
                 <AlertDescription className="text-sm">
                   <div className="space-y-1">
-                    <p><strong>✅ Concluído:</strong> O procedimento já foi realizado</p>
-                    <p><strong>⏳ Pendente:</strong> Procedimento planejado para o futuro</p>
-                    <p><strong>🔄 Em Andamento:</strong> Procedimento iniciado mas não finalizado</p>
+                    <p>
+                      <strong>✅ Concluído:</strong> O procedimento já foi realizado
+                    </p>
+                    <p>
+                      <strong>⏳ Pendente:</strong> Procedimento planejado para o futuro
+                    </p>
+                    <p>
+                      <strong>🔄 Em Andamento:</strong> Procedimento iniciado mas não finalizado
+                    </p>
                   </div>
                 </AlertDescription>
               </Alert>
@@ -309,11 +310,7 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
                 <Alert>
                   <AlertDescription className="flex items-center justify-between gap-2">
                     <span className="text-sm">Nenhum plano de tratamento ativo encontrado.</span>
-                    <Button 
-                      type="button"
-                      size="sm"
-                      onClick={() => setShowCreatePlanModal(true)}
-                    >
+                    <Button type="button" size="sm" onClick={() => setShowCreatePlanModal(true)}>
                       <Plus className="w-4 h-4 mr-2" />
                       Criar Plano
                     </Button>
@@ -333,21 +330,24 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
                             <SelectItem key={plan.id} value={plan.id}>
                               <div className="flex items-center gap-2">
                                 <span>
-                                  {new Date(plan.created_at).toLocaleDateString('pt-BR', { 
-                                    month: 'short', 
-                                    year: 'numeric' 
+                                  {new Date(plan.created_at).toLocaleDateString("pt-BR", {
+                                    month: "short",
+                                    year: "numeric",
                                   })}
                                 </span>
                                 <Badge variant="outline" className="text-xs">
-                                  {plan.status === 'draft' ? 'Rascunho' : 
-                                   plan.status === 'approved' ? 'Aprovado' : 'Em Andamento'}
+                                  {plan.status === "draft"
+                                    ? "Rascunho"
+                                    : plan.status === "approved"
+                                      ? "Aprovado"
+                                      : "Em Andamento"}
                                 </Badge>
                               </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                      <Button 
+                      <Button
                         type="button"
                         variant="outline"
                         size="icon"
@@ -389,11 +389,7 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
           )}
         </div>
 
-        <Button 
-          onClick={handleSave} 
-          disabled={saving}
-          className="w-full"
-        >
+        <Button onClick={handleSave} disabled={saving} className="w-full">
           <Save className="w-4 h-4 mr-2" />
           {saving ? "Salvando..." : addToPlan ? "Registrar e Adicionar ao Plano" : "Registrar Procedimento"}
         </Button>
