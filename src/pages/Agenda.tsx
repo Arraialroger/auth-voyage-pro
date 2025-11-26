@@ -32,6 +32,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { startOfWeek, endOfWeek, format, addDays, addWeeks, subWeeks } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatUTCTime, formatUTCDate } from "@/lib/dateUtils";
 import { NewAppointmentModal } from "@/components/NewAppointmentModal";
 import { EditAppointmentModal } from "@/components/EditAppointmentModal";
 import { AddToWaitingListModal } from "@/components/AddToWaitingListModal";
@@ -532,7 +533,7 @@ export default function Agenda() {
     const dayKey = format(date, "yyyy-MM-dd");
     const dayAppointments = appointments
       .filter((apt) => {
-        const aptDate = format(new Date(apt.appointment_start_time), "yyyy-MM-dd");
+        const aptDate = formatUTCDate(apt.appointment_start_time, "yyyy-MM-dd");
         return aptDate === dayKey && apt.professional?.id === professionalId;
       })
       .sort((a, b) => new Date(a.appointment_start_time).getTime() - new Date(b.appointment_start_time).getTime());
@@ -709,7 +710,7 @@ export default function Agenda() {
         if (!acc[professionalName]) {
           acc[professionalName] = {};
         }
-        const dayKey = format(new Date(apt.appointment_start_time), "yyyy-MM-dd");
+        const dayKey = formatUTCDate(apt.appointment_start_time, "yyyy-MM-dd");
         if (!acc[professionalName][dayKey]) {
           acc[professionalName][dayKey] = [];
         }
@@ -1305,8 +1306,8 @@ export default function Agenda() {
                                                 <div className="flex items-center gap-2">
                                                   <Ban className="h-4 w-4" />
                                                   <div className="font-medium text-sm">
-                                                    {format(new Date(appointment.appointment_start_time), "HH:mm")} -{" "}
-                                                    {format(new Date(appointment.appointment_end_time), "HH:mm")}
+                                                    {formatUTCTime(appointment.appointment_start_time)} -{" "}
+                                                    {formatUTCTime(appointment.appointment_end_time)}
                                                   </div>
                                                 </div>
                                                 {userProfile.type === "receptionist" && (
@@ -1377,8 +1378,8 @@ export default function Agenda() {
                                                         : "text-primary-foreground",
                                                     )}
                                                   >
-                                                    {format(new Date(appointment.appointment_start_time), "HH:mm")} -{" "}
-                                                    {format(new Date(appointment.appointment_end_time), "HH:mm")}
+                                                    {formatUTCTime(appointment.appointment_start_time)} -{" "}
+                                                    {formatUTCTime(appointment.appointment_end_time)}
                                                   </div>
                                                   {appointment.is_squeeze_in && (
                                                     <Badge
@@ -1664,8 +1665,8 @@ export default function Agenda() {
                                                 <div className="flex items-center gap-1">
                                                   <Ban className="h-3 w-3" />
                                                   <div className="font-medium">
-                                                    {format(new Date(appointment.appointment_start_time), "HH:mm")} -{" "}
-                                                    {format(new Date(appointment.appointment_end_time), "HH:mm")}
+                                                    {formatUTCTime(appointment.appointment_start_time)} -{" "}
+                                                    {formatUTCTime(appointment.appointment_end_time)}
                                                   </div>
                                                 </div>
                                                 {userProfile.type === "receptionist" && (
@@ -1731,8 +1732,8 @@ export default function Agenda() {
                                               >
                                                 <div className="flex items-center gap-1 mb-0.5 flex-wrap">
                                                   <div className="font-medium">
-                                                    {format(new Date(appointment.appointment_start_time), "HH:mm")} -{" "}
-                                                    {format(new Date(appointment.appointment_end_time), "HH:mm")}
+                                                    {formatUTCTime(appointment.appointment_start_time)} -{" "}
+                                                    {formatUTCTime(appointment.appointment_end_time)}
                                                   </div>
                                                   {appointment.is_squeeze_in && (
                                                     <Badge variant="warning" className="text-[9px] px-1 py-0">

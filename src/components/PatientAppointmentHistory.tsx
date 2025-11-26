@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { formatUTCTime, formatUTCDate } from '@/lib/dateUtils';
 import { logger } from '@/lib/logger';
 
 interface Appointment {
@@ -126,7 +127,7 @@ export function PatientAppointmentHistory({ patientId }: PatientAppointmentHisto
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-primary" />
               <span className="font-medium text-foreground">
-                {format(new Date(appointment.appointment_start_time), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                {formatUTCDate(appointment.appointment_start_time, "dd 'de' MMMM 'de' yyyy")}
               </span>
             </div>
             <Badge className={statusColors[appointment.status] || 'bg-muted'}>
@@ -138,7 +139,7 @@ export function PatientAppointmentHistory({ patientId }: PatientAppointmentHisto
             <div className="flex items-center gap-2 text-muted-foreground">
               <Clock className="h-4 w-4" />
               <span>
-                {format(new Date(appointment.appointment_start_time), 'HH:mm', { locale: ptBR })} - {format(new Date(appointment.appointment_end_time), 'HH:mm', { locale: ptBR })}
+                {formatUTCTime(appointment.appointment_start_time)} - {formatUTCTime(appointment.appointment_end_time)}
               </span>
             </div>
 
