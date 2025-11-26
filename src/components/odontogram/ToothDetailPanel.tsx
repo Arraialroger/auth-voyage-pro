@@ -225,8 +225,6 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
               <SelectItem value="limpeza">Limpeza</SelectItem>
               <SelectItem value="coroa">Instalação de Coroa</SelectItem>
               <SelectItem value="implante">Implante</SelectItem>
-              <SelectItem value="exame">Clareamento</SelectItem>
-              <SelectItem value="exame">limpeza de Tártaro</SelectItem>
               <SelectItem value="outro">Outro</SelectItem>
             </SelectContent>
           </Select>
