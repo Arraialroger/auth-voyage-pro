@@ -217,16 +217,18 @@ export const ToothDetailPanel = ({ toothNumber, patientId, currentStatus, onUpda
             <SelectTrigger>
               <SelectValue placeholder="Selecione..." />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="exame">Exame Inicial</SelectItem>
-              <SelectItem value="restauracao">Restauração</SelectItem>
-              <SelectItem value="extracao">Extração</SelectItem>
-              <SelectItem value="canal">Tratamento de Canal</SelectItem>
-              <SelectItem value="limpeza">Limpeza</SelectItem>
-              <SelectItem value="coroa">Instalação de Coroa</SelectItem>
-              <SelectItem value="implante">Implante</SelectItem>
-              <SelectItem value="outro">Outro</SelectItem>
-            </SelectContent>
+          <SelectContent>
+            <SelectItem value="exame">Exame Inicial</SelectItem>
+            <SelectItem value="restauracao">Restauração</SelectItem>
+            <SelectItem value="extracao">Extração</SelectItem>
+            <SelectItem value="canal">Tratamento de Canal</SelectItem>
+            <SelectItem value="limpeza">Limpeza</SelectItem>
+            <SelectItem value="limpeza_tartaro">Limpeza de Tártaro</SelectItem>
+            <SelectItem value="clareamento">Clareamento</SelectItem>
+            <SelectItem value="coroa">Instalação de Coroa</SelectItem>
+            <SelectItem value="implante">Implante</SelectItem>
+            <SelectItem value="outro">Outro</SelectItem>
+          </SelectContent>
           </Select>
         </div>
 
