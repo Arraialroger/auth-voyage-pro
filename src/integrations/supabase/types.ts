@@ -310,6 +310,104 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_entries: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          payment_id: string
+          payment_method: Database["public"]["Enums"]["payment_method_enum"]
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          payment_id: string
+          payment_method: Database["public"]["Enums"]["payment_method_enum"]
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          payment_id?: string
+          payment_method?: Database["public"]["Enums"]["payment_method_enum"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_entries_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          created_at: string
+          discount_amount: number
+          discount_type: string | null
+          discount_value: number | null
+          id: string
+          installment_number: number
+          notes: string | null
+          patient_id: string
+          payment_date: string
+          registered_by: string
+          subtotal: number
+          total_amount: number
+          total_installments: number
+          treatment_plan_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          discount_amount?: number
+          discount_type?: string | null
+          discount_value?: number | null
+          id?: string
+          installment_number?: number
+          notes?: string | null
+          patient_id: string
+          payment_date?: string
+          registered_by: string
+          subtotal: number
+          total_amount: number
+          total_installments?: number
+          treatment_plan_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          discount_amount?: number
+          discount_type?: string | null
+          discount_value?: number | null
+          id?: string
+          installment_number?: number
+          notes?: string | null
+          patient_id?: string
+          payment_date?: string
+          registered_by?: string
+          subtotal?: number
+          total_amount?: number
+          total_installments?: number
+          treatment_plan_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_treatment_plan_id_fkey"
+            columns: ["treatment_plan_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prescription_items: {
         Row: {
           created_at: string
