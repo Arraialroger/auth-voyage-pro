@@ -14,6 +14,7 @@ import { TreatmentPlanView } from '@/components/treatment-plan/TreatmentPlanView
 import { TreatmentPlanProgressDashboard } from '@/components/treatment-plan/TreatmentPlanProgressDashboard';
 import { PrescriptionView } from '@/components/prescription/PrescriptionView';
 import { CertificateView } from '@/components/prescription/CertificateView';
+import { FinancialView } from '@/components/financial/FinancialView';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ArrowLeft, Upload, Download, FileText, Image, Trash2, Eye, MessageCircle, Save, Loader2 } from 'lucide-react';
@@ -419,6 +420,13 @@ export default function PatientDetails() {
               >
                 Histórico de Consultas
               </Button>
+              <Button
+                variant={activeSubTab === 'financial' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveSubTab('financial')}
+              >
+                💰 Financeiro
+              </Button>
             </div>
 
             {/* Conteúdo: Informações Pessoais */}
@@ -598,6 +606,13 @@ export default function PatientDetails() {
             {activeSubTab === 'history' && (
               <div className="animate-enter">
                 <PatientAppointmentHistory patientId={patientId!} />
+              </div>
+            )}
+
+            {/* Conteúdo: Financeiro */}
+            {activeSubTab === 'financial' && (
+              <div className="animate-enter">
+                <FinancialView patientId={patientId!} />
               </div>
             )}
           </TabsContent>
