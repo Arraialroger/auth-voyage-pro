@@ -22,6 +22,7 @@ import { logger } from "@/lib/logger";
 import { Save, FileText, Plus, Info, MapPin } from "lucide-react";
 import { getToothInfo, getStatusLabel } from "@/lib/toothUtils";
 import { CreateTreatmentPlanModal } from "@/components/treatment-plan/CreateTreatmentPlanModal";
+import { ToothFaceSelector } from "./ToothFaceSelector";
 
 interface ToothModalProps {
   isOpen: boolean;
@@ -57,13 +58,7 @@ const procedureOptions = [
   { value: "outro", label: "Outro" },
 ];
 
-const faceOptions = [
-  { value: "oclusal", label: "O", fullLabel: "Oclusal" },
-  { value: "mesial", label: "M", fullLabel: "Mesial" },
-  { value: "distal", label: "D", fullLabel: "Distal" },
-  { value: "vestibular", label: "V", fullLabel: "Vestibular" },
-  { value: "lingual", label: "L", fullLabel: "Lingual/Palatina" },
-];
+// Face options movidas para ToothFaceSelector
 
 export const ToothModal = ({
   isOpen,
@@ -249,33 +244,14 @@ export const ToothModal = ({
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {/* Seleção de Faces */}
+            {/* Seleção Visual de Faces */}
             <div>
-              <Label className="mb-2 block">Selecione as Faces</Label>
-              <div className="flex gap-2 justify-center">
-                {faceOptions.map((face) => (
-                  <button
-                    key={face.value}
-                    type="button"
-                    onClick={() => handleFaceToggle(face.value)}
-                    className={`
-                      w-12 h-12 rounded-lg border-2 font-bold text-lg transition-all
-                      ${selectedFaces.includes(face.value) 
-                        ? 'bg-primary text-primary-foreground border-primary' 
-                        : 'bg-muted hover:bg-muted/80 border-border'
-                      }
-                    `}
-                    title={face.fullLabel}
-                  >
-                    {face.label}
-                  </button>
-                ))}
-              </div>
-              {selectedFaces.length > 0 && (
-                <p className="text-xs text-muted-foreground text-center mt-2">
-                  {selectedFaces.map(f => faceOptions.find(fo => fo.value === f)?.fullLabel).join(", ")}
-                </p>
-              )}
+              <Label className="mb-2 block text-center">Selecione as Faces Afetadas</Label>
+              <ToothFaceSelector
+                selectedFaces={selectedFaces}
+                onFaceToggle={handleFaceToggle}
+                toothNumber={toothNumber}
+              />
             </div>
 
             <Separator />
