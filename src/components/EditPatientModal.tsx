@@ -11,6 +11,7 @@ import { FileText, Upload, Download, X, Eye, Image, MessageCircle, CheckCircle2 
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { PatientAppointmentHistory } from '@/components/PatientAppointmentHistory';
+import { FinancialView } from '@/components/financial/FinancialView';
 import { logger } from '@/lib/logger';
 import { validateCPF, validatePhone, formatPhone, formatCPFMask, suggestCorrectCPF, cleanPhone, cleanCPF } from '@/lib/validators';
 import { format } from 'date-fns';
@@ -469,10 +470,11 @@ export function EditPatientModal({ patientId, open, onOpenChange, onSave }: Edit
           </DialogHeader>
 
           <Tabs defaultValue="info" className="flex-1 flex flex-col min-h-0">
-            <TabsList className="mx-6 mt-4 grid w-auto grid-cols-3 shrink-0">
+            <TabsList className="mx-6 mt-4 grid w-auto grid-cols-4 shrink-0">
               <TabsTrigger value="info">Informações</TabsTrigger>
               <TabsTrigger value="documents">Documentos</TabsTrigger>
               <TabsTrigger value="history">Histórico</TabsTrigger>
+              <TabsTrigger value="financial">💰 Financeiro</TabsTrigger>
             </TabsList>
 
             <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-4">
@@ -728,6 +730,11 @@ export function EditPatientModal({ patientId, open, onOpenChange, onSave }: Edit
               {/* Tab: Histórico */}
               <TabsContent value="history" className="mt-6">
                 <PatientAppointmentHistory patientId={patientId} />
+              </TabsContent>
+
+              {/* Tab: Financeiro */}
+              <TabsContent value="financial" className="mt-6">
+                <FinancialView patientId={patientId} />
               </TabsContent>
             </div>
           </Tabs>
