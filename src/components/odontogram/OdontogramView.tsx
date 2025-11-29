@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { OdontogramCanvas } from "./OdontogramCanvas";
-import { ToothDetailPanel } from "./ToothDetailPanel";
+import { ToothModal } from "./ToothModal";
 import { ProcedureHistory } from "./ProcedureHistory";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -12,6 +12,7 @@ interface OdontogramViewProps {
 
 export const OdontogramView = ({ patientId }: OdontogramViewProps) => {
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { data: teeth, isLoading, refetch } = useQuery({
     queryKey: ['odontogram', patientId],
@@ -27,7 +28,8 @@ export const OdontogramView = ({ patientId }: OdontogramViewProps) => {
   });
 
   const handleToothClick = (toothNumber: number) => {
-    setSelectedTooth(selectedTooth === toothNumber ? null : toothNumber);
+    setSelectedTooth(toothNumber);
+    setIsModalOpen(true);
   };
 
   const getCurrentToothStatus = () => {
@@ -36,14 +38,19 @@ export const OdontogramView = ({ patientId }: OdontogramViewProps) => {
     return tooth?.status || "higido";
   };
 
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleSuccess = () => {
+    refetch();
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-[400px] w-full" />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Skeleton className="h-[300px]" />
-          <Skeleton className="h-[300px]" />
-        </div>
+        <Skeleton className="h-[300px] w-full" />
       </div>
     );
   }
@@ -56,30 +63,23 @@ export const OdontogramView = ({ patientId }: OdontogramViewProps) => {
         selectedTooth={selectedTooth}
       />
 
+      {/* Modal centralizado para detalhes do dente */}
       {selectedTooth && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ToothDetailPanel
-            toothNumber={selectedTooth}
-            patientId={patientId}
-            currentStatus={getCurrentToothStatus()}
-            onUpdate={() => {
-              refetch();
-              setSelectedTooth(null);
-            }}
-          />
-          <ProcedureHistory
-            toothNumber={selectedTooth}
-            patientId={patientId}
-          />
-        </div>
-      )}
-
-      {!selectedTooth && (
-        <ProcedureHistory
-          toothNumber={null}
+        <ToothModal
+          isOpen={isModalOpen}
+          onClose={handleModalClose}
+          toothNumber={selectedTooth}
           patientId={patientId}
+          currentStatus={getCurrentToothStatus()}
+          onSuccess={handleSuccess}
         />
       )}
+
+      {/* Histórico de todos os procedimentos */}
+      <ProcedureHistory
+        toothNumber={null}
+        patientId={patientId}
+      />
     </div>
   );
 };
