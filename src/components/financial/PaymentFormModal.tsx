@@ -263,12 +263,15 @@ export const PaymentFormModal = ({
           {treatmentPlans && treatmentPlans.length > 0 && (
             <div>
               <Label>Plano de Tratamento (opcional)</Label>
-              <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
+              <Select 
+                value={selectedPlanId || "none"} 
+                onValueChange={(v) => setSelectedPlanId(v === "none" ? "" : v)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Vincular a um plano..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum</SelectItem>
+                  <SelectItem value="none">Nenhum</SelectItem>
                   {treatmentPlans.map((plan) => (
                     <SelectItem key={plan.id} value={plan.id}>
                       {plan.title || 'Plano sem título'} - R$ {plan.total_cost?.toFixed(2) || '0,00'}
