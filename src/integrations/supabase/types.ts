@@ -710,6 +710,7 @@ export type Database = {
           procedure_date: string
           procedure_type: string
           professional_id: string | null
+          status: string | null
           status_after: Database["public"]["Enums"]["tooth_status_enum"]
           status_before: Database["public"]["Enums"]["tooth_status_enum"] | null
           tooth_number: number
@@ -724,6 +725,7 @@ export type Database = {
           procedure_date?: string
           procedure_type: string
           professional_id?: string | null
+          status?: string | null
           status_after: Database["public"]["Enums"]["tooth_status_enum"]
           status_before?:
             | Database["public"]["Enums"]["tooth_status_enum"]
@@ -740,6 +742,7 @@ export type Database = {
           procedure_date?: string
           procedure_type?: string
           professional_id?: string | null
+          status?: string | null
           status_after?: Database["public"]["Enums"]["tooth_status_enum"]
           status_before?:
             | Database["public"]["Enums"]["tooth_status_enum"]
