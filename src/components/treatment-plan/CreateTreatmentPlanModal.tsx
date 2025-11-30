@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Info } from "lucide-react";
+import { Info, FileDown } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -23,13 +23,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { logger } from "@/lib/logger";
+import { getToothFullDescription } from "@/lib/toothUtils";
 
 interface CreateTreatmentPlanModalProps {
   isOpen: boolean;
   onClose: () => void;
   patientId: string;
   onSuccess: () => void;
+}
+
+interface PendingProcedure {
+  id: string;
+  tooth_number: number;
+  procedure_type: string;
+  faces: string[] | null;
+  notes: string | null;
+  treatment_id?: string | null;
+  estimated_cost?: number | null;
 }
 
 export const CreateTreatmentPlanModal = ({
@@ -45,6 +58,7 @@ export const CreateTreatmentPlanModal = ({
   const [notes, setNotes] = useState("");
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedProcedures, setSelectedProcedures] = useState<string[]>([]);
 
   const isReceptionist = userProfile.type === 'receptionist';
   const professionalId = userProfile.professionalId;
@@ -63,6 +77,55 @@ export const CreateTreatmentPlanModal = ({
     enabled: isReceptionist,
   });
 
+  // Buscar procedimentos pendentes do odontograma
+  const { data: pendingProcedures } = useQuery({
+    queryKey: ['pending-procedures', patientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tooth_procedures')
+        .select('id, tooth_number, procedure_type, faces, notes')
+        .eq('patient_id', patientId)
+        .eq('status', 'pending')
+        .order('tooth_number');
+      
+      if (error) throw error;
+      return data as PendingProcedure[];
+    },
+    enabled: isOpen && !!patientId,
+  });
+
+  // Buscar tratamentos para obter custos
+  const { data: treatments } = useQuery({
+    queryKey: ['treatments-for-import'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('treatments')
+        .select('id, treatment_name, cost');
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: isOpen,
+  });
+
+  const toggleProcedure = (procedureId: string) => {
+    setSelectedProcedures(prev =>
+      prev.includes(procedureId)
+        ? prev.filter(id => id !== procedureId)
+        : [...prev, procedureId]
+    );
+  };
+
+  const selectAllProcedures = () => {
+    if (pendingProcedures) {
+      setSelectedProcedures(pendingProcedures.map(p => p.id));
+    }
+  };
+
+  const deselectAllProcedures = () => {
+    setSelectedProcedures([]);
+  };
+
   const handleSubmit = async () => {
     const planProfessionalId = isReceptionist ? selectedProfessionalId : professionalId;
 
@@ -77,7 +140,8 @@ export const CreateTreatmentPlanModal = ({
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
+      // Criar o plano de tratamento
+      const { data: newPlan, error: planError } = await supabase
         .from('treatment_plans')
         .insert({
           patient_id: patientId,
@@ -86,13 +150,56 @@ export const CreateTreatmentPlanModal = ({
           title: title.trim() || null,
           notes: notes || null,
           total_cost: 0,
-        });
+        })
+        .select('id')
+        .single();
 
-      if (error) throw error;
+      if (planError) throw planError;
+
+      // Se há procedimentos selecionados, criar os itens do plano
+      if (selectedProcedures.length > 0 && pendingProcedures) {
+        const itemsToCreate = selectedProcedures.map(procId => {
+          const proc = pendingProcedures.find(p => p.id === procId);
+          if (!proc) return null;
+
+          // Tentar encontrar tratamento correspondente para obter custo
+          const matchingTreatment = treatments?.find(t => 
+            t.treatment_name.toLowerCase().includes(proc.procedure_type.toLowerCase()) ||
+            proc.procedure_type.toLowerCase().includes(t.treatment_name.toLowerCase())
+          );
+
+          const facesText = proc.faces && proc.faces.length > 0 
+            ? ` (${proc.faces.join(', ')})` 
+            : '';
+
+          return {
+            treatment_plan_id: newPlan.id,
+            tooth_number: proc.tooth_number,
+            procedure_description: `${proc.procedure_type}${facesText}`,
+            treatment_id: matchingTreatment?.id || null,
+            estimated_cost: matchingTreatment?.cost || 0,
+            status: 'pending' as const,
+            notes: proc.notes || null,
+          };
+        }).filter(Boolean);
+
+        if (itemsToCreate.length > 0) {
+          const { error: itemsError } = await supabase
+            .from('treatment_plan_items')
+            .insert(itemsToCreate);
+
+          if (itemsError) {
+            logger.error('Erro ao criar itens do plano:', itemsError);
+            // Não falhar completamente, plano foi criado
+          }
+        }
+      }
 
       toast({
         title: "Plano criado",
-        description: "O plano de tratamento foi criado com sucesso.",
+        description: selectedProcedures.length > 0 
+          ? `Plano criado com ${selectedProcedures.length} procedimento(s) importado(s).`
+          : "O plano de tratamento foi criado com sucesso.",
       });
 
       onSuccess();
@@ -113,21 +220,22 @@ export const CreateTreatmentPlanModal = ({
     setTitle("");
     setNotes("");
     setSelectedProfessionalId("");
+    setSelectedProcedures([]);
     onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent>
+      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Novo Plano de Tratamento</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto space-y-4 pr-2">
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-              Após criar o plano, lembre-se de adicionar os procedimentos necessários para o tratamento do paciente.
+              Após criar o plano, você pode adicionar mais procedimentos ou importar do odontograma abaixo.
             </AlertDescription>
           </Alert>
 
@@ -164,18 +272,83 @@ export const CreateTreatmentPlanModal = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Adicione observações sobre o plano de tratamento..."
-              rows={4}
+              rows={3}
             />
           </div>
 
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? "Criando..." : "Criar Plano"}
-            </Button>
-          </div>
+          {/* Seção de importação do odontograma */}
+          {pendingProcedures && pendingProcedures.length > 0 && (
+            <div className="border rounded-lg p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileDown className="h-4 w-4 text-primary" />
+                  <Label className="font-medium">Importar do Odontograma</Label>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={selectAllProcedures}
+                    className="text-xs h-7"
+                  >
+                    Todos
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={deselectAllProcedures}
+                    className="text-xs h-7"
+                  >
+                    Nenhum
+                  </Button>
+                </div>
+              </div>
+              
+              <ScrollArea className="max-h-40">
+                <div className="space-y-2">
+                  {pendingProcedures.map((proc) => (
+                    <div
+                      key={proc.id}
+                      className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
+                      onClick={() => toggleProcedure(proc.id)}
+                    >
+                      <Checkbox
+                        checked={selectedProcedures.includes(proc.id)}
+                        onCheckedChange={() => toggleProcedure(proc.id)}
+                      />
+                      <div className="flex-1 text-sm">
+                        <span className="font-medium">Dente {proc.tooth_number}</span>
+                        <span className="text-muted-foreground"> - {getToothFullDescription(proc.tooth_number)}</span>
+                        <div className="text-muted-foreground">
+                          {proc.procedure_type}
+                          {proc.faces && proc.faces.length > 0 && (
+                            <span> ({proc.faces.join(', ')})</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+              
+              {selectedProcedures.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {selectedProcedures.length} procedimento(s) selecionado(s)
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? "Criando..." : "Criar Plano"}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
