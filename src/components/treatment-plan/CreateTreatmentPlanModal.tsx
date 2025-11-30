@@ -317,6 +317,7 @@ export const CreateTreatmentPlanModal = ({
                       <Checkbox
                         checked={selectedProcedures.includes(proc.id)}
                         onCheckedChange={() => toggleProcedure(proc.id)}
+                        onClick={(e) => e.stopPropagation()}
                       />
                       <div className="flex-1 text-sm">
                         <span className="font-medium">Dente {proc.tooth_number}</span>
