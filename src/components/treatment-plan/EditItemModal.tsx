@@ -14,9 +14,7 @@ import { isPostgresError, getErrorMessage } from "@/types/errors";
 
 const editItemSchema = z.object({
   procedure_description: z.string().trim().min(3, "Descrição muito curta").max(500, "Descrição muito longa"),
-  tooth_number: z.number().int().min(1, "Número inválido").max(48, "Número inválido").nullable(),
   estimated_cost: z.number().min(0, "Custo não pode ser negativo").max(999999.99, "Valor muito alto"),
-  priority: z.number().int().min(1, "Prioridade mínima é 1").max(10, "Prioridade máxima é 10"),
   notes: z.string().trim().max(1000, "Observações muito longas").optional(),
   status: z.enum(['pending', 'in_progress', 'awaiting_payment', 'completed', 'cancelled']),
 });
@@ -30,9 +28,7 @@ interface EditItemModalProps {
 
 export function EditItemModal({ item, open, onOpenChange, onUpdate }: EditItemModalProps) {
   const [procedureDescription, setProcedureDescription] = useState(item.procedure_description);
-  const [toothNumber, setToothNumber] = useState(item.tooth_number?.toString() || "");
   const [estimatedCost, setEstimatedCost] = useState(item.estimated_cost?.toString() || "0");
-  const [priority, setPriority] = useState(item.priority?.toString() || "1");
   const [notes, setNotes] = useState(item.notes || "");
   const [status, setStatus] = useState<TreatmentPlanItemStatus>(item.status);
   const [loading, setLoading] = useState(false);
@@ -41,12 +37,9 @@ export function EditItemModal({ item, open, onOpenChange, onUpdate }: EditItemMo
     try {
       setLoading(true);
 
-      // Validação dos dados
       const validatedData = editItemSchema.parse({
         procedure_description: procedureDescription,
-        tooth_number: toothNumber ? parseInt(toothNumber) : null,
         estimated_cost: parseFloat(estimatedCost),
-        priority: parseInt(priority),
         notes: notes || undefined,
         status: status,
       });
@@ -55,9 +48,7 @@ export function EditItemModal({ item, open, onOpenChange, onUpdate }: EditItemMo
         .from("treatment_plan_items")
         .update({
           procedure_description: validatedData.procedure_description,
-          tooth_number: validatedData.tooth_number,
           estimated_cost: validatedData.estimated_cost,
-          priority: validatedData.priority,
           notes: validatedData.notes || null,
           status: validatedData.status,
           completed_at: validatedData.status === 'completed' ? new Date().toISOString() : null,
@@ -100,20 +91,6 @@ export function EditItemModal({ item, open, onOpenChange, onUpdate }: EditItemMo
               placeholder="Ex: Restauração em resina composta"
               className="mt-1"
               maxLength={500}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="tooth">Dente (opcional)</Label>
-            <Input
-              id="tooth"
-              type="number"
-              min="1"
-              max="48"
-              value={toothNumber}
-              onChange={(e) => setToothNumber(e.target.value)}
-              placeholder="Ex: 16"
-              className="mt-1"
             />
           </div>
 
