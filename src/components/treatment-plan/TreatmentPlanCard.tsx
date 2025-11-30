@@ -17,7 +17,8 @@ import {
   AlertTriangle,
   Download,
   Copy,
-  Sparkles
+  Sparkles,
+  MessageCircle
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -30,6 +31,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { logger } from "@/lib/logger";
 import { TreatmentPlan, TreatmentPlanItem } from "@/types/treatment-plan";
+
+const cleanPhone = (phone: string): string => phone.replace(/\D/g, '');
 
 interface TreatmentPlanCardProps {
   plan: TreatmentPlan;
@@ -86,10 +89,31 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
       // PDF generator has its own type definitions
       await generateTreatmentPlanPDF(plan as any, patient);
       
-      toast({
-        title: "PDF gerado com sucesso",
-        description: "O download do plano de tratamento foi iniciado.",
-      });
+      // Show toast with WhatsApp option
+      const patientPhone = patient?.contact_phone;
+      if (patientPhone) {
+        toast({
+          title: "PDF gerado com sucesso",
+          description: "O download foi iniciado. Deseja enviar pelo WhatsApp?",
+          action: (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleSendWhatsApp(patient.full_name, patientPhone)}
+              className="gap-1"
+            >
+              <MessageCircle className="h-4 w-4" />
+              WhatsApp
+            </Button>
+          ),
+          duration: 10000,
+        });
+      } else {
+        toast({
+          title: "PDF gerado com sucesso",
+          description: "O download do plano de tratamento foi iniciado.",
+        });
+      }
     } catch (error) {
       logger.error('Erro ao gerar PDF:', error);
       toast({
@@ -99,6 +123,48 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
       });
     } finally {
       setIsGeneratingPDF(false);
+    }
+  };
+
+  const handleSendWhatsApp = async (patientName: string, patientPhone: string) => {
+    const cleanedPhone = cleanPhone(patientPhone);
+    if (!cleanedPhone || cleanedPhone.length < 10) {
+      toast({
+        title: "Telefone inválido",
+        description: "Não foi possível enviar pelo WhatsApp.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const planTitle = plan.title || `Plano de ${format(new Date(plan.created_at), "MMMM 'de' yyyy", { locale: ptBR })}`;
+    const totalCost = plan.total_cost ? `R$ ${Number(plan.total_cost).toFixed(2)}` : 'a definir';
+    const itemCount = plan.items?.length || 0;
+
+    const message = `Olá ${patientName}! 😊
+
+Segue o orçamento do seu tratamento odontológico:
+
+📋 *${planTitle}*
+📌 ${itemCount} procedimento(s)
+💰 Valor total: ${totalCost}
+
+O PDF com todos os detalhes foi enviado separadamente.
+
+Qualquer dúvida, estamos à disposição!`;
+
+    const whatsappUrl = `https://wa.me/55${cleanedPhone}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+
+    // Log communication
+    try {
+      await supabase.from('communication_logs').insert({
+        patient_id: plan.patient_id,
+        communication_content: `Orçamento enviado via WhatsApp: ${planTitle}`,
+        direction: 'outgoing',
+      });
+    } catch (logError) {
+      logger.error('Erro ao registrar comunicação:', logError);
     }
   };
 
