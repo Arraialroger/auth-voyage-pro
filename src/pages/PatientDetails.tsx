@@ -612,7 +612,12 @@ export default function PatientDetails() {
             {/* Conteúdo: Financeiro */}
             {activeSubTab === 'financial' && (
               <div className="animate-enter">
-                <FinancialView patientId={patientId!} />
+                <FinancialView 
+                  patientId={patientId!} 
+                  patientName={patient?.full_name}
+                  patientCpf={patient?.cpf}
+                  patientPhone={patient?.contact_phone}
+                />
               </div>
             )}
           </TabsContent>

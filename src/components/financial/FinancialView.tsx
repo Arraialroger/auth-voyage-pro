@@ -9,9 +9,12 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 
 interface FinancialViewProps {
   patientId: string;
+  patientName?: string;
+  patientCpf?: string | null;
+  patientPhone?: string;
 }
 
-export const FinancialView = ({ patientId }: FinancialViewProps) => {
+export const FinancialView = ({ patientId, patientName, patientCpf, patientPhone }: FinancialViewProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const queryClient = useQueryClient();
   const userProfile = useUserProfile();
@@ -37,7 +40,12 @@ export const FinancialView = ({ patientId }: FinancialViewProps) => {
       )}
 
       {/* Payment History */}
-      <PaymentHistory patientId={patientId} />
+      <PaymentHistory 
+        patientId={patientId} 
+        patientName={patientName}
+        patientCpf={patientCpf}
+        patientPhone={patientPhone}
+      />
 
       {/* Payment Form Modal */}
       <PaymentFormModal
