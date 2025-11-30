@@ -65,7 +65,7 @@ export const PaymentFormModal = ({
         .from('treatment_plans')
         .select('id, title, total_cost, status')
         .eq('patient_id', patientId)
-        .in('status', ['draft', 'in_progress'])
+        .eq('status', 'awaiting_payment')
         .order('created_at', { ascending: false });
       
       if (error) throw error;

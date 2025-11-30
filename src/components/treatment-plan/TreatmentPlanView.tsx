@@ -15,7 +15,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Plus, FileText, CheckCircle2, Clock, XCircle, AlertCircle, ArrowUpDown } from "lucide-react";
+import { Plus, FileText, CheckCircle2, Clock, XCircle, AlertCircle, ArrowUpDown, DollarSign } from "lucide-react";
 import { TreatmentPlanCard } from "./TreatmentPlanCard";
 import { CreateTreatmentPlanModal } from "./CreateTreatmentPlanModal";
 import { logger } from "@/lib/logger";
@@ -62,14 +62,14 @@ export const TreatmentPlanView = ({ patientId }: TreatmentPlanViewProps) => {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      draft: { label: 'Rascunho', icon: FileText, variant: 'secondary' as const },
+      awaiting_payment: { label: 'Aguardando Pagamento', icon: DollarSign, variant: 'warning' as const },
       approved: { label: 'Aprovado', icon: CheckCircle2, variant: 'default' as const },
       in_progress: { label: 'Em Andamento', icon: Clock, variant: 'default' as const },
       completed: { label: 'Concluído', icon: CheckCircle2, variant: 'default' as const },
       cancelled: { label: 'Cancelado', icon: XCircle, variant: 'destructive' as const },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.awaiting_payment;
     const Icon = config.icon;
 
     return (
@@ -145,12 +145,12 @@ export const TreatmentPlanView = ({ patientId }: TreatmentPlanViewProps) => {
         <CardContent>
           {hasPlans ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="flex flex-col items-center p-4 bg-secondary/10 rounded-lg">
-                <FileText className="h-8 w-8 text-secondary mb-2" />
+              <div className="flex flex-col items-center p-4 bg-warning/10 rounded-lg">
+                <DollarSign className="h-8 w-8 text-warning mb-2" />
                 <p className="text-2xl font-bold">
-                  {treatmentPlans.filter(p => p.status === 'draft').length}
+                  {treatmentPlans.filter(p => p.status === 'awaiting_payment').length}
                 </p>
-                <p className="text-sm text-muted-foreground">Rascunhos</p>
+                <p className="text-sm text-muted-foreground">Aguardando Pagamento</p>
               </div>
               <div className="flex flex-col items-center p-4 bg-primary/10 rounded-lg">
                 <Clock className="h-8 w-8 text-primary mb-2" />

@@ -115,7 +115,7 @@ export const ToothModal = ({
         .select("id, title, status, created_at")
         .eq("patient_id", patientId)
         .ilike("title", "Orçamento%")
-        .in("status", ["draft", "approved", "in_progress"])
+        .in("status", ["awaiting_payment", "approved", "in_progress"])
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -147,7 +147,7 @@ export const ToothModal = ({
         patient_id: patientId,
         professional_id: professionalId,
         title: "Orçamento",
-        status: "draft",
+        status: "awaiting_payment",
       })
       .select("id")
       .single();
@@ -186,7 +186,7 @@ export const ToothModal = ({
           patient_id: patientId,
           professional_id: professional.id,
           title: newTitle,
-          status: "draft",
+          status: "awaiting_payment",
         });
 
       if (error) throw error;

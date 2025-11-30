@@ -146,7 +146,7 @@ export const CreateTreatmentPlanModal = ({
         .insert({
           patient_id: patientId,
           professional_id: planProfessionalId,
-          status: 'draft',
+          status: 'awaiting_payment',
           title: title.trim() || null,
           notes: notes || null,
           total_cost: 0,
