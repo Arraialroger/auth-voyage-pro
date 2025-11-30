@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Clock, XCircle, Trash2, Pencil, Calendar, AlertCircle } from "lucide-react";
+import { CheckCircle2, Clock, XCircle, Trash2, Pencil, Calendar, AlertCircle, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { logger } from "@/lib/logger";
@@ -36,7 +36,8 @@ export const TreatmentPlanItemRow = ({ item, onUpdate, isReceptionist, patientId
     const configs = {
       pending: { label: 'Pendente', icon: Clock, variant: 'secondary' as const },
       in_progress: { label: 'Em Andamento', icon: AlertCircle, variant: 'default' as const },
-      completed: { label: 'Concluído', icon: CheckCircle2, variant: 'default' as const },
+      awaiting_payment: { label: 'Aguardando Pagamento', icon: DollarSign, variant: 'warning' as const },
+      completed: { label: 'Concluído', icon: CheckCircle2, variant: 'success' as const },
       cancelled: { label: 'Cancelado', icon: XCircle, variant: 'destructive' as const },
     };
     const config = configs[status as keyof typeof configs] || configs.pending;

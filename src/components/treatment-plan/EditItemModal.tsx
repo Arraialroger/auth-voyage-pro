@@ -18,7 +18,7 @@ const editItemSchema = z.object({
   estimated_cost: z.number().min(0, "Custo não pode ser negativo").max(999999.99, "Valor muito alto"),
   priority: z.number().int().min(1, "Prioridade mínima é 1").max(10, "Prioridade máxima é 10"),
   notes: z.string().trim().max(1000, "Observações muito longas").optional(),
-  status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']),
+  status: z.enum(['pending', 'in_progress', 'awaiting_payment', 'completed', 'cancelled']),
 });
 
 interface EditItemModalProps {
@@ -162,6 +162,7 @@ export function EditItemModal({ item, open, onOpenChange, onUpdate }: EditItemMo
               <SelectContent>
                 <SelectItem value="pending">Pendente</SelectItem>
                 <SelectItem value="in_progress">Em Andamento</SelectItem>
+                <SelectItem value="awaiting_payment">Aguardando Pagamento</SelectItem>
                 <SelectItem value="completed">Concluído</SelectItem>
                 <SelectItem value="cancelled">Cancelado</SelectItem>
               </SelectContent>

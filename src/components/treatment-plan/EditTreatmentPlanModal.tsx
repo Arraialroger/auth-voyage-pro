@@ -103,7 +103,6 @@ export const EditTreatmentPlanModal = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="awaiting_payment">Aguardando Pagamento</SelectItem>
                 <SelectItem value="approved">Aprovado</SelectItem>
                 <SelectItem value="in_progress">Em Andamento</SelectItem>
                 <SelectItem value="completed">Concluído</SelectItem>
