@@ -34,6 +34,18 @@ interface PaymentFormModalProps {
   onSuccess: () => void;
 }
 
+interface AwaitingPaymentItem {
+  id: string;
+  procedure_description: string;
+  tooth_number: number | null;
+  estimated_cost: number | null;
+  treatment_plan_id: string;
+  treatment_plan: {
+    id: string;
+    title: string | null;
+  } | null;
+}
+
 export const PaymentFormModal = ({
   isOpen,
   onClose,
@@ -44,7 +56,7 @@ export const PaymentFormModal = ({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [selectedPlanId, setSelectedPlanId] = useState<string>('');
+  const [selectedItemId, setSelectedItemId] = useState<string>('');
   const [subtotal, setSubtotal] = useState<string>('');
   const [discountType, setDiscountType] = useState<'none' | 'percentage' | 'fixed'>('none');
   const [discountValue, setDiscountValue] = useState<string>('');
@@ -57,19 +69,26 @@ export const PaymentFormModal = ({
     { id: crypto.randomUUID(), payment_method: 'pix' as PaymentMethod, amount: '' },
   ]);
 
-  // Fetch treatment plans for the patient
-  const { data: treatmentPlans } = useQuery({
-    queryKey: ['treatment-plans-select', patientId],
+  // Fetch treatment plan ITEMS with status 'awaiting_payment'
+  const { data: awaitingPaymentItems } = useQuery({
+    queryKey: ['awaiting-payment-items', patientId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('treatment_plans')
-        .select('id, title, total_cost, status')
-        .eq('patient_id', patientId)
+        .from('treatment_plan_items')
+        .select(`
+          id,
+          procedure_description,
+          tooth_number,
+          estimated_cost,
+          treatment_plan_id,
+          treatment_plan:treatment_plans!inner(id, title, patient_id)
+        `)
+        .eq('treatment_plan.patient_id', patientId)
         .eq('status', 'awaiting_payment')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data;
+      return data as AwaitingPaymentItem[];
     },
     enabled: isOpen && !!patientId,
   });
@@ -102,6 +121,11 @@ export const PaymentFormModal = ({
 
   // Check if entries match total
   const entriesMatchTotal = Math.abs(entriesSum - totalAmount) < 0.01;
+
+  // Get selected item for treatment_plan_id reference
+  const selectedItem = useMemo(() => {
+    return awaitingPaymentItems?.find((item) => item.id === selectedItemId);
+  }, [awaitingPaymentItems, selectedItemId]);
 
   const handleAddEntry = () => {
     setPaymentEntries([
@@ -170,12 +194,12 @@ export const PaymentFormModal = ({
 
     setIsSubmitting(true);
     try {
-      // Insert payment
+      // Insert payment (link to treatment_plan if item selected)
       const { data: payment, error: paymentError } = await supabase
         .from('payments')
         .insert({
           patient_id: patientId,
-          treatment_plan_id: selectedPlanId || null,
+          treatment_plan_id: selectedItem?.treatment_plan_id || null,
           registered_by: user?.id || '',
           subtotal: sub,
           discount_type: discountType === 'none' ? null : discountType,
@@ -204,15 +228,18 @@ export const PaymentFormModal = ({
 
       if (entriesError) throw entriesError;
 
-      // Auto-update treatment plan status to 'completed' when payment is registered
-      if (selectedPlanId) {
-        const { error: updatePlanError } = await supabase
-          .from('treatment_plans')
-          .update({ status: 'completed' })
-          .eq('id', selectedPlanId);
+      // Auto-update treatment plan ITEM status to 'completed' when payment is registered
+      if (selectedItemId) {
+        const { error: updateItemError } = await supabase
+          .from('treatment_plan_items')
+          .update({ 
+            status: 'completed',
+            completed_at: new Date().toISOString()
+          })
+          .eq('id', selectedItemId);
         
-        if (updatePlanError) {
-          logger.error('Erro ao atualizar status do plano:', updatePlanError);
+        if (updateItemError) {
+          logger.error('Erro ao atualizar status do procedimento:', updateItemError);
           // Don't block - payment was already registered successfully
         }
       }
@@ -224,7 +251,7 @@ export const PaymentFormModal = ({
 
       queryClient.invalidateQueries({ queryKey: ['payments', patientId] });
       queryClient.invalidateQueries({ queryKey: ['treatment-plans', patientId] });
-      queryClient.invalidateQueries({ queryKey: ['treatment-plans-select', patientId] });
+      queryClient.invalidateQueries({ queryKey: ['awaiting-payment-items', patientId] });
       onSuccess();
       handleClose();
     } catch (error) {
@@ -240,7 +267,7 @@ export const PaymentFormModal = ({
   };
 
   const handleClose = () => {
-    setSelectedPlanId('');
+    setSelectedItemId('');
     setSubtotal('');
     setDiscountType('none');
     setDiscountValue('');
@@ -253,15 +280,23 @@ export const PaymentFormModal = ({
     onClose();
   };
 
-  // Auto-fill subtotal when selecting a plan
+  // Auto-fill subtotal when selecting an item
   useEffect(() => {
-    if (selectedPlanId && treatmentPlans) {
-      const plan = treatmentPlans.find((p) => p.id === selectedPlanId);
-      if (plan?.total_cost) {
-        setSubtotal(plan.total_cost.toString());
+    if (selectedItemId && awaitingPaymentItems) {
+      const item = awaitingPaymentItems.find((i) => i.id === selectedItemId);
+      if (item?.estimated_cost) {
+        setSubtotal(item.estimated_cost.toString());
       }
     }
-  }, [selectedPlanId, treatmentPlans]);
+  }, [selectedItemId, awaitingPaymentItems]);
+
+  // Format item label for dropdown
+  const formatItemLabel = (item: AwaitingPaymentItem) => {
+    const tooth = item.tooth_number ? ` (Dente ${item.tooth_number})` : '';
+    const cost = item.estimated_cost ? ` - R$ ${item.estimated_cost.toFixed(2)}` : '';
+    const plan = item.treatment_plan?.title || 'Plano sem título';
+    return `${item.procedure_description}${tooth}${cost} | ${plan}`;
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -274,27 +309,40 @@ export const PaymentFormModal = ({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto pr-2 space-y-4">
-          {/* Treatment Plan Selection */}
-          {treatmentPlans && treatmentPlans.length > 0 && (
+          {/* Awaiting Payment Items Selection */}
+          {awaitingPaymentItems && awaitingPaymentItems.length > 0 && (
             <div>
-              <Label>Plano de Tratamento (opcional)</Label>
+              <Label>Procedimento Aguardando Pagamento</Label>
               <Select 
-                value={selectedPlanId || "none"} 
-                onValueChange={(v) => setSelectedPlanId(v === "none" ? "" : v)}
+                value={selectedItemId || "none"} 
+                onValueChange={(v) => setSelectedItemId(v === "none" ? "" : v)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Vincular a um plano..." />
+                  <SelectValue placeholder="Selecionar procedimento..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Nenhum</SelectItem>
-                  {treatmentPlans.map((plan) => (
-                    <SelectItem key={plan.id} value={plan.id}>
-                      {plan.title || 'Plano sem título'} - R$ {plan.total_cost?.toFixed(2) || '0,00'}
+                  <SelectItem value="none">Pagamento avulso (sem vínculo)</SelectItem>
+                  {awaitingPaymentItems.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {formatItemLabel(item)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Selecione um procedimento para vincular o pagamento e atualizar seu status automaticamente.
+              </p>
             </div>
+          )}
+
+          {/* No items message */}
+          {(!awaitingPaymentItems || awaitingPaymentItems.length === 0) && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Nenhum procedimento aguardando pagamento. Você pode registrar um pagamento avulso.
+              </AlertDescription>
+            </Alert>
           )}
 
           {/* Subtotal */}
