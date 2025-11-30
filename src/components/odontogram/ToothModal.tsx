@@ -64,6 +64,7 @@ export const ToothModal = ({
   const [estimatedCost, setEstimatedCost] = useState("");
   const [addToPlan, setAddToPlan] = useState(true);
   const [planItemStatus, setPlanItemStatus] = useState<"completed" | "pending" | "in_progress">("pending");
+  const [priority, setPriority] = useState("1");
   const [currentBudgetName, setCurrentBudgetName] = useState<string | null>(null);
 
   const toothInfo = getToothInfo(toothNumber);
@@ -78,6 +79,7 @@ export const ToothModal = ({
       setSelectedFaces([]);
       setEstimatedCost("");
       setPlanItemStatus("pending");
+      setPriority("1");
     }
   }, [isOpen, toothNumber, currentStatus]);
 
@@ -270,6 +272,7 @@ export const ToothModal = ({
           procedure_description: procedureDescription,
           estimated_cost: estimatedCost ? parseFloat(estimatedCost) : 0,
           status: planItemStatus,
+          priority: parseInt(priority),
           notes: notes || null,
           completed_at: planItemStatus === "completed" ? new Date().toISOString() : null,
         });
@@ -426,7 +429,7 @@ export const ToothModal = ({
                   </AlertDescription>
                 </Alert>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div>
                     <Label className="text-xs">Status *</Label>
                     <Select value={planItemStatus} onValueChange={(v: any) => setPlanItemStatus(v)}>
@@ -437,6 +440,21 @@ export const ToothModal = ({
                         <SelectItem value="pending">⏳ Pendente</SelectItem>
                         <SelectItem value="in_progress">🔄 Em Andamento</SelectItem>
                         <SelectItem value="completed">✅ Concluído</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Prioridade</Label>
+                    <Select value={priority} onValueChange={setPriority}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 - Baixa</SelectItem>
+                        <SelectItem value="2">2</SelectItem>
+                        <SelectItem value="3">3 - Média</SelectItem>
+                        <SelectItem value="4">4</SelectItem>
+                        <SelectItem value="5">5 - Alta</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

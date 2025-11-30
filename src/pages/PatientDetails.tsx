@@ -23,7 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { PatientAppointmentHistory } from '@/components/PatientAppointmentHistory';
-import { WorkflowWizard } from '@/components/WorkflowWizard';
+
 import { logger } from '@/lib/logger';
 import { formatCPF, formatPhone } from '@/lib/validators';
 import { format } from 'date-fns';
@@ -360,16 +360,6 @@ export default function PatientDetails() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Workflow Wizard for first-time users */}
-        <WorkflowWizard 
-          patientId={patient.id} 
-          onSelectWorkflow={(workflow) => {
-            // Navigate to appropriate tab
-            const tabs = document.querySelector('[role="tablist"]');
-            const button = tabs?.querySelector(`[value="${workflow === 'odontogram' ? 'odontogram' : 'treatment-plan'}"]`) as HTMLButtonElement;
-            button?.click();
-          }}
-        />
 
         <Tabs defaultValue="dados" className="w-full">
           <TabsList className="grid w-full grid-cols-3 h-auto">

@@ -144,34 +144,46 @@ export const TreatmentPlanView = ({ patientId }: TreatmentPlanViewProps) => {
         </CardHeader>
         <CardContent>
           {hasPlans ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="flex flex-col items-center p-4 bg-warning/10 rounded-lg">
-                <DollarSign className="h-8 w-8 text-warning mb-2" />
-                <p className="text-2xl font-bold">
-                  {treatmentPlans.filter(p => p.status === 'awaiting_payment').length}
-                </p>
-                <p className="text-sm text-muted-foreground">Aguardando Pagamento</p>
-              </div>
-              <div className="flex flex-col items-center p-4 bg-primary/10 rounded-lg">
-                <Clock className="h-8 w-8 text-primary mb-2" />
-                <p className="text-2xl font-bold">
-                  {treatmentPlans.filter(p => p.status === 'in_progress').length}
-                </p>
-                <p className="text-sm text-muted-foreground">Em Andamento</p>
-              </div>
-              <div className="flex flex-col items-center p-4 bg-success/10 rounded-lg">
-                <CheckCircle2 className="h-8 w-8 text-success mb-2" />
-                <p className="text-2xl font-bold">
-                  {treatmentPlans.filter(p => p.status === 'completed').length}
-                </p>
-                <p className="text-sm text-muted-foreground">Concluídos</p>
-              </div>
-              <div className="flex flex-col items-center p-4 bg-muted rounded-lg">
-                <FileText className="h-8 w-8 text-muted-foreground mb-2" />
-                <p className="text-2xl font-bold">{treatmentPlans.length}</p>
-                <p className="text-sm text-muted-foreground">Total</p>
-              </div>
-            </div>
+            (() => {
+              const allItems = treatmentPlans.flatMap(p => p.items || []);
+              return (
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="flex flex-col items-center p-4 bg-warning/10 rounded-lg">
+                    <DollarSign className="h-8 w-8 text-warning mb-2" />
+                    <p className="text-2xl font-bold">
+                      {allItems.filter(i => i.status === 'awaiting_payment').length}
+                    </p>
+                    <p className="text-sm text-muted-foreground text-center">Aguardando Pagamento</p>
+                  </div>
+                  <div className="flex flex-col items-center p-4 bg-muted rounded-lg">
+                    <Clock className="h-8 w-8 text-muted-foreground mb-2" />
+                    <p className="text-2xl font-bold">
+                      {allItems.filter(i => i.status === 'pending').length}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Pendentes</p>
+                  </div>
+                  <div className="flex flex-col items-center p-4 bg-primary/10 rounded-lg">
+                    <Clock className="h-8 w-8 text-primary mb-2" />
+                    <p className="text-2xl font-bold">
+                      {allItems.filter(i => i.status === 'in_progress').length}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Em Andamento</p>
+                  </div>
+                  <div className="flex flex-col items-center p-4 bg-success/10 rounded-lg">
+                    <CheckCircle2 className="h-8 w-8 text-success mb-2" />
+                    <p className="text-2xl font-bold">
+                      {allItems.filter(i => i.status === 'completed').length}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Concluídos</p>
+                  </div>
+                  <div className="flex flex-col items-center p-4 bg-muted rounded-lg">
+                    <FileText className="h-8 w-8 text-muted-foreground mb-2" />
+                    <p className="text-2xl font-bold">{allItems.length}</p>
+                    <p className="text-sm text-muted-foreground">Total</p>
+                  </div>
+                </div>
+              );
+            })()
           ) : (
             <div className="text-center py-8">
               <AlertCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
