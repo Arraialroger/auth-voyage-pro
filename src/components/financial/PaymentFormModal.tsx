@@ -204,12 +204,27 @@ export const PaymentFormModal = ({
 
       if (entriesError) throw entriesError;
 
+      // Auto-update treatment plan status to 'completed' when payment is registered
+      if (selectedPlanId) {
+        const { error: updatePlanError } = await supabase
+          .from('treatment_plans')
+          .update({ status: 'completed' })
+          .eq('id', selectedPlanId);
+        
+        if (updatePlanError) {
+          logger.error('Erro ao atualizar status do plano:', updatePlanError);
+          // Don't block - payment was already registered successfully
+        }
+      }
+
       toast({
         title: 'Pagamento registrado',
         description: `Pagamento de R$ ${totalAmount.toFixed(2)} registrado com sucesso.`,
       });
 
       queryClient.invalidateQueries({ queryKey: ['payments', patientId] });
+      queryClient.invalidateQueries({ queryKey: ['treatment-plans', patientId] });
+      queryClient.invalidateQueries({ queryKey: ['treatment-plans-select', patientId] });
       onSuccess();
       handleClose();
     } catch (error) {
