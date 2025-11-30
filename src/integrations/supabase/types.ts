@@ -699,6 +699,47 @@ export type Database = {
         }
         Relationships: []
       }
+      time_blocks: {
+        Row: {
+          block_type: Database["public"]["Enums"]["block_type_enum"]
+          created_at: string
+          end_time: string
+          id: string
+          professional_id: string
+          reason: string | null
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          block_type?: Database["public"]["Enums"]["block_type_enum"]
+          created_at?: string
+          end_time: string
+          id?: string
+          professional_id: string
+          reason?: string | null
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          block_type?: Database["public"]["Enums"]["block_type_enum"]
+          created_at?: string
+          end_time?: string
+          id?: string
+          professional_id?: string
+          reason?: string | null
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_blocks_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tooth_procedures: {
         Row: {
           created_at: string
