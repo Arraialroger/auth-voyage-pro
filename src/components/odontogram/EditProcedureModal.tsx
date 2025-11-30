@@ -95,6 +95,8 @@ export const EditProcedureModal = ({
     mutationFn: async () => {
       if (!procedure) throw new Error("Procedimento não encontrado");
 
+      const { data: { user } } = await supabase.auth.getUser();
+
       const { error } = await supabase
         .from("tooth_procedures")
         .update({
@@ -107,9 +109,23 @@ export const EditProcedureModal = ({
         .eq("id", procedure.id);
 
       if (error) throw error;
+
+      // Atualizar status visual do dente no odontograma
+      const { error: odontogramError } = await supabase
+        .from("odontogram_records")
+        .upsert({
+          patient_id: patientId,
+          tooth_number: procedure.tooth_number,
+          status: statusAfter,
+          last_updated_by: user?.id,
+          last_updated_at: new Date().toISOString(),
+        }, { onConflict: "patient_id,tooth_number" });
+
+      if (odontogramError) throw odontogramError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tooth-procedures", patientId] });
+      queryClient.invalidateQueries({ queryKey: ["odontogram", patientId] });
       toast.success("Procedimento atualizado com sucesso");
       onClose();
     },
