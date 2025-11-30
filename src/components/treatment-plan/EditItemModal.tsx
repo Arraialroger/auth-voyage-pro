@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
-import { TreatmentPlanItem } from "@/types/treatment-plan";
+import { TreatmentPlanItem, TreatmentPlanItemStatus } from "@/types/treatment-plan";
 import { isPostgresError, getErrorMessage } from "@/types/errors";
 
 const editItemSchema = z.object({
@@ -18,6 +18,7 @@ const editItemSchema = z.object({
   estimated_cost: z.number().min(0, "Custo não pode ser negativo").max(999999.99, "Valor muito alto"),
   priority: z.number().int().min(1, "Prioridade mínima é 1").max(10, "Prioridade máxima é 10"),
   notes: z.string().trim().max(1000, "Observações muito longas").optional(),
+  status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']),
 });
 
 interface EditItemModalProps {
@@ -33,6 +34,7 @@ export function EditItemModal({ item, open, onOpenChange, onUpdate }: EditItemMo
   const [estimatedCost, setEstimatedCost] = useState(item.estimated_cost?.toString() || "0");
   const [priority, setPriority] = useState(item.priority?.toString() || "1");
   const [notes, setNotes] = useState(item.notes || "");
+  const [status, setStatus] = useState<TreatmentPlanItemStatus>(item.status);
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
@@ -46,6 +48,7 @@ export function EditItemModal({ item, open, onOpenChange, onUpdate }: EditItemMo
         estimated_cost: parseFloat(estimatedCost),
         priority: parseInt(priority),
         notes: notes || undefined,
+        status: status,
       });
 
       const { error } = await supabase
@@ -56,6 +59,8 @@ export function EditItemModal({ item, open, onOpenChange, onUpdate }: EditItemMo
           estimated_cost: validatedData.estimated_cost,
           priority: validatedData.priority,
           notes: validatedData.notes || null,
+          status: validatedData.status,
+          completed_at: validatedData.status === 'completed' ? new Date().toISOString() : null,
         })
         .eq("id", item.id);
 
@@ -144,6 +149,21 @@ export function EditItemModal({ item, open, onOpenChange, onUpdate }: EditItemMo
                 <SelectItem value="8">8</SelectItem>
                 <SelectItem value="9">9</SelectItem>
                 <SelectItem value="10">10 - Urgente</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="status">Status *</Label>
+            <Select value={status} onValueChange={(value) => setStatus(value as TreatmentPlanItemStatus)}>
+              <SelectTrigger id="status" className="mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Pendente</SelectItem>
+                <SelectItem value="in_progress">Em Andamento</SelectItem>
+                <SelectItem value="completed">Concluído</SelectItem>
+                <SelectItem value="cancelled">Cancelado</SelectItem>
               </SelectContent>
             </Select>
           </div>

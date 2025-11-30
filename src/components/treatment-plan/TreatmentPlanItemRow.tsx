@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Clock, XCircle, Trash2, Pencil, Calendar, ExternalLink } from "lucide-react";
+import { CheckCircle2, Clock, XCircle, Trash2, Pencil, Calendar, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { logger } from "@/lib/logger";
 import { TreatmentPlanItem } from "@/types/treatment-plan";
 import { EditItemModal } from "./EditItemModal";
-import { NewAppointmentModal } from "../NewAppointmentModal";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -32,12 +31,11 @@ export const TreatmentPlanItemRow = ({ item, onUpdate, isReceptionist, patientId
   const { toast } = useToast();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
 
   const getStatusBadge = (status: string) => {
     const configs = {
       pending: { label: 'Pendente', icon: Clock, variant: 'secondary' as const },
-      in_progress: { label: 'Em Andamento', icon: Clock, variant: 'default' as const },
+      in_progress: { label: 'Em Andamento', icon: AlertCircle, variant: 'default' as const },
       completed: { label: 'Concluído', icon: CheckCircle2, variant: 'default' as const },
       cancelled: { label: 'Cancelado', icon: XCircle, variant: 'destructive' as const },
     };
@@ -50,43 +48,6 @@ export const TreatmentPlanItemRow = ({ item, onUpdate, isReceptionist, patientId
         {config.label}
       </Badge>
     );
-  };
-
-  const handleToggleStatus = async () => {
-    const newStatus = item.status === 'completed' ? 'pending' : 'completed';
-    
-    try {
-      const updateData: Partial<TreatmentPlanItem> = {
-        status: newStatus,
-      };
-
-      if (newStatus === 'completed') {
-        updateData.completed_at = new Date().toISOString();
-      } else {
-        updateData.completed_at = null;
-      }
-
-      const { error } = await supabase
-        .from('treatment_plan_items')
-        .update(updateData)
-        .eq('id', item.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Status atualizado",
-        description: `Procedimento marcado como ${newStatus === 'completed' ? 'concluído' : 'pendente'}.`,
-      });
-
-      onUpdate();
-    } catch (error) {
-      logger.error('Erro ao atualizar status:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o status do procedimento.",
-        variant: "destructive",
-      });
-    }
   };
 
   const handleDelete = async () => {
@@ -112,11 +73,6 @@ export const TreatmentPlanItemRow = ({ item, onUpdate, isReceptionist, patientId
         variant: "destructive",
       });
     }
-  };
-
-  const handleScheduleSuccess = async () => {
-    setShowScheduleModal(false);
-    onUpdate();
   };
 
   return (
@@ -155,14 +111,6 @@ export const TreatmentPlanItemRow = ({ item, onUpdate, isReceptionist, patientId
               R$ {Number(item.estimated_cost).toFixed(2)}
             </span>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleToggleStatus}
-            title={item.status === 'completed' ? 'Marcar como pendente' : 'Marcar como concluído'}
-          >
-            <CheckCircle2 className={`h-4 w-4 ${item.status === 'completed' ? 'text-success' : 'text-muted-foreground'}`} />
-          </Button>
           <Button
             variant="ghost"
             size="sm"
