@@ -76,6 +76,49 @@ export async function checkTimeConflict(
 }
 
 /**
+ * Verifica se há conflito com bloqueios de horário (time_blocks)
+ */
+export async function checkTimeBlockConflict(
+  professionalId: string,
+  startTime: Date,
+  endTime: Date
+): Promise<ValidationResult> {
+  const result: ValidationResult = {
+    isValid: true,
+    errors: [],
+    warnings: [],
+  };
+
+  try {
+    // Using rpc or direct query since time_blocks may not be in generated types yet
+    const { data: blocks, error } = await supabase
+      .from('time_blocks' as any)
+      .select('id, start_time, end_time, reason, block_type')
+      .eq('professional_id', professionalId)
+      .or(`and(start_time.lt.${endTime.toISOString()},end_time.gt.${startTime.toISOString()})`);
+
+    if (error) throw error;
+
+    if (blocks && blocks.length > 0) {
+      result.isValid = false;
+      (blocks as any[]).forEach((block) => {
+        const blockStart = new Date(block.start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const blockEnd = new Date(block.end_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const reason = block.reason ? ` - ${block.reason}` : '';
+        result.errors.push(
+          `Horário bloqueado: ${blockStart} - ${blockEnd}${reason}`
+        );
+      });
+    }
+  } catch (error) {
+    logger.error('Erro ao verificar bloqueios de horário:', error);
+    result.warnings.push('Não foi possível verificar bloqueios de horário');
+  }
+
+  return result;
+}
+
+/**
  * Verifica se o horário está dentro do expediente do profissional
  */
 export async function checkProfessionalSchedule(
@@ -350,6 +393,7 @@ export async function validateAppointment(
 
   // Validações assíncronas
   results.push(await checkTimeConflict(professionalId, startTime, endTime, excludeAppointmentId));
+  results.push(await checkTimeBlockConflict(professionalId, startTime, endTime));
   results.push(await checkProfessionalSchedule(professionalId, startTime, endTime));
   results.push(await checkDailyAppointmentLimit(professionalId, startTime));
   
