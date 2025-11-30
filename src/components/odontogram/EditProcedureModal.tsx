@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -23,6 +23,7 @@ import {
 import { Loader2 } from "lucide-react";
 import { statusLabels } from "@/lib/toothUtils";
 import { Database } from "@/integrations/supabase/types";
+import { ToothFaceSelector } from "./ToothFaceSelector";
 
 type ToothStatusEnum = Database["public"]["Enums"]["tooth_status_enum"];
 type ToothFaceEnum = Database["public"]["Enums"]["tooth_face_enum"];
@@ -47,20 +48,8 @@ interface EditProcedureModalProps {
   patientId: string;
 }
 
-const procedureTypes = [
-  "Restauração",
-  "Extração",
-  "Tratamento de Canal",
-  "Limpeza",
-  "Aplicação de Flúor",
-  "Coroa",
-  "Implante",
-  "Clareamento",
-  "Limpeza de Tártaro",
-  "Outro",
-];
-
-const faceOptions: ToothFaceEnum[] = ["oclusal", "mesial", "distal", "vestibular", "lingual", "incisal"];
+// ID do tratamento de bloqueio (excluir da lista)
+const BLOCK_TREATMENT_ID = "00000000-0000-0000-0000-000000000002";
 
 export const EditProcedureModal = ({
   isOpen,
@@ -75,6 +64,21 @@ export const EditProcedureModal = ({
   const [selectedFaces, setSelectedFaces] = useState<ToothFaceEnum[]>(procedure?.faces || []);
   const [materialUsed, setMaterialUsed] = useState(procedure?.material_used || "");
   const [notes, setNotes] = useState(procedure?.notes || "");
+
+  // Buscar tratamentos do banco de dados
+  const { data: treatments } = useQuery({
+    queryKey: ["treatments-for-odontogram"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("treatments")
+        .select("id, treatment_name")
+        .neq("id", BLOCK_TREATMENT_ID)
+        .order("treatment_name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: isOpen,
+  });
 
   // Reset form when procedure changes
   useState(() => {
@@ -146,9 +150,9 @@ export const EditProcedureModal = ({
                 <SelectValue placeholder="Selecione o procedimento" />
               </SelectTrigger>
               <SelectContent>
-                {procedureTypes.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
+                {treatments?.map((t) => (
+                  <SelectItem key={t.id} value={t.treatment_name}>
+                    {t.treatment_name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -173,20 +177,11 @@ export const EditProcedureModal = ({
 
           <div className="space-y-2">
             <Label>Faces Afetadas</Label>
-            <div className="flex flex-wrap gap-2">
-              {faceOptions.map((face) => (
-                <Button
-                  key={face}
-                  type="button"
-                  variant={selectedFaces.includes(face) ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => toggleFace(face)}
-                  className="capitalize"
-                >
-                  {face}
-                </Button>
-              ))}
-            </div>
+            <ToothFaceSelector
+              selectedFaces={selectedFaces}
+              onFaceToggle={(face) => toggleFace(face as ToothFaceEnum)}
+              toothNumber={procedure.tooth_number}
+            />
           </div>
 
           <div className="space-y-2">

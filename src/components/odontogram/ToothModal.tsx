@@ -45,20 +45,8 @@ const statusOptions = [
   { value: "fratura", label: "Fratura" },
 ];
 
-const procedureOptions = [
-  { value: "exame", label: "Exame Inicial" },
-  { value: "restauracao", label: "Restauração" },
-  { value: "extracao", label: "Extração" },
-  { value: "canal", label: "Tratamento de Canal" },
-  { value: "limpeza", label: "Limpeza" },
-  { value: "limpeza_tartaro", label: "Limpeza de Tártaro" },
-  { value: "clareamento", label: "Clareamento" },
-  { value: "coroa", label: "Instalação de Coroa" },
-  { value: "implante", label: "Implante" },
-  { value: "outro", label: "Outro" },
-];
-
-// Face options movidas para ToothFaceSelector
+// ID do tratamento de bloqueio (excluir da lista)
+const BLOCK_TREATMENT_ID = "00000000-0000-0000-0000-000000000002";
 
 export const ToothModal = ({
   isOpen,
@@ -95,6 +83,31 @@ export const ToothModal = ({
       // Manter addToPlan true e selectedPlanId se já selecionado
     }
   }, [isOpen, toothNumber, currentStatus]);
+
+  // Buscar tratamentos do banco de dados
+  const { data: treatments } = useQuery({
+    queryKey: ["treatments-for-odontogram"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("treatments")
+        .select("id, treatment_name, cost")
+        .neq("id", BLOCK_TREATMENT_ID)
+        .order("treatment_name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: isOpen,
+  });
+
+  // Auto-preencher custo quando selecionar tratamento
+  useEffect(() => {
+    if (procedureType && treatments) {
+      const selectedTreatment = treatments.find(t => t.treatment_name === procedureType);
+      if (selectedTreatment?.cost && !estimatedCost) {
+        setEstimatedCost(selectedTreatment.cost.toString());
+      }
+    }
+  }, [procedureType, treatments]);
 
   // Buscar planos de tratamento do paciente
   const { data: treatmentPlans, refetch: refetchPlans } = useQuery({
@@ -161,20 +174,18 @@ export const ToothModal = ({
 
       if (odontogramError) throw odontogramError;
 
-      // Registrar procedimento com status
-      const procedureLabel = procedureOptions.find(p => p.value === procedureType)?.label || procedureType;
-      
+      // Registrar procedimento com status (usa treatment_name diretamente)
       const { error: procedureError } = await supabase.from("tooth_procedures").insert({
         patient_id: patientId,
         tooth_number: toothNumber,
-        procedure_type: procedureLabel,
+        procedure_type: procedureType,
         professional_id: professionalId,
         notes,
         faces: selectedFaces as any,
         material_used: materialUsed || null,
         status_before: currentStatus as any,
         status_after: newStatus as any,
-        status: planItemStatus, // Novo campo de status do procedimento
+        status: planItemStatus,
       });
 
       if (procedureError) throw procedureError;
@@ -182,7 +193,7 @@ export const ToothModal = ({
       // Adicionar ao plano de tratamento se selecionado
       if (addToPlan && selectedPlanId) {
         const facesText = selectedFaces.length > 0 ? ` (${selectedFaces.map(f => f.charAt(0).toUpperCase()).join(", ")})` : "";
-        const procedureDescription = `${procedureLabel} - Dente ${toothNumber}${facesText}`;
+        const procedureDescription = `${procedureType} - Dente ${toothNumber}${facesText}`;
 
         const { error: planItemError } = await supabase.from("treatment_plan_items").insert({
           treatment_plan_id: selectedPlanId,
@@ -265,9 +276,9 @@ export const ToothModal = ({
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {procedureOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
+                    {treatments?.map((t) => (
+                      <SelectItem key={t.id} value={t.treatment_name}>
+                        {t.treatment_name}
                       </SelectItem>
                     ))}
                   </SelectContent>
