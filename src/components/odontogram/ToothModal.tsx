@@ -439,6 +439,7 @@ export const ToothModal = ({
                       <SelectContent>
                         <SelectItem value="pending">⏳ Pendente</SelectItem>
                         <SelectItem value="in_progress">🔄 Em Andamento</SelectItem>
+                        <SelectItem value="awaiting_payment">💰 Aguardando Pagamento</SelectItem>
                         <SelectItem value="completed">✅ Concluído</SelectItem>
                       </SelectContent>
                     </Select>
