@@ -43,7 +43,7 @@ const STATUS_COLORS = {
 const STATUS_LABELS = {
   pending: 'Pendente',
   in_progress: 'Em Andamento',
-  awaiting_payment: 'Aguardando Pagamento',
+  awaiting_payment: 'Aguardando Aprovação',
   completed: 'Concluído',
   cancelled: 'Cancelado',
 };
