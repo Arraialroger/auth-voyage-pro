@@ -35,6 +35,7 @@ interface TreatmentPlanProgressDashboardProps {
 const STATUS_COLORS = {
   pending: '#94a3b8',
   in_progress: '#3b82f6',
+  awaiting_payment: '#f59e0b',
   completed: '#22c55e',
   cancelled: '#ef4444',
 };
@@ -42,6 +43,7 @@ const STATUS_COLORS = {
 const STATUS_LABELS = {
   pending: 'Pendente',
   in_progress: 'Em Andamento',
+  awaiting_payment: 'Aguardando Pagamento',
   completed: 'Concluído',
   cancelled: 'Cancelado',
 };
@@ -54,6 +56,7 @@ export const TreatmentPlanProgressDashboard = ({ plans }: TreatmentPlanProgressD
   const statusData = [
     { name: STATUS_LABELS.pending, value: allItems.filter(i => i.status === 'pending').length, color: STATUS_COLORS.pending },
     { name: STATUS_LABELS.in_progress, value: allItems.filter(i => i.status === 'in_progress').length, color: STATUS_COLORS.in_progress },
+    { name: STATUS_LABELS.awaiting_payment, value: allItems.filter(i => i.status === 'awaiting_payment').length, color: STATUS_COLORS.awaiting_payment },
     { name: STATUS_LABELS.completed, value: allItems.filter(i => i.status === 'completed').length, color: STATUS_COLORS.completed },
     { name: STATUS_LABELS.cancelled, value: allItems.filter(i => i.status === 'cancelled').length, color: STATUS_COLORS.cancelled },
   ].filter(d => d.value > 0);

@@ -133,27 +133,6 @@ export function EditItemModal({ item, open, onOpenChange, onUpdate }: EditItemMo
           </div>
 
           <div>
-            <Label htmlFor="priority">Prioridade *</Label>
-            <Select value={priority} onValueChange={setPriority}>
-              <SelectTrigger id="priority" className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1">1 - Baixa</SelectItem>
-                <SelectItem value="2">2</SelectItem>
-                <SelectItem value="3">3 - Média</SelectItem>
-                <SelectItem value="4">4</SelectItem>
-                <SelectItem value="5">5 - Alta</SelectItem>
-                <SelectItem value="6">6</SelectItem>
-                <SelectItem value="7">7</SelectItem>
-                <SelectItem value="8">8</SelectItem>
-                <SelectItem value="9">9</SelectItem>
-                <SelectItem value="10">10 - Urgente</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
             <Label htmlFor="status">Status *</Label>
             <Select value={status} onValueChange={(value) => setStatus(value as TreatmentPlanItemStatus)}>
               <SelectTrigger id="status" className="mt-1">
