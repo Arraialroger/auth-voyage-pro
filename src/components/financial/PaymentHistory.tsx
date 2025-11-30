@@ -1,15 +1,22 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Receipt, CreditCard, Banknote, Landmark, Smartphone, ArrowRightLeft, FileText, Shield } from 'lucide-react';
+import { Receipt, CreditCard, Banknote, Landmark, Smartphone, ArrowRightLeft, FileText, Shield, Download, MessageCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Payment, PaymentEntry, PaymentMethod, PAYMENT_METHOD_LABELS } from '@/types/payment';
+import { generateReceiptPDF } from '@/lib/receiptPdf';
+import { toast } from 'sonner';
 
 interface PaymentHistoryProps {
   patientId: string;
+  patientName?: string;
+  patientCpf?: string | null;
+  patientPhone?: string;
 }
 
 const getPaymentMethodIcon = (method: PaymentMethod) => {
@@ -32,7 +39,17 @@ const getPaymentMethodIcon = (method: PaymentMethod) => {
   }
 };
 
-export const PaymentHistory = ({ patientId }: PaymentHistoryProps) => {
+// Default clinic info - ideally fetched from settings
+const CLINIC_INFO = {
+  name: "Arraial D'ajuda Odontologia",
+  address: "Arraial D'ajuda, Porto Seguro - BA",
+  phone: "(73) 99999-9999",
+  cnpj: "00.000.000/0001-00"
+};
+
+export const PaymentHistory = ({ patientId, patientName, patientCpf, patientPhone }: PaymentHistoryProps) => {
+  const [generatingPdf, setGeneratingPdf] = useState<string | null>(null);
+  
   const { data: payments, isLoading } = useQuery({
     queryKey: ['payments', patientId],
     queryFn: async () => {
@@ -67,6 +84,57 @@ export const PaymentHistory = ({ patientId }: PaymentHistoryProps) => {
     },
     enabled: !!patientId,
   });
+
+  const handleDownloadReceipt = async (payment: Payment) => {
+    if (!patientName || !patientPhone) {
+      toast.error('Dados do paciente incompletos');
+      return;
+    }
+    
+    setGeneratingPdf(payment.id);
+    try {
+      await generateReceiptPDF({
+        payment,
+        patient: {
+          full_name: patientName,
+          cpf: patientCpf || null,
+          contact_phone: patientPhone,
+        },
+        clinic: CLINIC_INFO,
+      });
+      toast.success('Recibo gerado com sucesso!');
+    } catch (error) {
+      console.error('Error generating receipt:', error);
+      toast.error('Erro ao gerar recibo');
+    } finally {
+      setGeneratingPdf(null);
+    }
+  };
+
+  const handleSendWhatsApp = (payment: Payment) => {
+    if (!patientPhone) {
+      toast.error('Telefone do paciente não cadastrado');
+      return;
+    }
+
+    const cleanPhone = patientPhone.replace(/\D/g, '');
+    const phoneWithCountry = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+    
+    const message = `Olá ${patientName || 'paciente'}! 🦷\n\n` +
+      `Segue o comprovante do seu pagamento:\n\n` +
+      `💰 *Valor:* R$ ${payment.total_amount.toFixed(2)}\n` +
+      `📅 *Data:* ${format(new Date(payment.payment_date), "dd/MM/yyyy", { locale: ptBR })}\n` +
+      (payment.total_installments > 1 ? `📋 *Parcela:* ${payment.installment_number}/${payment.total_installments}\n` : '') +
+      (payment.treatment_plan?.title ? `🦷 *Tratamento:* ${payment.treatment_plan.title}\n` : '') +
+      `\n*Formas de pagamento:*\n` +
+      (payment.entries?.map(e => `• ${PAYMENT_METHOD_LABELS[e.payment_method]}: R$ ${e.amount.toFixed(2)}`).join('\n') || '') +
+      `\n\nAgradecemos a preferência! ✨\n` +
+      `Arraial D'ajuda Odontologia`;
+
+    const whatsappUrl = `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+    toast.success('Abrindo WhatsApp...');
+  };
 
   if (isLoading) {
     return (
@@ -173,6 +241,33 @@ export const PaymentHistory = ({ patientId }: PaymentHistoryProps) => {
                 {payment.notes}
               </p>
             )}
+
+            {/* Action buttons */}
+            <div className="flex gap-2 mt-4 pt-3 border-t border-border/30">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleDownloadReceipt(payment)}
+                disabled={generatingPdf === payment.id}
+                className="flex-1"
+              >
+                {generatingPdf === payment.id ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4 mr-2" />
+                )}
+                Baixar Recibo
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSendWhatsApp(payment)}
+                className="flex-1 text-green-600 hover:text-green-700 hover:bg-green-50"
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Enviar WhatsApp
+              </Button>
+            </div>
           </div>
         ))}
       </CardContent>

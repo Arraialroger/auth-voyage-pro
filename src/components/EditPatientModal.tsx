@@ -734,7 +734,12 @@ export function EditPatientModal({ patientId, open, onOpenChange, onSave }: Edit
 
               {/* Tab: Financeiro */}
               <TabsContent value="financial" className="mt-6">
-                <FinancialView patientId={patientId} />
+                <FinancialView 
+                  patientId={patientId}
+                  patientName={formData.full_name}
+                  patientCpf={formData.cpf || null}
+                  patientPhone={formData.contact_phone}
+                />
               </TabsContent>
             </div>
           </Tabs>
