@@ -52,7 +52,7 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
 
   const getStatusConfig = (status: string) => {
     const configs = {
-      awaiting_payment: { label: 'Aguardando Pagamento', icon: DollarSign, className: 'bg-warning/10 text-warning' },
+      awaiting_payment: { label: 'Aguardando Aprovação', icon: DollarSign, className: 'bg-warning/10 text-warning' },
       approved: { label: 'Aprovado', icon: CheckCircle2, className: 'bg-primary/10 text-primary' },
       in_progress: { label: 'Em Andamento', icon: Clock, className: 'bg-primary/10 text-primary' },
       completed: { label: 'Concluído', icon: CheckCircle2, className: 'bg-success/10 text-success' },
