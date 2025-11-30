@@ -6,15 +6,17 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { createLocalDateTime, parseLocalDateTime } from '@/lib/dateUtils';
+import { createLocalDateTime } from '@/lib/dateUtils';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { BLOCK_PATIENT_ID, BLOCK_TREATMENT_ID } from '@/lib/constants';
 import { logger } from '@/lib/logger';
+import type { Database } from '@/integrations/supabase/types';
+
+type BlockType = Database['public']['Enums']['block_type_enum'];
 
 interface BlockTimeModalProps {
   open: boolean;
@@ -38,24 +40,42 @@ export function BlockTimeModal({ open, onOpenChange, professionals, onSuccess, i
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditing = !!initialData?.editingBlockId;
 
+  // Determine block type based on times
+  const getBlockType = (start: string, end: string): BlockType => {
+    if (start === '08:00' && end === '18:00') return 'full_day';
+    if (start === '08:00' && end === '12:00') return 'morning';
+    if (start === '13:00' && end === '18:00') return 'afternoon';
+    return 'custom';
+  };
+
   // Load block data when editing
   useEffect(() => {
     if (initialData?.editingBlockId && open) {
       const loadBlockData = async () => {
         const { data, error } = await supabase
-          .from('appointments')
+          .from('time_blocks')
           .select('*')
           .eq('id', initialData.editingBlockId)
           .single();
         
         if (data && !error) {
-          const start = parseLocalDateTime(data.appointment_start_time);
-          const end = parseLocalDateTime(data.appointment_end_time);
-          setStartTime(format(start, 'HH:mm'));
-          setEndTime(format(end, 'HH:mm'));
-          setReason(data.notes || '');
-          setProfessionalId(data.professional_id || '');
-          setSelectedDate(start);
+          // Parse UTC times directly without timezone conversion
+          const startDate = new Date(data.start_time);
+          const endDate = new Date(data.end_time);
+          
+          setStartTime(
+            `${startDate.getUTCHours().toString().padStart(2, '0')}:${startDate.getUTCMinutes().toString().padStart(2, '0')}`
+          );
+          setEndTime(
+            `${endDate.getUTCHours().toString().padStart(2, '0')}:${endDate.getUTCMinutes().toString().padStart(2, '0')}`
+          );
+          setReason(data.reason || '');
+          setProfessionalId(data.professional_id);
+          setSelectedDate(new Date(
+            startDate.getUTCFullYear(),
+            startDate.getUTCMonth(),
+            startDate.getUTCDate()
+          ));
         }
       };
       loadBlockData();
@@ -108,15 +128,18 @@ export function BlockTimeModal({ open, onOpenChange, professionals, onSuccess, i
         return;
       }
 
+      const blockType = getBlockType(startTime, endTime);
+
       if (isEditing && initialData?.editingBlockId) {
-        // Update existing block
+        // Update existing block in time_blocks table
         const { error } = await supabase
-          .from('appointments')
+          .from('time_blocks')
           .update({
             professional_id: professionalId,
-            appointment_start_time: startDateTime.toISOString(),
-            appointment_end_time: endDateTime.toISOString(),
-            notes: reason || 'Horário bloqueado',
+            start_time: startDateTime.toISOString(),
+            end_time: endDateTime.toISOString(),
+            reason: reason || 'Horário bloqueado',
+            block_type: blockType,
           })
           .eq('id', initialData.editingBlockId);
 
@@ -127,15 +150,13 @@ export function BlockTimeModal({ open, onOpenChange, professionals, onSuccess, i
           description: 'O bloqueio foi atualizado com sucesso.',
         });
       } else {
-        // Create new block
-        const { error } = await supabase.from('appointments').insert({
+        // Create new block in time_blocks table
+        const { error } = await supabase.from('time_blocks').insert({
           professional_id: professionalId,
-          patient_id: BLOCK_PATIENT_ID,
-          treatment_id: BLOCK_TREATMENT_ID,
-          appointment_start_time: startDateTime.toISOString(),
-          appointment_end_time: endDateTime.toISOString(),
-          status: 'Confirmed',
-          notes: reason || 'Horário bloqueado',
+          start_time: startDateTime.toISOString(),
+          end_time: endDateTime.toISOString(),
+          reason: reason || 'Horário bloqueado',
+          block_type: blockType,
         });
 
         if (error) throw error;

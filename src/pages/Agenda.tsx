@@ -67,7 +67,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-import { BLOCK_PATIENT_ID, BLOCK_TREATMENT_ID } from "@/lib/constants";
 import { logger } from "@/lib/logger";
 import { cn } from "@/lib/utils";
 import { OptimizedImage } from "@/components/OptimizedImage";
@@ -109,6 +108,28 @@ interface AvailableSlot {
   professionalId: string;
   professionalName: string;
 }
+
+interface TimeBlock {
+  id: string;
+  professional_id: string;
+  start_time: string;
+  end_time: string;
+  reason: string | null;
+  block_type: string;
+}
+
+// Helper to get UTC values as local Date (for consistent time comparison)
+const getUTCAsLocal = (isoString: string): Date => {
+  const date = new Date(isoString);
+  return new Date(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate(),
+    date.getUTCHours(),
+    date.getUTCMinutes(),
+    date.getUTCSeconds()
+  );
+};
 export default function Agenda() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -169,15 +190,10 @@ export default function Agenda() {
   // Configuração mínima de intervalo para considerar slot disponível
   const MIN_GAP_MINUTES = 30;
 
-  // Helper para identificar bloqueios
-  const isBlockedTime = (appointment: Appointment): boolean => {
-    return appointment.patient_id === BLOCK_PATIENT_ID;
-  };
-
-  // Função para deletar bloqueio
+  // Função para deletar bloqueio (agora da tabela time_blocks)
   const handleDeleteBlock = async (blockId: string) => {
     try {
-      const { error } = await supabase.from("appointments").delete().eq("id", blockId);
+      const { error } = await supabase.from("time_blocks").delete().eq("id", blockId);
 
       if (error) throw error;
 
@@ -186,7 +202,7 @@ export default function Agenda() {
         description: "O horário foi desbloqueado com sucesso.",
       });
 
-      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      queryClient.invalidateQueries({ queryKey: ["time-blocks"] });
     } catch (error) {
       logger.error("Erro ao deletar bloqueio:", error);
       toast({
@@ -198,12 +214,13 @@ export default function Agenda() {
     setBlockToDelete(null);
   };
 
-  // Função para editar bloqueio
-  const handleEditBlock = (appointment: Appointment) => {
+  // Função para editar bloqueio (agora da tabela time_blocks)
+  const handleEditBlock = (block: TimeBlock) => {
+    const startDate = getUTCAsLocal(block.start_time);
     setBlockTimeInitialData({
-      professional_id: appointment.professional?.id,
-      date: new Date(appointment.appointment_start_time),
-      editingBlockId: appointment.id,
+      professional_id: block.professional_id,
+      date: startDate,
+      editingBlockId: block.id,
     });
     setBlockTimeModalOpen(true);
   };
@@ -316,6 +333,33 @@ export default function Agenda() {
         return data || [];
       } catch (error) {
         logger.error("Erro ao buscar horários dos profissionais:", error);
+        return [];
+      }
+    },
+  });
+
+  // Fetch time blocks (nova tabela dedicada)
+  const { data: timeBlocks = [] } = useQuery({
+    queryKey: ["time-blocks", weekStart.toISOString(), weekEnd.toISOString(), userProfile.type, userProfile.professionalId],
+    queryFn: async () => {
+      try {
+        let query = supabase
+          .from("time_blocks")
+          .select("id, professional_id, start_time, end_time, reason, block_type")
+          .gte("start_time", weekStart.toISOString())
+          .lte("start_time", weekEnd.toISOString())
+          .order("start_time");
+
+        // Se for profissional, filtrar apenas seus bloqueios
+        if (userProfile.type === "professional" && userProfile.professionalId) {
+          query = query.eq("professional_id", userProfile.professionalId);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        return (data || []) as TimeBlock[];
+      } catch (error) {
+        logger.error("Erro ao buscar bloqueios de horário:", error);
         return [];
       }
     },
@@ -518,6 +562,7 @@ export default function Agenda() {
   // Função para calcular horários vagos baseado nos horários cadastrados
   const calculateAvailableSlots = (
     appointments: Appointment[],
+    blocks: TimeBlock[],
     date: Date,
     professionalId: string,
     professionalName: string,
@@ -531,12 +576,34 @@ export default function Agenda() {
     }
 
     const dayKey = format(date, "yyyy-MM-dd");
+    
+    // Filtrar agendamentos do dia/profissional
     const dayAppointments = appointments
       .filter((apt) => {
         const aptDate = formatUTCDate(apt.appointment_start_time, "yyyy-MM-dd");
         return aptDate === dayKey && apt.professional?.id === professionalId;
       })
       .sort((a, b) => new Date(a.appointment_start_time).getTime() - new Date(b.appointment_start_time).getTime());
+
+    // Filtrar bloqueios do dia/profissional
+    const dayBlocks = blocks
+      .filter((block) => {
+        const blockDate = formatUTCDate(block.start_time, "yyyy-MM-dd");
+        return blockDate === dayKey && block.professional_id === professionalId;
+      });
+
+    // Combinar agendamentos e bloqueios em uma lista de "ocupações"
+    type Occupation = { start: Date; end: Date };
+    const occupations: Occupation[] = [
+      ...dayAppointments.map((apt) => ({
+        start: getUTCAsLocal(apt.appointment_start_time),
+        end: getUTCAsLocal(apt.appointment_end_time),
+      })),
+      ...dayBlocks.map((block) => ({
+        start: getUTCAsLocal(block.start_time),
+        end: getUTCAsLocal(block.end_time),
+      })),
+    ].sort((a, b) => a.start.getTime() - b.start.getTime());
 
     const gaps: AvailableSlot[] = [];
 
@@ -545,23 +612,20 @@ export default function Agenda() {
       let currentTime = new Date(period.start);
       const periodEnd = new Date(period.end);
 
-      // Processar agendamentos dentro deste período
-      for (const apt of dayAppointments) {
-        const aptStart = new Date(apt.appointment_start_time);
-        const aptEnd = new Date(apt.appointment_end_time);
-
-        // Ignorar agendamentos fora deste período
-        if (aptEnd <= period.start || aptStart >= period.end) {
+      // Processar ocupações dentro deste período
+      for (const occ of occupations) {
+        // Ignorar ocupações fora deste período
+        if (occ.end <= period.start || occ.start >= period.end) {
           continue;
         }
 
-        // Gap antes do agendamento
-        if (aptStart.getTime() > currentTime.getTime()) {
-          const gapMinutes = (aptStart.getTime() - currentTime.getTime()) / 60000;
+        // Gap antes da ocupação
+        if (occ.start.getTime() > currentTime.getTime()) {
+          const gapMinutes = (occ.start.getTime() - currentTime.getTime()) / 60000;
           if (gapMinutes >= MIN_GAP_MINUTES) {
             gaps.push({
               start: new Date(currentTime),
-              end: new Date(aptStart),
+              end: new Date(occ.start),
               duration: gapMinutes,
               professionalId,
               professionalName,
@@ -569,9 +633,9 @@ export default function Agenda() {
           }
         }
 
-        // Avançar currentTime para o fim do agendamento
-        if (aptEnd > currentTime) {
-          currentTime = new Date(aptEnd);
+        // Avançar currentTime para o fim da ocupação
+        if (occ.end > currentTime) {
+          currentTime = new Date(occ.end);
         }
       }
 
@@ -1253,108 +1317,119 @@ export default function Agenda() {
                               <CardTitle className="text-lg">{professional.full_name}</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-2">
-                              {dayAppointments.length > 0 ||
-                              calculateAvailableSlots(
-                                filteredAppointments,
-                                currentDay,
-                                professional.id,
-                                professional.full_name,
-                              ).length > 0 ? (
-                                <>
-                                  {(() => {
-                                    const slots = calculateAvailableSlots(
-                                      filteredAppointments,
-                                      currentDay,
-                                      professional.id,
-                                      professional.full_name,
-                                    );
-                                    const allItems: Array<{
-                                      type: "appointment" | "gap";
-                                      data: any;
-                                    }> = [
-                                      ...dayAppointments.map((apt) => ({
-                                        type: "appointment" as const,
-                                        data: apt,
-                                      })),
-                                      ...slots.map((slot) => ({
-                                        type: "gap" as const,
-                                        data: slot,
-                                      })),
-                                    ].sort((a, b) => {
-                                      const timeA =
-                                        a.type === "appointment"
-                                          ? new Date(a.data.appointment_start_time).getTime()
-                                          : a.data.start.getTime();
-                                      const timeB =
-                                        b.type === "appointment"
-                                          ? new Date(b.data.appointment_start_time).getTime()
-                                          : b.data.start.getTime();
-                                      return timeA - timeB;
-                                    });
-                                    return allItems.map((item, idx) => {
-                                      if (item.type === "appointment") {
-                                        const appointment = item.data;
-                                        const isBlocked = isBlockedTime(appointment);
-
-                                        if (isBlocked) {
-                                          return (
-                                            <div
-                                              key={`apt-${appointment.id}`}
-                                              className="relative group bg-destructive/20 border-2 border-destructive/50 hover:border-destructive/70 text-destructive-foreground p-3 rounded-md shadow-sm transition-colors cursor-pointer"
-                                            >
-                                              <div className="flex items-center justify-between gap-2 mb-1">
-                                                <div className="flex items-center gap-2">
-                                                  <Ban className="h-4 w-4" />
-                                                  <div className="font-medium text-sm">
-                                                    {formatUTCTime(appointment.appointment_start_time)} -{" "}
-                                                    {formatUTCTime(appointment.appointment_end_time)}
-                                                  </div>
-                                                </div>
-                                                {userProfile.type === "receptionist" && (
-                                                  <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                      <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                      >
-                                                        <MoreVertical className="h-4 w-4" />
-                                                      </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-48">
-                                                      <DropdownMenuItem onClick={() => handleEditBlock(appointment)}>
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        Editar Bloqueio
-                                                      </DropdownMenuItem>
-                                                      <DropdownMenuItem
-                                                        onClick={() => setBlockToDelete(appointment.id)}
-                                                        className="text-destructive focus:text-destructive"
-                                                      >
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Remover Bloqueio
-                                                      </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                  </DropdownMenu>
-                                                )}
-                                              </div>
-                                              <div className="text-sm font-medium">🚫 Horário Bloqueado</div>
-                                              {appointment.notes && (
-                                                <div className="text-xs mt-1 opacity-80">{appointment.notes}</div>
-                                              )}
+                              {(() => {
+                                // Filtrar bloqueios do dia/profissional
+                                const dayBlocks = timeBlocks.filter((block) => {
+                                  const blockDate = formatUTCDate(block.start_time, "yyyy-MM-dd");
+                                  return blockDate === dayKey && block.professional_id === professional.id;
+                                });
+                                
+                                const slots = calculateAvailableSlots(
+                                  filteredAppointments,
+                                  timeBlocks,
+                                  currentDay,
+                                  professional.id,
+                                  professional.full_name,
+                                );
+                                
+                                const hasContent = dayAppointments.length > 0 || dayBlocks.length > 0 || slots.length > 0;
+                                
+                                if (!hasContent) {
+                                  return (
+                                    <div className="text-center py-6 text-muted-foreground">
+                                      <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                      <p className="text-sm">Nenhum agendamento para este dia</p>
+                                    </div>
+                                  );
+                                }
+                                
+                                const allItems: Array<{
+                                  type: "appointment" | "block" | "gap";
+                                  data: any;
+                                }> = [
+                                  ...dayAppointments.map((apt) => ({
+                                    type: "appointment" as const,
+                                    data: apt,
+                                  })),
+                                  ...dayBlocks.map((block) => ({
+                                    type: "block" as const,
+                                    data: block,
+                                  })),
+                                  ...slots.map((slot) => ({
+                                    type: "gap" as const,
+                                    data: slot,
+                                  })),
+                                ].sort((a, b) => {
+                                  const getTime = (item: typeof allItems[0]) => {
+                                    if (item.type === "appointment") return getUTCAsLocal(item.data.appointment_start_time).getTime();
+                                    if (item.type === "block") return getUTCAsLocal(item.data.start_time).getTime();
+                                    return item.data.start.getTime();
+                                  };
+                                  return getTime(a) - getTime(b);
+                                });
+                                
+                                return allItems.map((item, idx) => {
+                                  if (item.type === "block") {
+                                    const block = item.data as TimeBlock;
+                                    return (
+                                      <div
+                                        key={`block-${block.id}`}
+                                        className="relative group bg-destructive/20 border-2 border-destructive/50 hover:border-destructive/70 text-destructive-foreground p-3 rounded-md shadow-sm transition-colors cursor-pointer"
+                                      >
+                                        <div className="flex items-center justify-between gap-2 mb-1">
+                                          <div className="flex items-center gap-2">
+                                            <Ban className="h-4 w-4" />
+                                            <div className="font-medium text-sm">
+                                              {formatUTCTime(block.start_time)} - {formatUTCTime(block.end_time)}
                                             </div>
-                                          );
-                                        }
-
-                                        return (
-                                          <div
-                                            key={`apt-${appointment.id}`}
-                                            className={cn(
-                                              "relative p-3 rounded-lg shadow-md border-2 group transition-all hover:shadow-lg",
-                                              appointment.is_squeeze_in
-                                                ? "bg-orange-50 dark:bg-orange-950/50 border-orange-400 dark:border-orange-600 text-foreground"
-                                                : "bg-primary/95 dark:bg-primary border-primary-foreground/20 dark:border-primary text-primary-foreground",
-                                            )}
-                                          >
+                                          </div>
+                                          {userProfile.type === "receptionist" && (
+                                            <DropdownMenu>
+                                              <DropdownMenuTrigger asChild>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                  <MoreVertical className="h-4 w-4" />
+                                                </Button>
+                                              </DropdownMenuTrigger>
+                                              <DropdownMenuContent align="end" className="w-48">
+                                                <DropdownMenuItem onClick={() => handleEditBlock(block)}>
+                                                  <Edit className="mr-2 h-4 w-4" />
+                                                  Editar Bloqueio
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                  onClick={() => setBlockToDelete(block.id)}
+                                                  className="text-destructive focus:text-destructive"
+                                                >
+                                                  <Trash2 className="mr-2 h-4 w-4" />
+                                                  Remover Bloqueio
+                                                </DropdownMenuItem>
+                                              </DropdownMenuContent>
+                                            </DropdownMenu>
+                                          )}
+                                        </div>
+                                        <div className="text-sm font-medium">🚫 Horário Bloqueado</div>
+                                        {block.reason && (
+                                          <div className="text-xs mt-1 opacity-80">{block.reason}</div>
+                                        )}
+                                      </div>
+                                    );
+                                  }
+                                  
+                                  if (item.type === "appointment") {
+                                    const appointment = item.data;
+                                    return (
+                                      <div
+                                        key={`apt-${appointment.id}`}
+                                        className={cn(
+                                          "relative p-3 rounded-lg shadow-md border-2 group transition-all hover:shadow-lg",
+                                          appointment.is_squeeze_in
+                                            ? "bg-orange-50 dark:bg-orange-950/50 border-orange-400 dark:border-orange-600 text-foreground"
+                                            : "bg-primary/95 dark:bg-primary border-primary-foreground/20 dark:border-primary text-primary-foreground",
+                                        )}
+                                      >
                                             {/* Indicador pulsante para "Patient Arrived" */}
                                             {appointment.status === "Patient Arrived" && (
                                               <div className="absolute -top-1 -right-1">
@@ -1529,32 +1604,26 @@ export default function Agenda() {
                                             </div>
                                           </div>
                                         );
-                                      }
-                                    });
-                                  })()}
-                                </>
-                              ) : (
-                                <div className="text-center py-6 text-muted-foreground">
-                                  <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                  <p className="text-sm">Nenhum agendamento para este dia</p>
-                                </div>
-                              )}
+                                                      }
+                                                      return null;
+                                                    });
+                                              })()}
 
-                              {/* Add appointment button */}
-                              <Button
-                                variant="outline"
-                                className="w-full mt-3"
-                                onClick={() => handleEmptySlotClick(professional, currentDay, "09:00")}
-                              >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Novo Agendamento
-                              </Button>
-                            </CardContent>
-                          </Card>
-                        );
-                      });
-                    })()}
-                  </div>
+                                              {/* Add appointment button */}
+                                              <Button
+                                                variant="outline"
+                                                className="w-full mt-3"
+                                                onClick={() => handleEmptySlotClick(professional, currentDay, "09:00")}
+                                              >
+                                                <Plus className="h-4 w-4 mr-2" />
+                                                Novo Agendamento
+                                              </Button>
+                                            </CardContent>
+                                          </Card>
+                                        );
+                                      });
+                                    })()}
+                                  </div>
 
                   {/* Desktop: Grid view for full week */}
                   <div className="hidden md:block overflow-x-hidden w-full max-w-full">
@@ -1610,34 +1679,44 @@ export default function Agenda() {
                                 const dayKey = format(day, "yyyy-MM-dd");
                                 const dayAppointments =
                                   appointmentsByProfessional[professional.full_name]?.[dayKey] || [];
+                                
+                                // Filtrar bloqueios do dia/profissional
+                                const dayBlocks = timeBlocks.filter((block) => {
+                                  const blockDate = formatUTCDate(block.start_time, "yyyy-MM-dd");
+                                  return blockDate === dayKey && block.professional_id === professional.id;
+                                });
+                                
                                 const availableSlots = calculateAvailableSlots(
                                   filteredAppointments,
+                                  timeBlocks,
                                   day,
                                   professional.id,
                                   professional.full_name,
                                 );
+                                
                                 const allItems: Array<{
-                                  type: "appointment" | "gap";
+                                  type: "appointment" | "block" | "gap";
                                   data: any;
                                 }> = [
                                   ...dayAppointments.map((apt) => ({
                                     type: "appointment" as const,
                                     data: apt,
                                   })),
+                                  ...dayBlocks.map((block) => ({
+                                    type: "block" as const,
+                                    data: block,
+                                  })),
                                   ...availableSlots.map((slot) => ({
                                     type: "gap" as const,
                                     data: slot,
                                   })),
                                 ].sort((a, b) => {
-                                  const timeA =
-                                    a.type === "appointment"
-                                      ? new Date(a.data.appointment_start_time).getTime()
-                                      : a.data.start.getTime();
-                                  const timeB =
-                                    b.type === "appointment"
-                                      ? new Date(b.data.appointment_start_time).getTime()
-                                      : b.data.start.getTime();
-                                  return timeA - timeB;
+                                  const getTime = (item: typeof allItems[0]) => {
+                                    if (item.type === "appointment") return getUTCAsLocal(item.data.appointment_start_time).getTime();
+                                    if (item.type === "block") return getUTCAsLocal(item.data.start_time).getTime();
+                                    return item.data.start.getTime();
+                                  };
+                                  return getTime(a) - getTime(b);
                                 });
                                 const isToday = format(day, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
                                 return (
@@ -1651,61 +1730,59 @@ export default function Agenda() {
                                     )}
                                   >
                                     {allItems.map((item, idx) => {
-                                      if (item.type === "appointment") {
-                                        const appointment = item.data;
-                                        const isBlocked = isBlockedTime(appointment);
-
-                                        if (isBlocked) {
-                                          return (
-                                            <div
-                                              key={`apt-${appointment.id}`}
-                                              className="relative group bg-destructive/20 border-2 border-destructive/50 hover:border-destructive/70 text-destructive-foreground p-2 rounded-md text-xs transition-colors cursor-pointer"
-                                            >
-                                              <div className="flex items-center justify-between gap-1 mb-0.5">
-                                                <div className="flex items-center gap-1">
-                                                  <Ban className="h-3 w-3" />
-                                                  <div className="font-medium">
-                                                    {formatUTCTime(appointment.appointment_start_time)} -{" "}
-                                                    {formatUTCTime(appointment.appointment_end_time)}
-                                                  </div>
+                                      if (item.type === "block") {
+                                        const block = item.data as TimeBlock;
+                                        return (
+                                          <div
+                                            key={`block-${block.id}`}
+                                            className="relative group bg-destructive/20 border-2 border-destructive/50 hover:border-destructive/70 text-destructive-foreground p-2 rounded-md text-xs transition-colors cursor-pointer"
+                                          >
+                                            <div className="flex items-center justify-between gap-1 mb-0.5">
+                                              <div className="flex items-center gap-1">
+                                                <Ban className="h-3 w-3" />
+                                                <div className="font-medium">
+                                                  {formatUTCTime(block.start_time)} - {formatUTCTime(block.end_time)}
                                                 </div>
-                                                {userProfile.type === "receptionist" && (
-                                                  <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                      <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                      >
-                                                        <MoreVertical className="h-3 w-3" />
-                                                      </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-48">
-                                                      <DropdownMenuItem onClick={() => handleEditBlock(appointment)}>
-                                                        <Edit className="mr-2 h-4 w-4" />
-                                                        Editar Bloqueio
-                                                      </DropdownMenuItem>
-                                                      <DropdownMenuItem
-                                                        onClick={() => setBlockToDelete(appointment.id)}
-                                                        className="text-destructive focus:text-destructive"
-                                                      >
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Remover Bloqueio
-                                                      </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                  </DropdownMenu>
-                                                )}
                                               </div>
-                                              <div className="font-medium text-[10px]">🚫 Bloqueado</div>
-                                              {appointment.notes && (
-                                                <div className="text-[9px] mt-0.5 opacity-80 truncate">
-                                                  {appointment.notes}
-                                                </div>
+                                              {userProfile.type === "receptionist" && (
+                                                <DropdownMenu>
+                                                  <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                      <MoreVertical className="h-3 w-3" />
+                                                    </Button>
+                                                  </DropdownMenuTrigger>
+                                                  <DropdownMenuContent align="end" className="w-48">
+                                                    <DropdownMenuItem onClick={() => handleEditBlock(block)}>
+                                                      <Edit className="mr-2 h-4 w-4" />
+                                                      Editar Bloqueio
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                      onClick={() => setBlockToDelete(block.id)}
+                                                      className="text-destructive focus:text-destructive"
+                                                    >
+                                                      <Trash2 className="mr-2 h-4 w-4" />
+                                                      Remover Bloqueio
+                                                    </DropdownMenuItem>
+                                                  </DropdownMenuContent>
+                                                </DropdownMenu>
                                               )}
                                             </div>
-                                          );
-                                        }
+                                            <div className="font-medium text-[10px]">🚫 Bloqueado</div>
+                                            {block.reason && (
+                                              <div className="text-[9px] mt-0.5 opacity-80 truncate">
+                                                {block.reason}
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      }
 
+                                      if (item.type === "appointment") {
+                                        const appointment = item.data;
                                         return (
                                           <div
                                             key={`apt-${appointment.id}`}
