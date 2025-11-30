@@ -1033,7 +1033,7 @@ export type Database = {
         | "completed"
         | "cancelled"
       treatment_plan_status_enum:
-        | "draft"
+        | "awaiting_payment"
         | "approved"
         | "in_progress"
         | "completed"
@@ -1235,7 +1235,7 @@ export const Constants = {
         "cancelled",
       ],
       treatment_plan_status_enum: [
-        "draft",
+        "awaiting_payment",
         "approved",
         "in_progress",
         "completed",

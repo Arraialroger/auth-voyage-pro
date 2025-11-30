@@ -18,7 +18,8 @@ import {
   Download,
   Copy,
   Sparkles,
-  MessageCircle
+  MessageCircle,
+  DollarSign
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -51,13 +52,13 @@ export const TreatmentPlanCard = ({ plan, onUpdate, isReceptionist }: TreatmentP
 
   const getStatusConfig = (status: string) => {
     const configs = {
-      draft: { label: 'Rascunho', icon: FileText, className: 'bg-secondary/10 text-secondary' },
+      awaiting_payment: { label: 'Aguardando Pagamento', icon: DollarSign, className: 'bg-warning/10 text-warning' },
       approved: { label: 'Aprovado', icon: CheckCircle2, className: 'bg-primary/10 text-primary' },
       in_progress: { label: 'Em Andamento', icon: Clock, className: 'bg-primary/10 text-primary' },
       completed: { label: 'Concluído', icon: CheckCircle2, className: 'bg-success/10 text-success' },
       cancelled: { label: 'Cancelado', icon: XCircle, className: 'bg-destructive/10 text-destructive' },
     };
-    return configs[status as keyof typeof configs] || configs.draft;
+    return configs[status as keyof typeof configs] || configs.awaiting_payment;
   };
 
   const statusConfig = getStatusConfig(plan.status);
@@ -178,7 +179,7 @@ Qualquer dúvida, estamos à disposição!`;
         .insert({
           patient_id: plan.patient_id,
           professional_id: plan.professional_id,
-          status: 'draft',
+          status: 'awaiting_payment',
           notes: plan.notes ? `[Cópia] ${plan.notes}` : '[Cópia do plano anterior]',
           total_cost: 0, // Will be updated by trigger
         })
