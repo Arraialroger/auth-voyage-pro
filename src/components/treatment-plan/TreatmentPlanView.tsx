@@ -62,7 +62,7 @@ export const TreatmentPlanView = ({ patientId }: TreatmentPlanViewProps) => {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      awaiting_payment: { label: 'Aguardando Pagamento', icon: DollarSign, variant: 'warning' as const },
+      awaiting_payment: { label: 'Aguardando Aprovação', icon: DollarSign, variant: 'warning' as const },
       approved: { label: 'Aprovado', icon: CheckCircle2, variant: 'default' as const },
       in_progress: { label: 'Em Andamento', icon: Clock, variant: 'default' as const },
       completed: { label: 'Concluído', icon: CheckCircle2, variant: 'default' as const },
@@ -214,7 +214,7 @@ export const TreatmentPlanView = ({ patientId }: TreatmentPlanViewProps) => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos os Status</SelectItem>
-                      <SelectItem value="draft">Rascunho</SelectItem>
+                      <SelectItem value="awaiting_payment">Aguardando Aprovação</SelectItem>
                       <SelectItem value="approved">Aprovado</SelectItem>
                       <SelectItem value="in_progress">Em Andamento</SelectItem>
                       <SelectItem value="completed">Concluído</SelectItem>
