@@ -44,9 +44,6 @@ const statusOptions = [
   { value: "fratura", label: "Fratura" },
 ];
 
-// ID do tratamento de bloqueio (excluir da lista)
-const BLOCK_TREATMENT_ID = "00000000-0000-0000-0000-000000000002";
-
 export const ToothModal = ({
   isOpen,
   onClose,
@@ -90,7 +87,6 @@ export const ToothModal = ({
       const { data, error } = await supabase
         .from("treatments")
         .select("id, treatment_name, cost")
-        .neq("id", BLOCK_TREATMENT_ID)
         .order("treatment_name");
       if (error) throw error;
       return data;
