@@ -699,47 +699,6 @@ export type Database = {
         }
         Relationships: []
       }
-      time_blocks: {
-        Row: {
-          block_type: Database["public"]["Enums"]["block_type_enum"]
-          created_at: string
-          end_time: string
-          id: string
-          professional_id: string
-          reason: string | null
-          start_time: string
-          updated_at: string
-        }
-        Insert: {
-          block_type?: Database["public"]["Enums"]["block_type_enum"]
-          created_at?: string
-          end_time: string
-          id?: string
-          professional_id: string
-          reason?: string | null
-          start_time: string
-          updated_at?: string
-        }
-        Update: {
-          block_type?: Database["public"]["Enums"]["block_type_enum"]
-          created_at?: string
-          end_time?: string
-          id?: string
-          professional_id?: string
-          reason?: string | null
-          start_time?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "time_blocks_professional_id_fkey"
-            columns: ["professional_id"]
-            isOneToOne: false
-            referencedRelation: "professionals"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       tooth_procedures: {
         Row: {
           created_at: string
@@ -1019,7 +978,6 @@ export type Database = {
         | "No-Show"
         | "Pending Confirmation"
         | "Patient Arrived"
-      block_type_enum: "full_day" | "morning" | "afternoon" | "custom"
       certificate_type_enum: "attendance" | "medical_leave" | "fitness"
       expense_category_enum:
         | "rent"
@@ -1216,7 +1174,6 @@ export const Constants = {
         "Pending Confirmation",
         "Patient Arrived",
       ],
-      block_type_enum: ["full_day", "morning", "afternoon", "custom"],
       certificate_type_enum: ["attendance", "medical_leave", "fitness"],
       expense_category_enum: [
         "rent",
