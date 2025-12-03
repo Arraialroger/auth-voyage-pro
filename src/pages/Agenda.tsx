@@ -23,7 +23,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useRef, useMemo } from "react";
-import { startOfWeek, endOfWeek, format, addDays, addWeeks, subWeeks } from "date-fns";
+import { startOfWeek, endOfWeek, format, addDays, addWeeks, subWeeks, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatUTCTime, formatUTCDate } from "@/lib/dateUtils";
 import { NewAppointmentModal } from "@/components/NewAppointmentModal";
@@ -1081,6 +1081,11 @@ export default function Agenda() {
                                                 </svg>
                                                 Enviar Lembrete
                                               </DropdownMenuItem>
+                                              {appointment.last_reminder_sent_at && (
+                                                <div className="px-2 py-1 text-xs text-muted-foreground">
+                                                  Último lembrete: {formatDistanceToNow(new Date(appointment.last_reminder_sent_at), { addSuffix: false, locale: ptBR })}
+                                                </div>
+                                              )}
                                               <DropdownMenuSeparator />
                                               <DropdownMenuSub>
                                                 <DropdownMenuSubTrigger>Alterar Status</DropdownMenuSubTrigger>
@@ -1320,12 +1325,7 @@ export default function Agenda() {
                                                 </div>
                                                 <Badge
                                                   variant={getStatusBadgeVariant(appointment.status)}
-                                                  className={cn(
-                                                    "text-[10px] h-4 px-1",
-                                                    appointment.is_squeeze_in
-                                                      ? "bg-background/80 text-foreground"
-                                                      : "bg-primary-foreground/20"
-                                                  )}
+                                                  className="text-[10px] h-4 px-1"
                                                 >
                                                   {getStatusLabel(appointment.status)}
                                                 </Badge>
@@ -1378,6 +1378,11 @@ export default function Agenda() {
                                                     </svg>
                                                     Enviar Lembrete
                                                   </DropdownMenuItem>
+                                                  {appointment.last_reminder_sent_at && (
+                                                    <div className="px-2 py-1 text-xs text-muted-foreground">
+                                                      Último lembrete: {formatDistanceToNow(new Date(appointment.last_reminder_sent_at), { addSuffix: false, locale: ptBR })}
+                                                    </div>
+                                                  )}
                                                   <DropdownMenuSeparator />
                                                   <DropdownMenuSub>
                                                     <DropdownMenuSubTrigger>Alterar Status</DropdownMenuSubTrigger>
