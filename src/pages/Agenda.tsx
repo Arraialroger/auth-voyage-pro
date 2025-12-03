@@ -14,14 +14,11 @@ import {
   MoreVertical,
   Edit,
   Trash2,
-  Filter,
   X,
+  MessageSquare,
   Check,
-  ChevronsUpDown,
-  Search,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -144,11 +141,6 @@ export default function Agenda() {
   }, [currentDay]);
 
   const [selectedProfessional, setSelectedProfessional] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterTreatment, setFilterTreatment] = useState<string>("all");
-  const [filterPatient, setFilterPatient] = useState<string>("all");
-  const [patientComboboxOpen, setPatientComboboxOpen] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>("");
@@ -166,7 +158,7 @@ export default function Agenda() {
   }>({});
   const [editPatientModalOpen, setEditPatientModalOpen] = useState(false);
   const [selectedPatientId, setSelectedPatientId] = useState<string>("");
-  const [quickSearch, setQuickSearch] = useState<string>("");
+  
   const [globalPatientSearch, setGlobalPatientSearch] = useState<string>("");
   const todayColumnRef = useRef<HTMLDivElement>(null);
   const [highlightToday, setHighlightToday] = useState(false);
@@ -210,36 +202,6 @@ export default function Agenda() {
   });
   const weekEnd = endOfWeek(currentWeek, {
     weekStartsOn: 1,
-  });
-
-  // Fetch treatments for filter
-  const { data: allTreatments = [] } = useQuery({
-    queryKey: ["treatments"],
-    queryFn: async () => {
-      try {
-        const { data, error } = await supabase.from("treatments").select("id, treatment_name").order("treatment_name");
-        if (error) throw error;
-        return data || [];
-      } catch (error) {
-        logger.error("Erro ao buscar tratamentos:", error);
-        return [];
-      }
-    },
-  });
-
-  // Fetch patients for filter
-  const { data: allPatients = [] } = useQuery({
-    queryKey: ["patients-for-filter"],
-    queryFn: async () => {
-      try {
-        const { data, error } = await supabase.from("patients").select("id, full_name").order("full_name");
-        if (error) throw error;
-        return data || [];
-      } catch (error) {
-        logger.error("Erro ao buscar pacientes:", error);
-        return [];
-      }
-    },
   });
 
   // Fetch patients for global search (professionals only)
@@ -586,7 +548,6 @@ export default function Agenda() {
       professional_id: userProfile.professionalId || undefined,
     });
     setModalOpen(true);
-    setFilterPatient(patient.id);
     setGlobalPatientSearch("");
   };
 
@@ -641,47 +602,8 @@ export default function Agenda() {
     }
   };
 
-  // Apply filters to appointments (optimized with useMemo)
-  const filteredAppointments = useMemo(() => {
-    return appointments.filter((apt) => {
-      // Quick search filter (busca rápida por nome, telefone ou tratamento)
-      if (quickSearch.trim()) {
-        const searchLower = quickSearch.toLowerCase().trim();
-        const patientName = apt.patient?.full_name?.toLowerCase() || "";
-        const patientPhone = apt.patient?.contact_phone || "";
-        const treatmentName = apt.treatment?.treatment_name?.toLowerCase() || "";
-
-        const matchesSearch =
-          patientName.includes(searchLower) || patientPhone.includes(searchLower) || treatmentName.includes(searchLower);
-
-        if (!matchesSearch) return false;
-      }
-
-      // Filter by status
-      if (filterStatus !== "all" && apt.status !== filterStatus) {
-        return false;
-      }
-
-      // Filter by treatment
-      if (filterTreatment !== "all" && apt.treatment?.id !== filterTreatment) {
-        return false;
-      }
-
-      // Filter by patient name
-      if (filterPatient !== "all" && !apt.patient?.full_name.toLowerCase().includes(filterPatient.toLowerCase())) {
-        return false;
-      }
-      return true;
-    });
-  }, [appointments, quickSearch, filterStatus, filterTreatment, filterPatient]);
-
-  // Count active filters
-  const activeFiltersCount = [
-    filterStatus !== "all",
-    filterTreatment !== "all",
-    filterPatient !== "all",
-    selectedProfessional !== "all" && userProfile.type === "receptionist",
-  ].filter(Boolean).length;
+  // Appointments list (sem filtros adicionais)
+  const filteredAppointments = useMemo(() => appointments, [appointments]);
 
   // Group appointments by professional and day (optimized with useMemo)
   const appointmentsByProfessional = useMemo(() => {
@@ -810,228 +732,65 @@ export default function Agenda() {
           {/* Navigation */}
           <Card className="bg-card/80 backdrop-blur-sm border-border/50 shadow-elegant">
             <CardContent className="p-4 space-y-4">
-              {/* Quick Search Section */}
-              <div className="flex gap-3 flex-col sm:flex-row">
-                {/* Busca Rápida de Agendamentos */}
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              {/* Busca Global de Pacientes - Apenas Profissionais */}
+              {userProfile.type === "professional" && (
+                <div className="relative max-w-md">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                   <input
                     type="text"
-                    placeholder="Buscar agendamentos..."
-                    value={quickSearch}
-                    onChange={(e) => setQuickSearch(e.target.value)}
+                    placeholder="Buscar qualquer paciente..."
+                    value={globalPatientSearch}
+                    onChange={(e) => setGlobalPatientSearch(e.target.value)}
                     className="w-full h-10 pl-10 pr-10 rounded-md border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-shadow"
                   />
-                  {quickSearch && (
+                  {globalPatientSearch && (
                     <button
-                      onClick={() => setQuickSearch("")}
+                      onClick={() => setGlobalPatientSearch("")}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <X className="h-4 w-4" />
                     </button>
                   )}
-                </div>
 
-                {/* Busca Global de Pacientes (Fase 2 - Apenas Profissionais) */}
-                {userProfile.type === "professional" && (
-                  <div className="relative flex-1 max-w-md">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                    <input
-                      type="text"
-                      placeholder="Buscar qualquer paciente..."
-                      value={globalPatientSearch}
-                      onChange={(e) => setGlobalPatientSearch(e.target.value)}
-                      className="w-full h-10 pl-10 pr-10 rounded-md border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-shadow"
-                    />
-                    {globalPatientSearch && (
-                      <button
-                        onClick={() => setGlobalPatientSearch("")}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    )}
-
-                    {/* Resultados da Busca Global */}
-                    {globalPatientSearch && globalSearchPatients.length > 0 && (
-                      <Card className="absolute top-full mt-2 w-full z-50 max-h-96 overflow-y-auto shadow-lg">
-                        <CardContent className="p-0">
-                          {globalSearchPatients.map((patient) => (
-                            <div
-                              key={patient.id}
-                              className="border-b last:border-0 p-3 flex items-center justify-between hover:bg-muted/50 transition-colors"
-                            >
-                              <div>
-                                <p className="font-semibold">{patient.full_name}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {patient.contact_phone
-                                    ? patient.contact_phone.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3")
-                                    : "Sem telefone"}
-                                </p>
-                              </div>
-                              <div className="flex gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    navigate(`/patient/${patient.id}`);
-                                    setGlobalPatientSearch("");
-                                  }}
-                                >
-                                  Ver Página
-                                </Button>
-                                <Button size="sm" onClick={() => handleScheduleForPatient(patient)}>
-                                  Agendar
-                                </Button>
-                              </div>
+                  {/* Resultados da Busca Global */}
+                  {globalPatientSearch && globalSearchPatients.length > 0 && (
+                    <Card className="absolute top-full mt-2 w-full z-50 max-h-96 overflow-y-auto shadow-lg">
+                      <CardContent className="p-0">
+                        {globalSearchPatients.map((patient) => (
+                          <div
+                            key={patient.id}
+                            className="border-b last:border-0 p-3 flex items-center justify-between hover:bg-muted/50 transition-colors"
+                          >
+                            <div>
+                              <p className="font-semibold">{patient.full_name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {patient.contact_phone
+                                  ? patient.contact_phone.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3")
+                                  : "Sem telefone"}
+                              </p>
                             </div>
-                          ))}
-                        </CardContent>
-                      </Card>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Filters Section */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowFilters(!showFilters)}
-                    className={cn("gap-2", activeFiltersCount > 0 && "border-primary text-primary")}
-                  >
-                    <Filter className="h-4 w-4" />
-                    Filtros
-                    {activeFiltersCount > 0 && (
-                      <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
-                        {activeFiltersCount}
-                      </Badge>
-                    )}
-                  </Button>
-
-                  {activeFiltersCount > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setFilterStatus("all");
-                        setFilterTreatment("all");
-                        setFilterPatient("all");
-                        setSelectedProfessional("all");
-                      }}
-                      className="gap-1 text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="h-3 w-3" />
-                      Limpar
-                    </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  navigate(`/patient/${patient.id}`);
+                                  setGlobalPatientSearch("");
+                                }}
+                              >
+                                Ver Página
+                              </Button>
+                              <Button size="sm" onClick={() => handleScheduleForPatient(patient)}>
+                                Agendar
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
                   )}
                 </div>
-
-                {showFilters && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-muted/30 rounded-lg border border-border/50">
-                    {/* Status Filter */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-muted-foreground">Status</label>
-                      <Select value={filterStatus} onValueChange={setFilterStatus}>
-                        <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Todos os status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todos</SelectItem>
-                          <SelectItem value="Scheduled">Agendado</SelectItem>
-                          <SelectItem value="Confirmed">Confirmado</SelectItem>
-                          <SelectItem value="Completed">Concluído</SelectItem>
-                          <SelectItem value="No-Show">Faltou</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Treatment Filter */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-muted-foreground">Tratamento</label>
-                      <Select value={filterTreatment} onValueChange={setFilterTreatment}>
-                        <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Todos os tratamentos" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todos</SelectItem>
-                          {allTreatments.map((treatment) => (
-                            <SelectItem key={treatment.id} value={treatment.id}>
-                              {treatment.treatment_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Patient Filter */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-muted-foreground">Paciente</label>
-                      <Popover open={patientComboboxOpen} onOpenChange={setPatientComboboxOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={patientComboboxOpen}
-                            className="w-full justify-between bg-background"
-                          >
-                            {filterPatient === "all"
-                              ? "Todos os pacientes"
-                              : allPatients.find((patient) => patient.full_name === filterPatient)?.full_name ||
-                                "Todos os pacientes"}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-full p-0" align="start">
-                          <Command>
-                            <CommandInput placeholder="Buscar paciente..." />
-                            <CommandList>
-                              <CommandEmpty>Nenhum paciente encontrado.</CommandEmpty>
-                              <CommandGroup>
-                                <CommandItem
-                                  value="all"
-                                  onSelect={() => {
-                                    setFilterPatient("all");
-                                    setPatientComboboxOpen(false);
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      filterPatient === "all" ? "opacity-100" : "opacity-0",
-                                    )}
-                                  />
-                                  Todos os pacientes
-                                </CommandItem>
-                                {allPatients.map((patient) => (
-                                  <CommandItem
-                                    key={patient.id}
-                                    value={patient.full_name}
-                                    onSelect={(currentValue) => {
-                                      setFilterPatient(currentValue);
-                                      setPatientComboboxOpen(false);
-                                    }}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        filterPatient === patient.full_name ? "opacity-100" : "opacity-0",
-                                      )}
-                                    />
-                                    {patient.full_name}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </div>
-                )}
-              </div>
+              )}
 
               {/* Professional Filter - Desktop/Tablet Only */}
               {userProfile.type === "receptionist" && (
