@@ -1318,8 +1318,8 @@ export default function Agenda() {
                                             )}
                                           >
                                             <div className="flex items-center justify-between gap-1 mb-0.5">
-                                              <div className="flex items-center gap-1">
-                                                <div className="font-medium">
+                                              <div className="flex items-center gap-1 flex-wrap">
+                                                <div className="font-medium whitespace-nowrap">
                                                   {formatUTCTime(appointment.appointment_start_time)} -{" "}
                                                   {formatUTCTime(appointment.appointment_end_time)}
                                                 </div>
