@@ -12,7 +12,6 @@ import {
   Plus,
   Settings,
   MoreVertical,
-  Edit,
   Trash2,
   X,
   MessageSquare,
@@ -27,7 +26,6 @@ import { startOfWeek, endOfWeek, format, addDays, addWeeks, subWeeks, formatDist
 import { ptBR } from "date-fns/locale";
 import { formatUTCTime, formatUTCDate } from "@/lib/dateUtils";
 import { NewAppointmentModal } from "@/components/NewAppointmentModal";
-import { EditAppointmentModal } from "@/components/EditAppointmentModal";
 import { AddToWaitingListModal } from "@/components/AddToWaitingListModal";
 import { AppointmentReminderButton } from "@/components/AppointmentReminderButton";
 import { EditPatientModal } from "@/components/EditPatientModal";
@@ -142,8 +140,6 @@ export default function Agenda() {
 
   const [selectedProfessional, setSelectedProfessional] = useState<string>("all");
   const [modalOpen, setModalOpen] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [selectedAppointmentId, setSelectedAppointmentId] = useState<string>("");
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [appointmentToCancel, setAppointmentToCancel] = useState<string>("");
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
@@ -344,11 +340,6 @@ export default function Agenda() {
         variant: "destructive",
       });
     }
-  };
-
-  const handleEditAppointment = (appointmentId: string) => {
-    setSelectedAppointmentId(appointmentId);
-    setEditModalOpen(true);
   };
 
   const handleCancelDialogOpen = (appointmentId: string) => {
@@ -1057,15 +1048,6 @@ export default function Agenda() {
                                               <DropdownMenuItem
                                                 onClick={(e) => {
                                                   e.stopPropagation();
-                                                  handleEditAppointment(appointment.id);
-                                                }}
-                                              >
-                                                <Edit className="mr-2 h-4 w-4" />
-                                                Editar Agendamento
-                                              </DropdownMenuItem>
-                                              <DropdownMenuItem
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
                                                   if (appointment.patient?.contact_phone) {
                                                     const phone = appointment.patient.contact_phone.replace(/\D/g, "");
                                                     const message = encodeURIComponent(
@@ -1354,15 +1336,6 @@ export default function Agenda() {
                                                   <DropdownMenuItem
                                                     onClick={(e) => {
                                                       e.stopPropagation();
-                                                      handleEditAppointment(appointment.id);
-                                                    }}
-                                                  >
-                                                    <Edit className="mr-2 h-4 w-4" />
-                                                    Editar Agendamento
-                                                  </DropdownMenuItem>
-                                                  <DropdownMenuItem
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
                                                       if (appointment.patient?.contact_phone) {
                                                         const phone = appointment.patient.contact_phone.replace(/\D/g, "");
                                                         const message = encodeURIComponent(
@@ -1522,19 +1495,6 @@ export default function Agenda() {
           setModalInitialValues({});
         }}
       />
-
-      {/* Edit Appointment Modal */}
-      {selectedAppointmentId && (
-        <EditAppointmentModal
-          appointmentId={selectedAppointmentId}
-          open={editModalOpen}
-          onOpenChange={setEditModalOpen}
-          onSuccess={() => {
-            setEditModalOpen(false);
-            setSelectedAppointmentId("");
-          }}
-        />
-      )}
 
       {/* Cancel Confirmation Dialog */}
       <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
