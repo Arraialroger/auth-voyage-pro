@@ -1330,9 +1330,9 @@ export default function Agenda() {
                                                   {getStatusLabel(appointment.status)}
                                                 </Badge>
                                                 {appointment.is_squeeze_in && (
-                                                  <span className="text-yellow-600 dark:text-yellow-400" title="Encaixe">
-                                                    ⚡
-                                                  </span>
+                                                  <Badge variant="outline" className="text-[10px] h-4 px-1 border-orange-500 bg-orange-500/20 text-orange-600 dark:text-orange-400">
+                                                    Encaixe
+                                                  </Badge>
                                                 )}
                                               </div>
                                               <DropdownMenu>
