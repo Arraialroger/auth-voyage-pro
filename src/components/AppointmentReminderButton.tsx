@@ -6,6 +6,7 @@ import { toast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { logger } from '@/lib/logger';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface AppointmentReminderButtonProps {
   appointmentId: string;
@@ -25,6 +26,7 @@ export function AppointmentReminderButton({
   lastReminderSent,
 }: AppointmentReminderButtonProps) {
   const [sending, setSending] = useState(false);
+  const queryClient = useQueryClient();
 
   const formatWhatsAppLink = (phone: string, message: string) => {
     const cleanPhone = phone.replace(/\D/g, '');
@@ -80,6 +82,9 @@ Obrigado!`;
         .eq('id', appointmentId);
 
       if (updateError) throw updateError;
+
+      // Invalidate appointments cache to reflect status change
+      await queryClient.invalidateQueries({ queryKey: ['appointments'] });
 
       // Open WhatsApp
       window.open(formatWhatsAppLink(patientPhone, message), '_blank');
