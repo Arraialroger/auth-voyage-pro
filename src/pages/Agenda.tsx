@@ -441,6 +441,61 @@ export default function Agenda() {
     }
   };
 
+  // Função para enviar lembrete via WhatsApp e atualizar status
+  const handleSendReminder = async (appointment: Appointment) => {
+    if (!appointment.patient?.contact_phone) {
+      toast({
+        title: "Erro",
+        description: "Paciente sem telefone de contato.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const phone = appointment.patient.contact_phone.replace(/\D/g, "");
+      const formattedPhone = phone.startsWith("55") ? phone : `55${phone}`;
+      const message = `Olá ${appointment.patient.full_name}, este é um lembrete do seu agendamento no dia ${formatUTCDate(appointment.appointment_start_time, "dd/MM/yyyy")} às ${formatUTCTime(appointment.appointment_start_time)} para ${appointment.treatment?.treatment_name || "consulta"}. Aguardamos você!`;
+
+      // 1. Registrar log de comunicação
+      await supabase.from("communication_logs").insert({
+        appointment_id: appointment.id,
+        patient_id: appointment.patient_id,
+        communication_content: message,
+        direction: "outbound",
+      });
+
+      // 2. Atualizar status e timestamp
+      const { error } = await supabase
+        .from("appointments")
+        .update({
+          last_reminder_sent_at: new Date().toISOString(),
+          status: "Pending Confirmation" as AppointmentStatus,
+        })
+        .eq("id", appointment.id);
+
+      if (error) throw error;
+
+      // 3. Invalidar cache
+      await queryClient.invalidateQueries({ queryKey: ["appointments"] });
+
+      // 4. Abrir WhatsApp
+      window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`, "_blank");
+
+      toast({
+        title: "Lembrete enviado",
+        description: 'Status alterado para "Aguardando Confirmação".',
+      });
+    } catch (error) {
+      logger.error("Erro ao enviar lembrete:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao enviar lembrete. Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Função para calcular horários vagos baseado nos horários cadastrados
   const calculateAvailableSlots = (
     appointments: Appointment[],
@@ -1048,13 +1103,7 @@ export default function Agenda() {
                                               <DropdownMenuItem
                                                 onClick={(e) => {
                                                   e.stopPropagation();
-                                                  if (appointment.patient?.contact_phone) {
-                                                    const phone = appointment.patient.contact_phone.replace(/\D/g, "");
-                                                    const message = encodeURIComponent(
-                                                      `Olá ${appointment.patient.full_name}, este é um lembrete do seu agendamento no dia ${formatUTCDate(appointment.appointment_start_time, "dd/MM/yyyy")} às ${formatUTCTime(appointment.appointment_start_time)} para ${appointment.treatment?.treatment_name || "consulta"}. Aguardamos você!`
-                                                    );
-                                                    window.open(`https://wa.me/55${phone}?text=${message}`, "_blank");
-                                                  }
+                                                  handleSendReminder(appointment);
                                                 }}
                                                 disabled={!appointment.patient?.contact_phone}
                                               >
@@ -1336,13 +1385,7 @@ export default function Agenda() {
                                                   <DropdownMenuItem
                                                     onClick={(e) => {
                                                       e.stopPropagation();
-                                                      if (appointment.patient?.contact_phone) {
-                                                        const phone = appointment.patient.contact_phone.replace(/\D/g, "");
-                                                        const message = encodeURIComponent(
-                                                          `Olá ${appointment.patient.full_name}, este é um lembrete do seu agendamento no dia ${formatUTCDate(appointment.appointment_start_time, "dd/MM/yyyy")} às ${formatUTCTime(appointment.appointment_start_time)} para ${appointment.treatment?.treatment_name || "consulta"}. Aguardamos você!`
-                                                        );
-                                                        window.open(`https://wa.me/55${phone}?text=${message}`, "_blank");
-                                                      }
+                                                      handleSendReminder(appointment);
                                                     }}
                                                     disabled={!appointment.patient?.contact_phone}
                                                   >
