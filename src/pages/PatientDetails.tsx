@@ -335,31 +335,37 @@ export default function PatientDetails() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
+      {/* Header - Compacto no mobile */}
       <header className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" onClick={() => navigate('/agenda')} className="hover:bg-accent/80">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar
+        <div className="container mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => navigate('/agenda')} 
+                className="hover:bg-accent/80 flex-shrink-0 h-9 w-9 sm:h-10 sm:w-auto sm:px-4"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Voltar</span>
               </Button>
-              <h1 className="text-xl font-semibold">{patient.full_name}</h1>
+              <h1 className="text-base sm:text-xl font-semibold truncate">{patient.full_name}</h1>
             </div>
             <Button
               variant="outline"
+              size="sm"
               onClick={() => window.open(formatWhatsAppLink(patient.contact_phone), '_blank')}
-              className="border-success text-success hover:bg-success hover:text-success-foreground"
+              className="border-success text-success hover:bg-success hover:text-success-foreground flex-shrink-0"
             >
-              <MessageCircle className="h-4 w-4 mr-2" />
-              WhatsApp
+              <MessageCircle className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">WhatsApp</span>
             </Button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
 
         <Tabs defaultValue="dados" className="w-full">
           <TabsList className="grid w-full grid-cols-2 h-auto">
@@ -377,25 +383,28 @@ export default function PatientDetails() {
           </TabsList>
 
           {/* GRUPO 1: DADOS (Info + Documentos + Histórico) */}
-          <TabsContent value="dados" className="space-y-6 mt-6">
-            {/* Sub-navegação dentro de DADOS */}
-            <div className="flex gap-2 border-b border-border/40 pb-2">
+          <TabsContent value="dados" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
+            {/* Sub-navegação dentro de DADOS - scroll horizontal no mobile */}
+            <div className="flex gap-1 sm:gap-2 border-b border-border/40 pb-2 overflow-x-auto scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0">
               <Button
                 variant={activeSubTab === 'info' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setActiveSubTab('info')}
+                className="flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3"
               >
-                Informações Pessoais
+                <span className="hidden sm:inline">Informações Pessoais</span>
+                <span className="sm:hidden">Info</span>
               </Button>
               <Button
                 variant={activeSubTab === 'documents' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setActiveSubTab('documents')}
-                className="flex items-center gap-2"
+                className="flex items-center gap-1 sm:gap-2 flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3"
               >
-                Documentos
+                <span className="hidden sm:inline">Documentos</span>
+                <span className="sm:hidden">Docs</span>
                 {patientDocuments && patientDocuments.length > 0 && (
-                  <Badge variant="secondary" className="px-1.5 py-0 text-xs">
+                  <Badge variant="secondary" className="px-1 sm:px-1.5 py-0 text-xs">
                     {patientDocuments.length}
                   </Badge>
                 )}
@@ -404,15 +413,19 @@ export default function PatientDetails() {
                 variant={activeSubTab === 'history' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setActiveSubTab('history')}
+                className="flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3"
               >
-                Histórico de Consultas
+                <span className="hidden sm:inline">Histórico de Consultas</span>
+                <span className="sm:hidden">Histórico</span>
               </Button>
               <Button
                 variant={activeSubTab === 'financial' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setActiveSubTab('financial')}
+                className="flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3"
               >
-                💰 Financeiro
+                <span className="hidden sm:inline">💰 Financeiro</span>
+                <span className="sm:hidden">💰</span>
               </Button>
             </div>
 
@@ -610,13 +623,14 @@ export default function PatientDetails() {
           </TabsContent>
 
           {/* GRUPO 2: CLÍNICO (Odontograma + Plano de Tratamento + Receitas) */}
-          <TabsContent value="clinico" className="space-y-6 mt-6">
-            {/* Sub-navegação dentro de CLÍNICO */}
-            <div className="flex gap-2 border-b border-border/40 pb-2">
+          <TabsContent value="clinico" className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
+            {/* Sub-navegação dentro de CLÍNICO - scroll horizontal no mobile */}
+            <div className="flex gap-1 sm:gap-2 border-b border-border/40 pb-2 overflow-x-auto scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0">
               <Button
                 variant={activeSubTab === 'odontogram' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setActiveSubTab('odontogram')}
+                className="flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3"
               >
                 Odontograma
               </Button>
@@ -624,15 +638,19 @@ export default function PatientDetails() {
                 variant={activeSubTab === 'treatment-plan' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setActiveSubTab('treatment-plan')}
+                className="flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3"
               >
-                Plano de Tratamento
+                <span className="hidden sm:inline">Plano de Tratamento</span>
+                <span className="sm:hidden">Tratamento</span>
               </Button>
               <Button
                 variant={activeSubTab === 'prescriptions' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setActiveSubTab('prescriptions')}
+                className="flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3"
               >
-                Receitas e Atestados
+                <span className="hidden sm:inline">Receitas e Atestados</span>
+                <span className="sm:hidden">Receitas</span>
               </Button>
             </div>
 
