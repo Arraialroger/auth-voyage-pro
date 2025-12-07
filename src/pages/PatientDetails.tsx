@@ -11,7 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Badge } from '@/components/ui/badge';
 import { OdontogramView } from '@/components/odontogram/OdontogramView';
 import { TreatmentPlanView } from '@/components/treatment-plan/TreatmentPlanView';
-import { TreatmentPlanProgressDashboard } from '@/components/treatment-plan/TreatmentPlanProgressDashboard';
+
 import { PrescriptionView } from '@/components/prescription/PrescriptionView';
 import { CertificateView } from '@/components/prescription/CertificateView';
 import { FinancialView } from '@/components/financial/FinancialView';
@@ -362,7 +362,7 @@ export default function PatientDetails() {
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         <Tabs defaultValue="dados" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-auto">
+          <TabsList className="grid w-full grid-cols-2 h-auto">
             <TabsTrigger value="dados" className="flex items-center gap-2">
               📋 DADOS
               {patientDocuments && patientDocuments.length > 0 && (
@@ -373,9 +373,6 @@ export default function PatientDetails() {
             </TabsTrigger>
             <TabsTrigger value="clinico" className="flex items-center gap-2">
               🦷 CLÍNICO
-            </TabsTrigger>
-            <TabsTrigger value="acompanhamento" className="flex items-center gap-2">
-              📊 ACOMPANHAMENTO
             </TabsTrigger>
           </TabsList>
 
@@ -666,12 +663,6 @@ export default function PatientDetails() {
             )}
           </TabsContent>
 
-          {/* GRUPO 3: ACOMPANHAMENTO (Progresso) */}
-          <TabsContent value="acompanhamento" className="mt-6 animate-enter">
-            <TreatmentPlanProgressDashboard 
-              plans={queryClient.getQueryData(['treatment-plans', patientId]) || []} 
-            />
-          </TabsContent>
         </Tabs>
       </main>
 
