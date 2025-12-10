@@ -11,6 +11,7 @@ import { ptBR } from 'date-fns/locale';
 import { Payment, PaymentEntry, PaymentMethod, PAYMENT_METHOD_LABELS } from '@/types/payment';
 import { generateReceiptPDF } from '@/lib/receiptPdf';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 
 interface PaymentHistoryProps {
   patientId: string;
@@ -104,7 +105,7 @@ export const PaymentHistory = ({ patientId, patientName, patientCpf, patientPhon
       });
       toast.success('Recibo gerado com sucesso!');
     } catch (error) {
-      console.error('Error generating receipt:', error);
+      logger.error('Error generating receipt:', error);
       toast.error('Erro ao gerar recibo');
     } finally {
       setGeneratingPdf(null);
