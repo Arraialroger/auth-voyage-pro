@@ -87,6 +87,12 @@ export const TreatmentPlanItemRow = ({ item, onUpdate, isReceptionist, patientId
               </Badge>
             )}
             {getStatusBadge(item.status)}
+            {item.status === 'completed' && item.completed_at && (
+              <Badge variant="outline" className="text-xs gap-1 bg-success/10 text-success border-success/20">
+                <CheckCircle2 className="h-3 w-3" />
+                Concluído em: {format(new Date(item.completed_at), "dd/MM/yyyy", { locale: ptBR })}
+              </Badge>
+            )}
             {item.priority > 1 && (
               <Badge variant="outline" className="text-xs">
                 Prioridade {item.priority}
